@@ -1,124 +1,116 @@
-"use client";
+"use client"
 
-import React, { useState } from 'react';
-import { FiChevronDown, FiX } from 'react-icons/fi';
+import { useState } from "react"
+import { ChevronLeft, ChevronRight, Filter, Upload } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-const DashboardHelpCentre = () => {
-  // Inline style constants based on your styles.js
-  const mainContainer =
-    'min-h-screen w-full flex flex-col items-center justify-center py-8 px-4 bg-white';
-  const cardContainer = 'bg-white p-4 rounded shadow w-full';
-  const headingContainer = 'relative w-full flex flex-col items-center mb-2';
-  const pageTitle =
-    'mb-4 font-[600] text-[36px] leading-[100%] tracking-[-0.05em] text-[#039994] font-sfpro text-center';
-  const questionText =
-    'font-medium text-gray-800 font-sfpro cursor-pointer';
-  const answerText = 'text-gray-600 font-sfpro';
-  const hrStyle = 'my-3';
-  
-  // Mock FAQ data (8 items)
-  const faqs = [
-    {
-      id: 1,
-      question: "Lorem Ipsum",
-      answer:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore."
-    },
-    {
-      id: 2,
-      question: "Lorem Ipsum",
-      answer:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore."
-    },
-    {
-      id: 3,
-      question: "Lorem Ipsum",
-      answer:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore."
-    },
-    {
-      id: 4,
-      question: "Lorem Ipsum",
-      answer:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore."
-    },
-    {
-      id: 5,
-      question: "Lorem Ipsum",
-      answer:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore."
-    },
-    {
-      id: 6,
-      question: "Lorem Ipsum",
-      answer:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore."
-    },
-    {
-      id: 7,
-      question: "Lorem Ipsum",
-      answer:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore."
-    },
-    {
-      id: 8,
-      question: "Lorem Ipsum",
-      answer:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore."
-    }
-  ];
+// Sample data for the residential groups table
+const residentialGroups = Array(10).fill({
+  resiGroupId: "Resi. Group ID",
+  wregisId: "WREGIS ID",
+  dCarbonId: "DCarbon ID",
+  financeComp: "Finance Comp.",
+  installer: "Installer",
+  utilityProv: "Utility Prov.",
+  totalRECProd: "200",
+  totalKW: "250",
+})
 
-  // State to track which FAQ item is open
-  const [openIndex, setOpenIndex] = useState(null);
-
-  // Toggle open/close function
-  const handleToggle = (index) => {
-    setOpenIndex(index === openIndex ? null : index);
-  };
+export default function ResiGroupManagement() {
+  const [currentPage, setCurrentPage] = useState(1)
+  const totalPages = 4
 
   return (
-    <div className={mainContainer}>
-      <div className={cardContainer}>
-        <div className={headingContainer}>
-          <h2 className={pageTitle}>
-            Frequently Asked Questions
-          </h2>
+    <div className="bg-gray-50 min-h-screen p-6">
+      <div className="flex justify-between mb-6">
+        <div>
+          <Select defaultValue="all">
+            <SelectTrigger className="w-[80px] bg-white">
+              <SelectValue placeholder="All" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <div className="mt-4 w-full">
-          {faqs.map((faq, index) => {
-            const isOpen = openIndex === index;
-            return (
-              <div key={faq.id} className="py-2">
-                {/* Question row */}
-                <div
-                  onClick={() => handleToggle(index)}
-                  className="flex items-center justify-between cursor-pointer"
-                >
-                  <p className={questionText}>
-                    {faq.question}
-                  </p>
-                  {isOpen ? (
-                    <FiX className="text-[#039994]" size={20} />
-                  ) : (
-                    <FiChevronDown className="text-[#039994]" size={20} />
-                  )}
-                </div>
-                {/* Answer (only rendered if open) */}
-                {isOpen && (
-                  <div className="mt-2">
-                    <p className={answerText}>
-                      {faq.answer}
-                    </p>
-                    <hr className={hrStyle} />
-                  </div>
-                )}
-              </div>
-            );
-          })}
+        <div className="flex gap-3">
+          <Button variant="outline" className="gap-2">
+            <span>Filter by</span>
+            <Filter className="h-4 w-4" />
+          </Button>
+          <Button className="gap-2 bg-teal-500 hover:bg-teal-600">
+            <Upload className="h-4 w-4" />
+            Create Resident Group
+          </Button>
         </div>
       </div>
-    </div>
-  );
-};
 
-export default DashboardHelpCentre;
+      <Card className="border-gray-200">
+        <CardContent className="p-0">
+          <div className="p-4">
+            <h2 className="text-xl font-medium text-teal-500">Residential Groups</h2>
+          </div>
+
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-y text-sm">
+                  <th className="py-3 px-4 text-left font-medium">Resi. Group ID</th>
+                  <th className="py-3 px-4 text-left font-medium">WREGIS ID</th>
+                  <th className="py-3 px-4 text-left font-medium">DCarbon ID</th>
+                  <th className="py-3 px-4 text-left font-medium">Finance Comp.</th>
+                  <th className="py-3 px-4 text-left font-medium">Installer</th>
+                  <th className="py-3 px-4 text-left font-medium">Utility Prov.</th>
+                  <th className="py-3 px-4 text-left font-medium">Total REC Prod.</th>
+                  <th className="py-3 px-4 text-left font-medium">Total kW</th>
+                </tr>
+              </thead>
+              <tbody>
+                {residentialGroups.map((group, index) => (
+                  <tr key={index} className="border-b text-sm hover:bg-gray-50">
+                    <td className="py-3 px-4">{group.resiGroupId}</td>
+                    <td className="py-3 px-4">{group.wregisId}</td>
+                    <td className="py-3 px-4">{group.dCarbonId}</td>
+                    <td className="py-3 px-4">{group.financeComp}</td>
+                    <td className="py-3 px-4">{group.installer}</td>
+                    <td className="py-3 px-4">{group.utilityProv}</td>
+                    <td className="py-3 px-4">{group.totalRECProd}</td>
+                    <td className="py-3 px-4">{group.totalKW}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          <div className="p-4 flex items-center justify-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm">
+              {currentPage} of {totalPages}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

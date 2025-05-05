@@ -1,124 +1,83 @@
-"use client";
+"use client"
 
-import React, { useState } from 'react';
-import { FiChevronDown, FiX } from 'react-icons/fi';
+import { useState } from "react"
+import { ChevronLeft, ChevronRight, ChevronRightIcon, Filter } from 'lucide-react'
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
-const DashboardHelpCentre = () => {
-  // Inline style constants based on your styles.js
-  const mainContainer =
-    'min-h-screen w-full flex flex-col items-center justify-center py-8 px-4 bg-white';
-  const cardContainer = 'bg-white p-4 rounded shadow w-full';
-  const headingContainer = 'relative w-full flex flex-col items-center mb-2';
-  const pageTitle =
-    'mb-4 font-[600] text-[36px] leading-[100%] tracking-[-0.05em] text-[#039994] font-sfpro text-center';
-  const questionText =
-    'font-medium text-gray-800 font-sfpro cursor-pointer';
-  const answerText = 'text-gray-600 font-sfpro';
-  const hrStyle = 'my-3';
-  
-  // Mock FAQ data (8 items)
-  const faqs = [
-    {
-      id: 1,
-      question: "Lorem Ipsum",
-      answer:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore."
-    },
-    {
-      id: 2,
-      question: "Lorem Ipsum",
-      answer:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore."
-    },
-    {
-      id: 3,
-      question: "Lorem Ipsum",
-      answer:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore."
-    },
-    {
-      id: 4,
-      question: "Lorem Ipsum",
-      answer:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore."
-    },
-    {
-      id: 5,
-      question: "Lorem Ipsum",
-      answer:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore."
-    },
-    {
-      id: 6,
-      question: "Lorem Ipsum",
-      answer:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore."
-    },
-    {
-      id: 7,
-      question: "Lorem Ipsum",
-      answer:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore."
-    },
-    {
-      id: 8,
-      question: "Lorem Ipsum",
-      answer:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore."
-    }
-  ];
+// Sample data for user messages
+const userMessages = Array(5).fill({
+  id: 1,
+  user: "Awele Francis",
+  message: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua Lorem ipsum dolor sit amet,",
+  timestamp: "12-02-2023 | 12:32AM",
+})
 
-  // State to track which FAQ item is open
-  const [openIndex, setOpenIndex] = useState(null);
-
-  // Toggle open/close function
-  const handleToggle = (index) => {
-    setOpenIndex(index === openIndex ? null : index);
-  };
+export default function UserSupport() {
+  const [currentPage, setCurrentPage] = useState(1)
+  const totalPages = 4
 
   return (
-    <div className={mainContainer}>
-      <div className={cardContainer}>
-        <div className={headingContainer}>
-          <h2 className={pageTitle}>
-            Frequently Asked Questions
-          </h2>
-        </div>
-        <div className="mt-4 w-full">
-          {faqs.map((faq, index) => {
-            const isOpen = openIndex === index;
-            return (
-              <div key={faq.id} className="py-2">
-                {/* Question row */}
-                <div
-                  onClick={() => handleToggle(index)}
-                  className="flex items-center justify-between cursor-pointer"
-                >
-                  <p className={questionText}>
-                    {faq.question}
-                  </p>
-                  {isOpen ? (
-                    <FiX className="text-[#039994]" size={20} />
-                  ) : (
-                    <FiChevronDown className="text-[#039994]" size={20} />
-                  )}
-                </div>
-                {/* Answer (only rendered if open) */}
-                {isOpen && (
-                  <div className="mt-2">
-                    <p className={answerText}>
-                      {faq.answer}
-                    </p>
-                    <hr className={hrStyle} />
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-};
+    <div className="bg-white min-h-screen p-6">
+      <Card className="border-gray-200">
+        <CardContent className="p-0">
+          <div className="p-4 flex items-center justify-between">
+            <h2 className="text-xl font-medium text-teal-500">User Messages</h2>
+            <Button variant="outline" className="gap-2">
+              <span>Filter by</span>
+              <Filter className="h-4 w-4" />
+            </Button>
+          </div>
 
-export default DashboardHelpCentre;
+          {/* Messages List */}
+          <div className="flex flex-col">
+            {userMessages.map((message, index) => (
+              <div 
+                key={index} 
+                className="flex items-start p-4 border-b hover:bg-gray-50 cursor-pointer bg-teal-50/50"
+              >
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-8 w-8 bg-teal-100">
+                        <AvatarFallback className="text-teal-700 text-xs">AF</AvatarFallback>
+                      </Avatar>
+                      <span className="font-medium">{message.user}</span>
+                    </div>
+                    <span className="text-xs text-gray-500">{message.timestamp}</span>
+                  </div>
+                  <p className="text-sm text-gray-600">{message.message}</p>
+                </div>
+                <ChevronRightIcon className="h-5 w-5 text-gray-400 ml-2 mt-3" />
+              </div>
+            ))}
+          </div>
+
+          {/* Pagination */}
+          <div className="p-4 flex items-center justify-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm">
+              {currentPage} of {totalPages}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

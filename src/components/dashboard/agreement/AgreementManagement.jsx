@@ -1,124 +1,117 @@
-"use client";
+"use client"
 
-import React, { useState } from 'react';
-import { FiChevronDown, FiX } from 'react-icons/fi';
+import { useState } from "react"
+import { ChevronUp, ChevronDown } from 'lucide-react'
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Textarea } from "@/components/ui/textarea"
 
-const DashboardHelpCentre = () => {
-  // Inline style constants based on your styles.js
-  const mainContainer =
-    'min-h-screen w-full flex flex-col items-center justify-center py-8 px-4 bg-white';
-  const cardContainer = 'bg-white p-4 rounded shadow w-full';
-  const headingContainer = 'relative w-full flex flex-col items-center mb-2';
-  const pageTitle =
-    'mb-4 font-[600] text-[36px] leading-[100%] tracking-[-0.05em] text-[#039994] font-sfpro text-center';
-  const questionText =
-    'font-medium text-gray-800 font-sfpro cursor-pointer';
-  const answerText = 'text-gray-600 font-sfpro';
-  const hrStyle = 'my-3';
+export default function AgreementManagement() {
+  const [expandedSection, setExpandedSection] = useState("information")
   
-  // Mock FAQ data (8 items)
-  const faqs = [
-    {
-      id: 1,
-      question: "Lorem Ipsum",
-      answer:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore."
-    },
-    {
-      id: 2,
-      question: "Lorem Ipsum",
-      answer:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore."
-    },
-    {
-      id: 3,
-      question: "Lorem Ipsum",
-      answer:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore."
-    },
-    {
-      id: 4,
-      question: "Lorem Ipsum",
-      answer:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore."
-    },
-    {
-      id: 5,
-      question: "Lorem Ipsum",
-      answer:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore."
-    },
-    {
-      id: 6,
-      question: "Lorem Ipsum",
-      answer:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore."
-    },
-    {
-      id: 7,
-      question: "Lorem Ipsum",
-      answer:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore."
-    },
-    {
-      id: 8,
-      question: "Lorem Ipsum",
-      answer:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore."
+  const toggleSection = (section) => {
+    if (expandedSection === section) {
+      setExpandedSection(null)
+    } else {
+      setExpandedSection(section)
     }
-  ];
+  }
 
-  // State to track which FAQ item is open
-  const [openIndex, setOpenIndex] = useState(null);
+  const loremText = `Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
 
-  // Toggle open/close function
-  const handleToggle = (index) => {
-    setOpenIndex(index === openIndex ? null : index);
-  };
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur ad`
 
   return (
-    <div className={mainContainer}>
-      <div className={cardContainer}>
-        <div className={headingContainer}>
-          <h2 className={pageTitle}>
-            Frequently Asked Questions
-          </h2>
-        </div>
-        <div className="mt-4 w-full">
-          {faqs.map((faq, index) => {
-            const isOpen = openIndex === index;
-            return (
-              <div key={faq.id} className="py-2">
-                {/* Question row */}
-                <div
-                  onClick={() => handleToggle(index)}
-                  className="flex items-center justify-between cursor-pointer"
-                >
-                  <p className={questionText}>
-                    {faq.question}
-                  </p>
-                  {isOpen ? (
-                    <FiX className="text-[#039994]" size={20} />
-                  ) : (
-                    <FiChevronDown className="text-[#039994]" size={20} />
-                  )}
+    <div className="bg-white min-h-screen p-6">
+      <Card className="border-gray-200 shadow-sm">
+        <CardContent className="p-0">
+          {/* Information Release Agreement Section */}
+          <div className="border-b">
+            <div 
+              className="p-4 flex items-center justify-between cursor-pointer"
+              onClick={() => toggleSection("information")}
+            >
+              <h2 className="text-xl font-medium text-teal-500">Information Release Agreement</h2>
+              {expandedSection === "information" ? (
+                <ChevronUp className="h-5 w-5 text-teal-500" />
+              ) : (
+                <ChevronDown className="h-5 w-5 text-teal-500" />
+              )}
+            </div>
+            
+            {expandedSection === "information" && (
+              <div className="px-4 pb-4">
+                <Textarea 
+                  className="min-h-[200px] border-teal-100 focus-visible:ring-teal-500"
+                  value={loremText}
+                />
+                <div className="flex justify-end gap-3 mt-4">
+                  <Button variant="outline">Cancel</Button>
+                  <Button className="bg-teal-500 hover:bg-teal-600">Update</Button>
                 </div>
-                {/* Answer (only rendered if open) */}
-                {isOpen && (
-                  <div className="mt-2">
-                    <p className={answerText}>
-                      {faq.answer}
-                    </p>
-                    <hr className={hrStyle} />
-                  </div>
-                )}
               </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-};
+            )}
+          </div>
 
-export default DashboardHelpCentre;
+          {/* Services Agreement Section */}
+          <div className="border-b">
+            <div 
+              className="p-4 flex items-center justify-between cursor-pointer"
+              onClick={() => toggleSection("services")}
+            >
+              <h2 className="text-xl font-medium text-teal-500">Services Agreement</h2>
+              {expandedSection === "services" ? (
+                <ChevronUp className="h-5 w-5 text-teal-500" />
+              ) : (
+                <ChevronDown className="h-5 w-5 text-teal-500" />
+              )}
+            </div>
+            
+            {expandedSection === "services" && (
+              <div className="px-4 pb-4">
+                <Textarea 
+                  className="min-h-[200px] border-teal-100 focus-visible:ring-teal-500"
+                  value={loremText}
+                />
+                <div className="flex justify-end gap-3 mt-4">
+                  <Button variant="outline">Cancel</Button>
+                  <Button className="bg-teal-500 hover:bg-teal-600">Update</Button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* WREGIS Assignment Section */}
+          <div>
+            <div 
+              className="p-4 flex items-center justify-between cursor-pointer"
+              onClick={() => toggleSection("wregis")}
+            >
+              <h2 className="text-xl font-medium text-teal-500">WREGIS Assignment</h2>
+              {expandedSection === "wregis" ? (
+                <ChevronUp className="h-5 w-5 text-teal-500" />
+              ) : (
+                <ChevronDown className="h-5 w-5 text-teal-500" />
+              )}
+            </div>
+            
+            {expandedSection === "wregis" && (
+              <div className="px-4 pb-4">
+                <Textarea 
+                  className="min-h-[200px] border-teal-100 focus-visible:ring-teal-500"
+                  value={loremText}
+                />
+                <div className="flex justify-end gap-3 mt-4">
+                  <Button variant="outline">Cancel</Button>
+                  <Button className="bg-teal-500 hover:bg-teal-600">Update</Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
