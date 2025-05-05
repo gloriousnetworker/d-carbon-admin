@@ -79,39 +79,13 @@ const DashboardHelpCentre = () => {
   return (
     <div className={mainContainer}>
       <div className={cardContainer}>
-        <div className={headingContainer}>
-          <h2 className={pageTitle}>
-            Frequently Asked Questions
-          </h2>
-        </div>
+       
         <div className="mt-4 w-full">
           {faqs.map((faq, index) => {
             const isOpen = openIndex === index;
             return (
               <div key={faq.id} className="py-2">
-                {/* Question row */}
-                <div
-                  onClick={() => handleToggle(index)}
-                  className="flex items-center justify-between cursor-pointer"
-                >
-                  <p className={questionText}>
-                    {faq.question}
-                  </p>
-                  {isOpen ? (
-                    <FiX className="text-[#039994]" size={20} />
-                  ) : (
-                    <FiChevronDown className="text-[#039994]" size={20} />
-                  )}
-                </div>
-                {/* Answer (only rendered if open) */}
-                {isOpen && (
-                  <div className="mt-2">
-                    <p className={answerText}>
-                      {faq.answer}
-                    </p>
-                    <hr className={hrStyle} />
-                  </div>
-                )}
+                
               </div>
             );
           })}
