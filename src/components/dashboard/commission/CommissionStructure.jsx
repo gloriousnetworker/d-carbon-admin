@@ -1,98 +1,77 @@
 "use client";
+import React, { useState } from "react";
+import CommissionTable from "./commission/CommissionTable";
+import PartnerShareSetupStructureModal from "./modals/PartnerShareSetupStructureModal";
+import MasterPartnerTPOShareSetupStructureModal from "./modals/MasterSuperPartnerTPOShareSetupStructureModal";
+import CustomerSolarOwnerShareSetupStructureModal from "./modals/CustomerSolarOwnerShareSetupStructureModal";
+import SalesAgentCommissionSetupStructureModal from "./modals/SalesAgentCommissionSetupStructureModal";
+import { Toaster } from "react-hot-toast";
 
-import React, { useState } from 'react';
-import { FiChevronDown, FiX } from 'react-icons/fi';
+const CommissionStructure = () => {
+  const [activeCommissionType, setActiveCommissionType] = useState("Partner Share");
+  const [showSetupModal, setShowSetupModal] = useState(false);
+  const [tableData, setTableData] = useState(null);
 
-const DashboardHelpCentre = () => {
-  // Inline style constants based on your styles.js
-  const mainContainer =
-    'min-h-screen w-full flex flex-col items-center justify-center py-8 px-4 bg-white';
-  const cardContainer = 'bg-white p-4 rounded shadow w-full';
-  const headingContainer = 'relative w-full flex flex-col items-center mb-2';
-  const pageTitle =
-    'mb-4 font-[600] text-[36px] leading-[100%] tracking-[-0.05em] text-[#039994] font-sfpro text-center';
-  const questionText =
-    'font-medium text-gray-800 font-sfpro cursor-pointer';
-  const answerText = 'text-gray-600 font-sfpro';
-  const hrStyle = 'my-3';
-  
-  // Mock FAQ data (8 items)
-  const faqs = [
-    {
-      id: 1,
-      question: "Lorem Ipsum",
-      answer:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore."
-    },
-    {
-      id: 2,
-      question: "Lorem Ipsum",
-      answer:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore."
-    },
-    {
-      id: 3,
-      question: "Lorem Ipsum",
-      answer:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore."
-    },
-    {
-      id: 4,
-      question: "Lorem Ipsum",
-      answer:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore."
-    },
-    {
-      id: 5,
-      question: "Lorem Ipsum",
-      answer:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore."
-    },
-    {
-      id: 6,
-      question: "Lorem Ipsum",
-      answer:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore."
-    },
-    {
-      id: 7,
-      question: "Lorem Ipsum",
-      answer:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore."
-    },
-    {
-      id: 8,
-      question: "Lorem Ipsum",
-      answer:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore."
+  const handleSetupStructure = () => setShowSetupModal(true);
+  const handleCloseModal = () => setShowSetupModal(false);
+  const handleChangeCommissionType = (type) => setActiveCommissionType(type);
+
+  const handleUpdateTableData = (newData) => {
+    setTableData(newData);
+  };
+
+  const renderSetupModal = () => {
+    if (!showSetupModal) return null;
+    switch (activeCommissionType) {
+      case "Partner Share":
+        return (
+          <PartnerShareSetupStructureModal 
+            onClose={handleCloseModal} 
+            onUpdate={handleUpdateTableData}
+          />
+        );
+      case "Master/Super Partner TPO Share":
+        return (
+          <MasterPartnerTPOShareSetupStructureModal 
+            onClose={handleCloseModal} 
+            onUpdate={handleUpdateTableData}
+          />
+        );
+      case "Customer/Solar Owner Share":
+        return (
+          <CustomerSolarOwnerShareSetupStructureModal 
+            onClose={handleCloseModal} 
+            onUpdate={handleUpdateTableData}
+          />
+        );
+      case "Sales Agent Commission":
+        return (
+          <SalesAgentCommissionSetupStructureModal 
+            onClose={handleCloseModal} 
+            onUpdate={handleUpdateTableData}
+          />
+        );
+      default:
+        return null;
     }
-  ];
-
-  // State to track which FAQ item is open
-  const [openIndex, setOpenIndex] = useState(null);
-
-  // Toggle open/close function
-  const handleToggle = (index) => {
-    setOpenIndex(index === openIndex ? null : index);
   };
 
   return (
-    <div className={mainContainer}>
-      <div className={cardContainer}>
-       
-        <div className="mt-4 w-full">
-          {faqs.map((faq, index) => {
-            const isOpen = openIndex === index;
-            return (
-              <div key={faq.id} className="py-2">
-                
-              </div>
-            );
-          })}
+    <div className="min-h-screen bg-[#F7F7F7] py-8 px-4">
+      <Toaster position="top-right" />
+      {renderSetupModal()}
+      <div className="max-w-6xl mx-auto">
+        <div className="bg-white rounded-2xl shadow-sm p-6 flex flex-col border border-[#E8E8E8]">
+          <CommissionTable
+            activeCommissionType={activeCommissionType}
+            onChangeCommissionType={handleChangeCommissionType}
+            onSetupStructure={handleSetupStructure}
+            tableData={tableData}
+          />
         </div>
       </div>
     </div>
   );
 };
 
-export default DashboardHelpCentre;
+export default CommissionStructure;

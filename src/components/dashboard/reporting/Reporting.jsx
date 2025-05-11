@@ -1,398 +1,517 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
-import {
-  mainContainer,
-  headingContainer,
-  pageTitle,
-  selectClass,
-  buttonPrimary,
-} from "./styles";
+"use client"
 
-import AddFacilityModal from "./AddFacilityModal";
-import FacilityCreatedModal from "./FacilityCreatedModal";
-import FilterModal from "./FilterModal";
-import ExportReportModal from "./ExportReportModal";
+import { useState } from "react"
+import { ChevronDown, ChevronLeft, ChevronRight, Filter, Download } from 'lucide-react'
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import ResidentialRecGenerationFilterModal from "./modals/ResidentialRecGenerationFilterModal"
+import CommercialRecGenerationFilterModal from "./modals/CommercialRecGenerationFilterModal"
+import PartnerPerformanceFilterModal from "./modals/PartnerPerformanceFilterModal"
+import WregisGenerationFilterModal from "./modals/WregisGenerationFilterModal"
 
-const MONTHS = [
-  { label: "Month", value: "" },
-  { label: "Jan", value: "1" },
-  { label: "Feb", value: "2" },
-  { label: "Mar", value: "3" },
-  { label: "Apr", value: "4" },
-  { label: "May", value: "5" },
-  { label: "Jun", value: "6" },
-  { label: "Jul", value: "7" },
-  { label: "Aug", value: "8" },
-  { label: "Sep", value: "9" },
-  { label: "Oct", value: "10" },
-  { label: "Nov", value: "11" },
-  { label: "Dec", value: "12" },
+// Sample data for all report types
+const residentialRecSalesData = [
+  { id: 1, name: "John Doe", residentId: "RES-001", recBalance: "150", avgRecPrice: "$12.50", recSold: "50", date: "16-03-2025" },
+  { id: 2, name: "Jane Smith", residentId: "RES-002", recBalance: "200", avgRecPrice: "$13.00", recSold: "30", date: "15-03-2025" },
+  { id: 3, name: "Robert Johnson", residentId: "RES-003", recBalance: "75", avgRecPrice: "$11.75", recSold: "25", date: "14-03-2025" },
 ];
 
-const YEARS = ["2023", "2024", "2025"];
+const residentialRecRedemptionData = [
+  { id: 1, name: "John Doe", residentId: "RES-001", paymentId: "PAY-001", pointRedeemed: "3000", pricePerPoint: "$0.10", totalAmount: "$300.00", date: "16-03-2025" },
+  { id: 2, name: "Jane Smith", residentId: "RES-002", paymentId: "PAY-002", pointRedeemed: "2500", pricePerPoint: "$0.10", totalAmount: "$250.00", date: "16-03-2025" },
+  { id: 3, name: "Robert Johnson", residentId: "RES-003", paymentId: "PAY-003", pointRedeemed: "1800", pricePerPoint: "$0.10", totalAmount: "$180.00", date: "15-03-2025" },
+];
 
-export default function FacilityManagement() {
-  // modals
-  const [showAddFacilityModal, setShowAddFacilityModal] = useState(false);
-  const [showFacilityCreatedModal, setShowFacilityCreatedModal] = useState(false);
-  const [showFilterModal, setShowFilterModal] = useState(false);
-  const [showExportModal, setShowExportModal] = useState(false);
+const commercialRecSalesData = [
+  { id: 1, name: "ABC Company", commercialId: "COM-001", recBalance: "500", avgRecPrice: "$11.25", recSold: "200", date: "15-03-2025" },
+  { id: 2, name: "XYZ Corporation", commercialId: "COM-002", recBalance: "750", avgRecPrice: "$12.50", recSold: "300", date: "16-03-2025" },
+];
 
-  // filters & pagination
-  const [yearFilter, setYearFilter] = useState("");
-  const [monthFilter, setMonthFilter] = useState("");
-  const [filters, setFilters] = useState({
-    status: "",
-    customerType: "",
-    time: "Oldest",
-  });
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+const commercialRecPayoutData = [
+  { id: 1, name: "ABC Company", commercialId: "COM-001", invoiceId: "INV-001", totalAmount: "$2250.00", date: "15-03-2025", status: "Completed" },
+  { id: 2, name: "XYZ Corporation", commercialId: "COM-002", invoiceId: "INV-002", totalAmount: "$3750.00", date: "16-03-2025", status: "Pending" },
+];
 
-  // data
-  const [tableData, setTableData] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+const partnerPerformanceData = [
+  { id: 1, name: "Partner One", address: "123 Main St", activeCommGenerators: "5", activeResidentGenerators: "25", totalCommGen: "150", totalRecsSold: "1200", totalEarnings: "$14,400" },
+  { id: 2, name: "Partner Two", address: "456 Oak Ave", activeCommGenerators: "3", activeResidentGenerators: "18", totalCommGen: "90", totalRecsSold: "750", totalEarnings: "$9,000" },
+];
 
-  const LIMIT = 10;
-  const baseUrl = "https://services.dcarbon.solutions";
+const wregisGenerationData = [
+  { id: 1, generatorId: "GEN-001", reportingUnitId: "RU-001", vintage: "2024", startDate: "01-01-2024", endDate: "31-12-2024", totalMWh: "150" },
+  { id: 2, generatorId: "GEN-002", reportingUnitId: "RU-002", vintage: "2024", startDate: "01-01-2024", endDate: "31-12-2024", totalMWh: "225" },
+];
 
-  useEffect(() => {
-    const fetchReferrals = async () => {
-      setLoading(true);
-      setError(null);
+export default function ReportsDashboard() {
+  const [currentPage, setCurrentPage] = useState(1)
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
+  const [reportType, setReportType] = useState("Residential REC Generation")
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [filteredData, setFilteredData] = useState(residentialRecSalesData)
+  const [residentialView, setResidentialView] = useState("sales")
+  const [commercialView, setCommercialView] = useState("sales")
+  
+  const totalPages = Math.ceil(filteredData.length / 10)
 
-      try {
-        const token = localStorage.getItem("authToken");
-        const userId =
-          localStorage.getItem("userId") ||
-          "8b14b23d-3082-4846-9216-2c2e9f1e96bf";
+  const reportTypes = [
+    "Residential REC Generation", 
+    "Commercial REC Generation", 
+    "Partner Performance",
+    "WREGIS Generation Report"
+  ]
 
-        const params = new URLSearchParams();
-        if (filters.status) params.append("status", filters.status);
-        if (filters.customerType)
-          params.append("customerType", filters.customerType);
-
-        // Year & month → startDate / endDate
-        if (yearFilter && monthFilter) {
-          const y = yearFilter;
-          const m = monthFilter.padStart(2, "0");
-          const lastDay = new Date(y, Number(monthFilter), 0).getDate();
-          params.append("startDate", `${y}-${m}-01`);
-          params.append("endDate", `${y}-${m}-${lastDay}`);
-        } else if (yearFilter) {
-          params.append("startDate", `${yearFilter}-01-01`);
-          params.append("endDate", `${yearFilter}-12-31`);
-        }
-
-        params.append("page", currentPage);
-        params.append("limit", LIMIT);
-
-        const res = await axios.get(
-          `${baseUrl}/api/user/get-users-referrals/${userId}?${params.toString()}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-
-        let { referrals, metadata } = res.data.data;
-
-        // client‑side sort
-        referrals.sort((a, b) => {
-          const da = new Date(a.createdAt),
-            db = new Date(b.createdAt);
-          return filters.time === "Newest" ? db - da : da - db;
-        });
-
-        setTableData(referrals);
-        setTotalPages(metadata.totalPages);
-      } catch (err) {
-        console.error(err);
-        setError(err.message || "Failed to load data");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchReferrals();
-  }, [currentPage, filters, yearFilter, monthFilter]);
-
-  const handleOpenFilterModal = () => setShowFilterModal(true);
-  const handleApplyFilter = (newFilters) => {
-    setFilters(newFilters);
-    setCurrentPage(1);
-    setShowFilterModal(false);
-  };
-
-  const handleOpenAddFacilityModal = () => setShowAddFacilityModal(true);
-  const handleFacilityAdded = () => {
-    setShowAddFacilityModal(false);
-    setShowFacilityCreatedModal(true);
-  };
-  const handleCloseFacilityCreatedModal = () =>
-    setShowFacilityCreatedModal(false);
-
-  const handlePrevious = () => {
-    if (currentPage > 1) setCurrentPage((p) => p - 1);
-  };
-  const handleNext = () => {
-    if (currentPage < totalPages) setCurrentPage((p) => p + 1);
-  };
-
-  const handleExportReport = async (exportParams) => {
-    try {
-      // For non-CSV formats or when email is provided
-      if (exportParams.format !== "csv" || exportParams.email) {
-        const token = localStorage.getItem("authToken");
-        const userId = localStorage.getItem("userId") || "8b14b23d-3082-4846-9216-2c2e9f1e96bf";
+  const handleFilterApply = (filters) => {
+    // Apply filtering logic based on current report type and view
+    let results;
+    
+    switch(reportType) {
+      case "Residential REC Generation":
+        results = residentialView === "sales" 
+          ? [...residentialRecSalesData] 
+          : [...residentialRecRedemptionData];
+        break;
         
-        // Prepare the request body
-        const requestBody = {
-          format: exportParams.format,
-          email: exportParams.email,
-          filters: exportParams.includeFilters ? {
-            ...filters,
-            year: yearFilter,
-            month: monthFilter,
-            page: currentPage,
-            limit: LIMIT
-          } : null
-        };
-
-        console.log("Exporting with params:", requestBody);
+      case "Commercial REC Generation":
+        results = commercialView === "sales" 
+          ? [...commercialRecSalesData] 
+          : [...commercialRecPayoutData];
+        break;
         
-        // If we have an endpoint to call
-        if (exportParams.format !== "csv") {
-          try {
-            const response = await axios.post(
-              `${baseUrl}/api/reports/export-customer-report`,
-              requestBody,
-              { 
-                headers: { Authorization: `Bearer ${token}` },
-                responseType: 'blob' // Important for file downloads
-              }
-            );
-            
-            // Handle the file download
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `customer-report.${exportParams.format}`);
-            document.body.appendChild(link);
-            link.click();
-            link.parentNode.removeChild(link);
-          } catch (error) {
-            console.error("Backend export error:", error);
-            // Fall back to only showing an alert for the email case
-            if (exportParams.email) {
-              alert(`Report will be sent to ${exportParams.email} when ready`);
-            } else {
-              throw error; // Re-throw to show the error alert
-            }
-          }
-        } else if (exportParams.email) {
-          // For CSV with email, just show a message (since CSV is handled client-side)
-          alert(`CSV report will also be sent to ${exportParams.email} when ready`);
-        }
-      }
-      
-      // CSV is already handled in the ExportReportModal component through direct download
-      
-      return true;
-    } catch (error) {
-      console.error("Export error:", error);
-      throw error;
+      case "Partner Performance":
+        results = [...partnerPerformanceData];
+        break;
+        
+      case "WREGIS Generation Report":
+        results = [...wregisGenerationData];
+        break;
     }
-  };
+    
+    // Apply common filters
+    if (filters.name) {
+      results = results.filter(item => 
+        item.name?.toLowerCase().includes(filters.name.toLowerCase())
+      )
+    }
+    
+    if (filters.dateFrom && filters.dateTo) {
+      results = results.filter(item => {
+        const itemDate = new Date(item.date?.split('-').reverse().join('-') || item.startDate?.split('-').reverse().join('-'))
+        const fromDate = new Date(filters.dateFrom)
+        const toDate = new Date(filters.dateTo)
+        return itemDate >= fromDate && itemDate <= toDate
+      })
+    }
+    
+    // Apply type-specific filters
+    if (reportType === "Residential REC Generation") {
+      if (filters.residentId) {
+        results = results.filter(item => 
+          item.residentId?.toLowerCase().includes(filters.residentId.toLowerCase())
+        )
+      }
+      if (residentialView === "sales" && filters.recBalance) {
+        results = results.filter(item => item.recBalance === filters.recBalance)
+      }
+      if (residentialView === "redemption" && filters.paymentId) {
+        results = results.filter(item => 
+          item.paymentId?.toLowerCase().includes(filters.paymentId.toLowerCase())
+        )
+      }
+    }
+    
+    if (reportType === "Commercial REC Generation") {
+      if (filters.commercialId) {
+        results = results.filter(item => 
+          item.commercialId?.toLowerCase().includes(filters.commercialId.toLowerCase())
+        )
+      }
+      if (commercialView === "payout" && filters.invoiceId) {
+        results = results.filter(item => 
+          item.invoiceId?.toLowerCase().includes(filters.invoiceId.toLowerCase())
+        )
+      }
+    }
+    
+    if (reportType === "Partner Performance") {
+      if (filters.address) {
+        results = results.filter(item => 
+          item.address?.toLowerCase().includes(filters.address.toLowerCase())
+        )
+      }
+      if (filters.totalRecsSold) {
+        results = results.filter(item => item.totalRecsSold === filters.totalRecsSold)
+      }
+    }
+    
+    if (reportType === "WREGIS Generation Report") {
+      if (filters.generatorId) {
+        results = results.filter(item => 
+          item.generatorId?.toLowerCase().includes(filters.generatorId.toLowerCase())
+        )
+      }
+      if (filters.reportingUnitId) {
+        results = results.filter(item => 
+          item.reportingUnitId?.toLowerCase().includes(filters.reportingUnitId.toLowerCase())
+        )
+      }
+      if (filters.vintage) {
+        results = results.filter(item => item.vintage === filters.vintage)
+      }
+    }
+    
+    setFilteredData(results)
+    setIsFilterModalOpen(false)
+    setCurrentPage(1)
+  }
 
-  const handleClearFilters = () => {
-    setYearFilter("");
-    setMonthFilter("");
-    setFilters({
-      status: "",
-      customerType: "",
-      time: "Oldest"
-    });
-    setCurrentPage(1);
-  };
+  const handleReportTypeChange = (type) => {
+    setReportType(type)
+    setIsDropdownOpen(false)
+    
+    switch(type) {
+      case "Residential REC Generation":
+        setFilteredData(residentialRecSalesData)
+        setResidentialView("sales")
+        break
+      case "Commercial REC Generation":
+        setFilteredData(commercialRecSalesData)
+        setCommercialView("sales")
+        break
+      case "Partner Performance":
+        setFilteredData(partnerPerformanceData)
+        break
+      case "WREGIS Generation Report":
+        setFilteredData(wregisGenerationData)
+        break
+    }
+    setCurrentPage(1)
+  }
 
-  const renderStatusTag = (status) => {
-    let bg = "#00B4AE";
-    if (status === "PENDING") bg = "#FFB200";
-    if (status === "ACCEPTED") bg = "#000000";
-    if (status === "TERMINATED") bg = "#FF0000";
-    return (
-      <span
-        className="inline-block px-3 py-1 rounded-full text-white text-sm"
-        style={{ backgroundColor: bg }}
-      >
-        {status}
-      </span>
-    );
-  };
+  const handleResidentialViewChange = (value) => {
+    setResidentialView(value)
+    setFilteredData(value === "sales" ? residentialRecSalesData : residentialRecRedemptionData)
+    setCurrentPage(1)
+  }
+
+  const handleCommercialViewChange = (value) => {
+    setCommercialView(value)
+    setFilteredData(value === "sales" ? commercialRecSalesData : commercialRecPayoutData)
+    setCurrentPage(1)
+  }
+
+  const handleExport = () => {
+    // Convert data to CSV
+    const headers = Object.keys(filteredData[0] || {})
+    const csvContent = [
+      headers.join(","),
+      ...filteredData.map(row => 
+        headers.map(header => 
+          `"${row[header]?.toString().replace(/"/g, '""') || ''}"`
+        ).join(",")
+      )
+    ].join("\n")
+    
+    // Create download link
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.setAttribute("href", url)
+    link.setAttribute("download", `${reportType.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.csv`)
+    link.style.visibility = "hidden"
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  // Get current page data
+  const indexOfLastItem = currentPage * 10
+  const indexOfFirstItem = indexOfLastItem - 10
+  const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem)
 
   return (
-    <div className={`${mainContainer} text-sm`}>
-      {/* Top controls */}
-      <div className="flex items-center justify-between w-full max-w-6xl mb-4">
-        <div className="flex items-center space-x-2">
-          <select
-            value={yearFilter}
-            onChange={(e) => {
-              setYearFilter(e.target.value);
-              setCurrentPage(1);
-            }}
-            className={selectClass}
-          >
-            <option value="">Year</option>
-            {YEARS.map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </select>
-          <select
-            value={monthFilter}
-            onChange={(e) => {
-              setMonthFilter(e.target.value);
-              setCurrentPage(1);
-            }}
-            className={selectClass}
-          >
-            {MONTHS.map((m) => (
-              <option key={m.value} value={m.value}>
-                {m.label}
-              </option>
-            ))}
-          </select>
-          {(yearFilter || monthFilter || filters.status || filters.customerType) && (
-            <button
-              onClick={handleClearFilters}
-              className="text-xs text-gray-500 hover:text-gray-700 underline ml-2"
-            >
-              Clear All
-            </button>
-          )}
-        </div>
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={handleOpenFilterModal}
-            className="border border-black px-4 py-1 rounded hover:bg-gray-100 text-sm"
-          >
-            Filter
-          </button>
-          <button 
-            onClick={() => setShowExportModal(true)}
-            className={`${buttonPrimary} text-sm`}
-          >
-            Export Report
-          </button>
-        </div>
-      </div>
-
-      {/* Title */}
-      <div className={headingContainer}>
-        <h1 className={pageTitle}>Customer Report</h1>
-        {(filters.status || filters.customerType) && (
-          <div className="text-sm text-gray-600 mt-1">
-            {filters.status && <span>Status: {filters.status} </span>}
-            {filters.customerType && <span>Type: {filters.customerType} </span>}
-            {filters.time && <span>Sort: {filters.time} first </span>}
+    <div className="bg-white min-h-screen p-6">
+      <Card className="border-gray-200">
+        <CardContent className="p-0">
+          <div className="p-4 flex items-center justify-between">
+            <div className="relative">
+              <div 
+                className="text-xl font-medium text-teal-500 flex items-center cursor-pointer"
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              >
+                {reportType}
+                <ChevronDown className="h-5 w-5 ml-2 text-teal-500" />
+              </div>
+              
+              {isDropdownOpen && (
+                <div className="absolute top-full left-0 z-10 w-64 bg-white shadow-lg rounded-md border border-gray-200 mt-1">
+                  {reportTypes.map((type) => (
+                    <div 
+                      key={type} 
+                      className="p-3 hover:bg-gray-50 cursor-pointer"
+                      onClick={() => handleReportTypeChange(type)}
+                    >
+                      {type}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                className="gap-2"
+                onClick={() => setIsFilterModalOpen(true)}
+              >
+                <span>Filter by</span>
+                <Filter className="h-4 w-4" />
+              </Button>
+              <Button 
+                variant="outline" 
+                className="gap-2"
+                onClick={handleExport}
+              >
+                <span>Export Report</span>
+                <Download className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-        )}
-      </div>
 
-      {/* Table */}
-      <div className="w-full max-w-6xl overflow-auto">
-        {loading ? (
-          <p className="text-center text-gray-500">Loading…</p>
-        ) : error ? (
-          <p className="text-center text-red-500">{error}</p>
-        ) : tableData.length === 0 ? (
-          <p className="text-center text-gray-500 py-8">No records found with these filters</p>
-        ) : (
-          <table className="min-w-full border-collapse">
-            <thead>
-              <tr className="border-b border-gray-300">
-                <th className="py-2 px-2 text-left">S/N</th>
-                <th className="py-2 px-2 text-left">Name</th>
-                <th className="py-2 px-2 text-left">Email</th>
-                <th className="py-2 px-2 text-left">Customer Type</th>
-                <th className="py-2 px-2 text-left">Date</th>
-                <th className="py-2 px-2 text-left">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tableData.map((ref, idx) => (
-                <tr
-                  key={ref.id}
-                  className="border-b border-gray-200 hover:bg-gray-50"
-                >
-                  <td className="py-2 px-2">
-                    {(currentPage - 1) * LIMIT + idx + 1}
-                  </td>
-                  <td className="py-2 px-2">{ref.name || "—"}</td>
-                  <td className="py-2 px-2">{ref.inviteeEmail}</td>
-                  <td className="py-2 px-2">
-                    {ref.customerType || "—"}
-                  </td>
-                  <td className="py-2 px-2">
-                    {new Date(ref.createdAt).toLocaleDateString()}
-                  </td>
-                  <td className="py-2 px-2">{renderStatusTag(ref.status)}</td>
+          {/* View Toggles */}
+          {reportType === "Residential REC Generation" && (
+            <div className="px-4 pb-4">
+              <ToggleGroup 
+                type="single" 
+                value={residentialView}
+                onValueChange={handleResidentialViewChange}
+                className="grid grid-cols-2"
+              >
+                <ToggleGroupItem value="sales" className="data-[state=on]:bg-teal-500 data-[state=on]:text-white">
+                  Residential REC Sales
+                </ToggleGroupItem>
+                <ToggleGroupItem value="redemption" className="data-[state=on]:bg-teal-500 data-[state=on]:text-white">
+                  Residential REC Points Redemption
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+          )}
+
+          {reportType === "Commercial REC Generation" && (
+            <div className="px-4 pb-4">
+              <ToggleGroup 
+                type="single" 
+                value={commercialView}
+                onValueChange={handleCommercialViewChange}
+                className="grid grid-cols-2"
+              >
+                <ToggleGroupItem value="sales" className="data-[state=on]:bg-teal-500 data-[state=on]:text-white">
+                  Commercial REC Sales
+                </ToggleGroupItem>
+                <ToggleGroupItem value="payout" className="data-[state=on]:bg-teal-500 data-[state=on]:text-white">
+                  Commercial REC Payout
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+          )}
+
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-y text-sm">
+                  {reportType === "Residential REC Generation" && residentialView === "sales" ? (
+                    <>
+                      <th className="py-3 px-4 text-left font-medium">S/N</th>
+                      <th className="py-3 px-4 text-left font-medium">Name</th>
+                      <th className="py-3 px-4 text-left font-medium">Resident ID</th>
+                      <th className="py-3 px-4 text-left font-medium">REC Balance</th>
+                      <th className="py-3 px-4 text-left font-medium">Avg. REC Price</th>
+                      <th className="py-3 px-4 text-left font-medium">REC Sold</th>
+                      <th className="py-3 px-4 text-left font-medium">Date</th>
+                    </>
+                  ) : reportType === "Residential REC Generation" && residentialView === "redemption" ? (
+                    <>
+                      <th className="py-3 px-4 text-left font-medium">S/N</th>
+                      <th className="py-3 px-4 text-left font-medium">Name</th>
+                      <th className="py-3 px-4 text-left font-medium">Resident ID</th>
+                      <th className="py-3 px-4 text-left font-medium">Payment ID</th>
+                      <th className="py-3 px-4 text-left font-medium">Point Redeemed</th>
+                      <th className="py-3 px-4 text-left font-medium">Price/Point</th>
+                      <th className="py-3 px-4 text-left font-medium">Total Amount</th>
+                      <th className="py-3 px-4 text-left font-medium">Date</th>
+                    </>
+                  ) : reportType === "Commercial REC Generation" && commercialView === "sales" ? (
+                    <>
+                      <th className="py-3 px-4 text-left font-medium">S/N</th>
+                      <th className="py-3 px-4 text-left font-medium">Name</th>
+                      <th className="py-3 px-4 text-left font-medium">Commercial ID</th>
+                      <th className="py-3 px-4 text-left font-medium">REC Balance</th>
+                      <th className="py-3 px-4 text-left font-medium">Avg. REC Price</th>
+                      <th className="py-3 px-4 text-left font-medium">REC Sold</th>
+                      <th className="py-3 px-4 text-left font-medium">Date</th>
+                    </>
+                  ) : reportType === "Commercial REC Generation" && commercialView === "payout" ? (
+                    <>
+                      <th className="py-3 px-4 text-left font-medium">S/N</th>
+                      <th className="py-3 px-4 text-left font-medium">Name</th>
+                      <th className="py-3 px-4 text-left font-medium">Commercial ID</th>
+                      <th className="py-3 px-4 text-left font-medium">Invoice ID</th>
+                      <th className="py-3 px-4 text-left font-medium">Total Amount</th>
+                      <th className="py-3 px-4 text-left font-medium">Date</th>
+                    </>
+                  ) : reportType === "Partner Performance" ? (
+                    <>
+                      <th className="py-3 px-4 text-left font-medium">S/N</th>
+                      <th className="py-3 px-4 text-left font-medium">Name</th>
+                      <th className="py-3 px-4 text-left font-medium">Address</th>
+                      <th className="py-3 px-4 text-left font-medium">Active Comm. Generators</th>
+                      <th className="py-3 px-4 text-left font-medium">Active Resident Generators</th>
+                      <th className="py-3 px-4 text-left font-medium">Total Comm. Gen. (MWh)</th>
+                      <th className="py-3 px-4 text-left font-medium">Total RECs Sold</th>
+                      <th className="py-3 px-4 text-left font-medium">Total Earnings</th>
+                    </>
+                  ) : (
+                    <>
+                      <th className="py-3 px-4 text-left font-medium">S/N</th>
+                      <th className="py-3 px-4 text-left font-medium">Generator ID</th>
+                      <th className="py-3 px-4 text-left font-medium">Reporting Unit ID</th>
+                      <th className="py-3 px-4 text-left font-medium">Vintage</th>
+                      <th className="py-3 px-4 text-left font-medium">Start Date</th>
+                      <th className="py-3 px-4 text-left font-medium">End Date</th>
+                      <th className="py-3 px-4 text-left font-medium">Total MWh</th>
+                    </>
+                  )}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+              </thead>
+              <tbody>
+                {currentItems.map((item, index) => (
+                  <tr 
+                    key={item.id} 
+                    className="border-b text-sm hover:bg-gray-50"
+                  >
+                    <td className="py-3 px-4">{indexOfFirstItem + index + 1}</td>
+                    
+                    {reportType === "Residential REC Generation" && residentialView === "sales" ? (
+                      <>
+                        <td className="py-3 px-4">{item.name}</td>
+                        <td className="py-3 px-4">{item.residentId}</td>
+                        <td className="py-3 px-4">{item.recBalance}</td>
+                        <td className="py-3 px-4">{item.avgRecPrice}</td>
+                        <td className="py-3 px-4">{item.recSold}</td>
+                        <td className="py-3 px-4">{item.date}</td>
+                      </>
+                    ) : reportType === "Residential REC Generation" && residentialView === "redemption" ? (
+                      <>
+                        <td className="py-3 px-4">{item.name}</td>
+                        <td className="py-3 px-4">{item.residentId}</td>
+                        <td className="py-3 px-4">{item.paymentId}</td>
+                        <td className="py-3 px-4">{item.pointRedeemed}</td>
+                        <td className="py-3 px-4">{item.pricePerPoint}</td>
+                        <td className="py-3 px-4">{item.totalAmount}</td>
+                        <td className="py-3 px-4">{item.date}</td>
+                      </>
+                    ) : reportType === "Commercial REC Generation" && commercialView === "sales" ? (
+                      <>
+                        <td className="py-3 px-4">{item.name}</td>
+                        <td className="py-3 px-4">{item.commercialId}</td>
+                        <td className="py-3 px-4">{item.recBalance}</td>
+                        <td className="py-3 px-4">{item.avgRecPrice}</td>
+                        <td className="py-3 px-4">{item.recSold}</td>
+                        <td className="py-3 px-4">{item.date}</td>
+                      </>
+                    ) : reportType === "Commercial REC Generation" && commercialView === "payout" ? (
+                      <>
+                        <td className="py-3 px-4">{item.name}</td>
+                        <td className="py-3 px-4">{item.commercialId}</td>
+                        <td className="py-3 px-4">{item.invoiceId}</td>
+                        <td className="py-3 px-4">{item.totalAmount}</td>
+                        <td className="py-3 px-4">{item.date}</td>
+                      </>
+                    ) : reportType === "Partner Performance" ? (
+                      <>
+                        <td className="py-3 px-4">{item.name}</td>
+                        <td className="py-3 px-4">{item.address}</td>
+                        <td className="py-3 px-4">{item.activeCommGenerators}</td>
+                        <td className="py-3 px-4">{item.activeResidentGenerators}</td>
+                        <td className="py-3 px-4">{item.totalCommGen}</td>
+                        <td className="py-3 px-4">{item.totalRecsSold}</td>
+                        <td className="py-3 px-4">{item.totalEarnings}</td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="py-3 px-4">{item.generatorId}</td>
+                        <td className="py-3 px-4">{item.reportingUnitId}</td>
+                        <td className="py-3 px-4">{item.vintage}</td>
+                        <td className="py-3 px-4">{item.startDate}</td>
+                        <td className="py-3 px-4">{item.endDate}</td>
+                        <td className="py-3 px-4">{item.totalMWh}</td>
+                      </>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-      {/* Pagination */}
-      <div className="flex items-center justify-center space-x-4 mt-6">
-        <button
-          onClick={handlePrevious}
-          disabled={currentPage === 1}
-          className="text-[#00B4AE] disabled:opacity-50 text-sm"
-        >
-          &lt; Previous
-        </button>
-        <span>{currentPage} of {totalPages}</span>
-        <button
-          onClick={handleNext}
-          disabled={currentPage === totalPages || totalPages === 0}
-          className="text-[#00B4AE] disabled:opacity-50 text-sm"
-        >
-          Next &gt;
-        </button>
-      </div>
+          {/* Pagination */}
+          {filteredData.length > 0 ? (
+            <div className="p-4 flex items-center justify-center gap-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-sm">
+                {currentPage} of {totalPages || 1}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled={currentPage === totalPages || totalPages === 0}
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <div className="p-8 text-center text-gray-500">
+              No records found matching your filters
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Modals */}
-      {showAddFacilityModal && (
-        <AddFacilityModal
-          onClose={() => setShowAddFacilityModal(false)}
-          onFacilityAdded={handleFacilityAdded}
+      {/* Filter Modals */}
+      {isFilterModalOpen && reportType === "Residential REC Generation" && (
+        <ResidentialRecGenerationFilterModal 
+          onClose={() => setIsFilterModalOpen(false)} 
+          onApplyFilter={handleFilterApply}
+          view={residentialView}
         />
       )}
-      {showFacilityCreatedModal && (
-        <FacilityCreatedModal
-          onClose={handleCloseFacilityCreatedModal}
+      {isFilterModalOpen && reportType === "Commercial REC Generation" && (
+        <CommercialRecGenerationFilterModal 
+          onClose={() => setIsFilterModalOpen(false)} 
+          onApplyFilter={handleFilterApply}
+          view={commercialView}
         />
       )}
-      {showFilterModal && (
-        <FilterModal
-          onClose={() => setShowFilterModal(false)}
-          onApplyFilter={handleApplyFilter}
-          initialFilters={filters}
+      {isFilterModalOpen && reportType === "Partner Performance" && (
+        <PartnerPerformanceFilterModal 
+          onClose={() => setIsFilterModalOpen(false)} 
+          onApplyFilter={handleFilterApply}
         />
       )}
-      {showExportModal && (
-        <ExportReportModal
-          onClose={() => setShowExportModal(false)}
-          onExport={handleExportReport}
-          initialFilters={filters}
-          yearFilter={yearFilter}
-          monthFilter={monthFilter}
-          tableData={tableData} // Pass the table data to the export modal
+      {isFilterModalOpen && reportType === "WREGIS Generation Report" && (
+        <WregisGenerationFilterModal 
+          onClose={() => setIsFilterModalOpen(false)} 
+          onApplyFilter={handleFilterApply}
         />
       )}
     </div>
-  );
+  )
 }
