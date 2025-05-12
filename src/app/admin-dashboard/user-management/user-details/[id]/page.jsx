@@ -1,156 +1,205 @@
-"use client";
+import Link from "next/link"
+import { ChevronLeft, Eye, Download, Trash2, ChevronDown, Pencil } from "lucide-react"
 
-import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom"; // For dynamic routing
-import CustomerDetails from "@/components/dashboard/user-management/UserDetails/CustomerDetails";
-import ProgressBar from "@/components/dashboard/user-management/UserDetails/ProgressBar";
-import DocumentationTable from "@/components/dashboard/user-management/UserDetails/DocumentationTable";
-import { lazy, Suspense } from "react"; // Import lazy and Suspense
+import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
+import { Card } from "@/components/ui/card"
 
-// Dynamically import customer data
-const customersData = lazy(() => import("@/components/dashboard/user-management/customersData"));
-
-export default function UserDetails() {
-  const { id } = useParams(); // Get the user ID from the URL
-  const [customer, setCustomer] = useState(null);
-
-  // Fetch customer data based on the ID
-  useEffect(() => {
-    const fetchCustomer = async () => {
-      try {
-        // Dynamically load customer data
-        const { default: customers } = await customersData();
-
-        // Find the customer based on the ID
-        const selectedCustomer = customers.find((c) => c.id === parseInt(id));
-        if (selectedCustomer) {
-          setCustomer(selectedCustomer);
-        } else {
-          console.error(`Customer with ID ${id} not found.`);
-        }
-      } catch (error) {
-        console.error("Error fetching customer data:", error);
-      }
-    };
-
-    if (id) {
-      fetchCustomer();
-    }
-  }, [id]);
-
+export default function CustomerDetailsPage() {
   return (
-    <div className="flex flex-col h-screen bg-white p-6">
+    <div className="container mx-auto p-4 max-w-5xl">
       {/* Header */}
-      <div className="flex justify-between mb-6 items-center">
-        <div className="flex items-center gap-2">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="w-5 h-5 text-gray-500"
-          >
-            <path d="M19 19L5 5"></path>
-            <path d="M19 5v9a2 2 0 0 1-2 2H5"></path>
-          </svg>
-          <h1 className="text-xl font-medium text-teal-500">Customer Details</h1>
-        </div>
+      <div className="flex justify-between items-center mb-6">
+        <Link href="/customers" className="flex items-center text-teal-600 font-medium">
+          <ChevronLeft className="h-5 w-5 mr-1" />
+          Customer Details
+        </Link>
         <div className="flex items-center gap-4">
-          <button className="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-md">
-            Choose action
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="w-4 h-4 ml-2"
-            >
-              <path d="M19 9l-7 7-7-7"></path>
-            </svg>
-          </button>
-          <label className="flex items-center gap-2">
+          <div className="bg-gray-100 rounded-md px-4 py-2 flex items-center gap-2">
+            <span>Choose action</span>
+            <ChevronDown className="h-4 w-4" />
+          </div>
+          <div className="flex items-center gap-2">
             <span>Activate System</span>
-            <input type="checkbox" className="form-checkbox h-5 w-5" />
-          </label>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="w-5 h-5 text-red-500"
-          >
-            <path d="M21 4H3"></path>
-            <path d="M21 12H3"></path>
-            <path d="M21 20H3"></path>
-          </svg>
+            <Switch />
+          </div>
+          <Button variant="ghost" size="icon" className="text-red-500">
+            <Trash2 className="h-5 w-5" />
+          </Button>
         </div>
       </div>
 
       {/* Progress Bar */}
-      <ProgressBar />
+      <div className="mb-8">
+        <div className="h-2 bg-gray-200 rounded-full w-full">
+          <div className="h-2 bg-black rounded-full w-[20%]"></div>
+        </div>
+        <div className="flex justify-between text-xs mt-2">
+          <div className="flex items-center">
+            <div className="h-2 w-2 rounded-full bg-black mr-1"></div>
+            <span>Invitation sent</span>
+          </div>
+          <div className="flex items-center">
+            <div className="h-2 w-2 rounded-full bg-yellow-500 mr-1"></div>
+            <span>Documents Pending</span>
+          </div>
+          <div className="flex items-center">
+            <div className="h-2 w-2 rounded-full bg-red-500 mr-1"></div>
+            <span>Documents Rejected</span>
+          </div>
+          <div className="flex items-center">
+            <div className="h-2 w-2 rounded-full bg-green-500 mr-1"></div>
+            <span>Registration Complete</span>
+          </div>
+          <div className="flex items-center">
+            <div className="h-2 w-2 rounded-full bg-blue-500 mr-1"></div>
+            <span>Active</span>
+          </div>
+          <div className="flex items-center">
+            <div className="h-2 w-2 rounded-full bg-red-500 mr-1"></div>
+            <span>Terminated</span>
+          </div>
+        </div>
+      </div>
 
-      {/* Customer Details */}
-      <Suspense fallback={<div className="flex items-center justify-center h-screen">Loading...</div>}>
-        {customer && <CustomerDetails customer={customer} />}
-      </Suspense>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Customer Information */}
+        <Card className="p-6 border border-teal-100 rounded-lg">
+          <div className="space-y-4">
+            <div className="flex justify-between">
+              <span className="text-gray-700">Name</span>
+              <span className="text-gray-500">Customer Name</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-700">Email Address</span>
+              <span className="text-gray-500">name@domain.com</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-700">Phone number</span>
+              <span className="text-gray-500">+234-000-0000-000</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-700">Customer Type</span>
+              <span className="text-gray-500">Residential</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-700">Utility Provider</span>
+              <span className="text-gray-500">Utility</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-700">kW System Size</span>
+              <span className="text-gray-500">200</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-700">Meter ID</span>
+              <span className="text-gray-500">Meter ID</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-700">Address</span>
+              <span className="text-gray-500">Address</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-700">Date Registered</span>
+              <span className="text-gray-500">16-03-2025</span>
+            </div>
+          </div>
+        </Card>
 
-      {/* User Agreement e-signature */}
-      <div className="mt-6">
-        <h2 className="text-lg font-medium">User Agreement e-signature</h2>
-        <div className="mt-2">
-          <button className="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-md flex items-center justify-between w-full">
-            View User Agreement
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="w-4 h-4"
-            >
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="16" x2="12" y2="12"></line>
-              <line x1="12" y1="8" x2="12.01" y2="8"></line>
-            </svg>
-          </button>
-          <button className="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-md flex items-center justify-between w-full mt-2">
-            View E-Signature
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="w-4 h-4"
-            >
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="16" x2="12" y2="12"></line>
-              <line x1="12" y1="8" x2="12.01" y2="8"></line>
-            </svg>
-          </button>
+        {/* User Agreement */}
+        <div className="space-y-4">
+          <h3 className="text-teal-600 font-medium text-lg">User Agreement e-signature</h3>
+
+          <div className="space-y-2">
+            <Button variant="outline" className="w-full justify-between">
+              <span>View User Agreement</span>
+              <Eye className="h-4 w-4" />
+            </Button>
+
+            <Button variant="outline" className="w-full justify-between">
+              <span>View E-Signature</span>
+              <div className="flex items-center">
+                <Eye className="h-4 w-4 mr-2" />
+                <Download className="h-4 w-4" />
+              </div>
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* Documentation */}
-      <div className="mt-6">
-        <h2 className="text-lg font-medium">Documentation</h2>
-        <Suspense fallback={<div className="flex items-center justify-center h-screen">Loading...</div>}>
-          {customer && <DocumentationTable customer={customer} />}
-        </Suspense>
+      <div className="mt-8">
+        <h3 className="text-teal-600 font-medium text-lg mb-4">Documentation</h3>
+        <div className="border-t border-gray-200">
+          <div className="grid grid-cols-3 py-4 border-b border-gray-200">
+            <div className="text-gray-700">NEM Agreement (NEM)</div>
+            <div className="flex items-center">
+              <Button variant="outline" className="mr-2">
+                <span className="mr-2">Doc1.jpg</span>
+                <Eye className="h-4 w-4" />
+              </Button>
+              <Download className="h-4 w-4 cursor-pointer" />
+            </div>
+            <div className="flex justify-end">
+              <span className="bg-teal-100 text-teal-600 px-3 py-1 rounded-md text-sm">Approved</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 py-4 border-b border-gray-200">
+            <div className="text-gray-700">Meter ID Photo</div>
+            <div className="flex items-center">
+              <Button variant="outline" className="mr-2">
+                <span className="mr-2">Upload Document</span>
+                <Pencil className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex justify-end">
+              <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-md text-sm">Required</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 py-4 border-b border-gray-200">
+            <div className="text-gray-700">Installer Agreement</div>
+            <div className="flex items-center">
+              <Button variant="outline" className="mr-2">
+                <span className="mr-2">Doc1.jpg</span>
+                <Eye className="h-4 w-4" />
+              </Button>
+              <Download className="h-4 w-4 cursor-pointer" />
+            </div>
+            <div className="flex justify-end">
+              <span className="bg-yellow-100 text-yellow-600 px-3 py-1 rounded-md text-sm">Pending</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 py-4 border-b border-gray-200">
+            <div className="text-gray-700">Single Line Diagram</div>
+            <div className="flex items-center">
+              <Button variant="outline" className="mr-2">
+                <span className="mr-2">Doc1.jpg</span>
+                <Eye className="h-4 w-4" />
+              </Button>
+              <Download className="h-4 w-4 cursor-pointer" />
+            </div>
+            <div className="flex justify-end">
+              <span className="bg-red-100 text-red-600 px-3 py-1 rounded-md text-sm">Rejected</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 py-4 border-b border-gray-200">
+            <div className="text-gray-700">Utility PTO Letter</div>
+            <div className="flex items-center">
+              <Button variant="outline" className="mr-2">
+                <span className="mr-2">Doc1.jpg</span>
+                <Eye className="h-4 w-4" />
+              </Button>
+              <Download className="h-4 w-4 cursor-pointer" />
+            </div>
+            <div className="flex justify-end">
+              <span className="bg-teal-100 text-teal-600 px-3 py-1 rounded-md text-sm">Approved</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-  );
+  )
 }
