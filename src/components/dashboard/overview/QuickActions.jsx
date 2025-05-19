@@ -1,85 +1,147 @@
-// src/components/QuickActions.jsx
-import React, { useState } from 'react';
-import {
-  FiChevronDown
-} from 'react-icons/fi';
+import React, { useState, useEffect } from 'react';
+import { FiChevronDown, FiLoader } from 'react-icons/fi';
+import axios from 'axios';
 
 export default function QuickActions() {
   const [filter, setFilter] = useState('total');
+  const [analytics, setAnalytics] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const cards = [
-    {
-      key: 'totalCustomers',
-      icon: '/vectors/TotalCustomers.png',
-      label: 'Total Customers',
-      value: '100',
-    },
-    {
-      key: 'totalPartners',
-      icon: '/vectors/Handshake.png',
-      label: 'Total Partners',
-      value: '100',
-    },
-    {
-      key: 'totalFacilities',
-      icon: '/vectors/TotalRegFacilities.png',
-      label: 'Total Reg. Facilities',
-      value: '100',
-    },
-    {
-      key: 'recsGenerated',
-      icon: '/vectors/CoinVertical.png',
-      label: 'Total RECs Generated',
-      value: '10',
-    },
-    {
-      key: 'recsSold',
-      icon: '/vectors/ArrowLineUpRight.png',
-      label: 'Total RECs Sold',
-      value: '10',
-    },
-  ];
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        setLoading(true);
+        // Get the auth token from local storage
+        const authToken = localStorage.getItem('authToken');
+        
+        if (!authToken) {
+          throw new Error('Authentication token not found');
+        }
+
+        const response = await axios.get('https://services.dcarbon.solutions/api/admin/analytics', {
+          headers: {
+            Authorization: `Bearer ${authToken}`
+          }
+        });
+
+        setAnalytics(response.data.data);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching analytics:', err);
+        setError('Failed to fetch analytics data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAnalytics();
+  }, []);
+
+  // Mapping the API response to cards data
+  const getCardsData = () => {
+    if (!analytics) return [];
+
+    return [
+      {
+        key: 'totalUsers',
+        icon: '/vectors/TotalCustomers.png',
+        label: 'Total Customers',
+        value: analytics.totalUsers || '0',
+      },
+      {
+        key: 'totalPartners',
+        icon: '/vectors/Handshake.png',
+        label: 'Total Partners',
+        value: analytics.totalPartners || '0',
+      },
+      {
+        key: 'totalFacilities',
+        icon: '/vectors/TotalRegFacilities.png',
+        label: 'Total Facilities',
+        value: analytics.totalFacilities || '0',
+      },
+      {
+        key: 'totalCommercialFacilities',
+        icon: '/vectors/TotalCustomers.png', // Assuming you have this icon
+        label: 'Commercial Facilities',
+        value: analytics.totalCommercialFacilities || '0',
+      },
+      {
+        key: 'totalResidentialFacilities',
+        icon: '/vectors/TotalCustomers.png', // Assuming you have this icon
+        label: 'Residential Facilities',
+        value: analytics.totalResidentialFacilities || '0',
+      },
+      {
+        key: 'totalRecGenerated',
+        icon: '/vectors/CoinVertical.png',
+        label: 'Total RECs Generated',
+        value: analytics.totalRecGenerated || '0',
+      },
+      {
+        key: 'commercialRecGenerated',
+        icon: '/vectors/TotalCustomers.png', // Assuming you have this icon
+        label: 'Commercial RECs',
+        value: analytics.commercialRecGenerated || '0',
+      },
+      {
+        key: 'residentialRecGenerated',
+        icon: '/vectors/TotalCustomers.png', // Assuming you have this icon
+        label: 'Residential RECs',
+        value: analytics.residentialRecGenerated || '0',
+      },
+    ];
+  };
 
   return (
-    <div className="w-full py-4 px-4">
+    <div className="w-full py-3 px-3">
       {/* Filter dropdown */}
-      <div className="flex justify-end mb-4">
+      <div className="flex justify-end mb-3">
         <div className="relative inline-block">
           <button
             onClick={() => {/* you can toggle a menu here if needed */}}
-            className="flex items-center text-black text-sm font-semibold"
+            className="flex items-center text-black text-xs font-semibold"
           >
             {filter === 'total' ? 'Total' : filter}
-            <FiChevronDown className="ml-1 w-4 h-4" />
+            <FiChevronDown className="ml-1 w-3 h-3" />
           </button>
           {/* If you need an actual dropdown menu, you can render it here */}
         </div>
       </div>
 
       {/* Cards Container */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        {cards.map(({ key, icon, label, value }) => (
-          <div
-            key={key}
-            className="p-4 bg-white rounded-2xl flex flex-col"
-          >
-            <div className="flex items-center mb-2">
-              <img
-                src={icon}
-                alt={label}
-                className="h-6 w-6 object-contain mr-2"
-              />
-              <span className="text-[#1E1E1E] font-sfpro font-medium text-[14px] leading-[100%] tracking-[-0.05em]">
-                {label}
+      {loading ? (
+        <div className="flex justify-center items-center h-32">
+          <FiLoader className="animate-spin h-6 w-6 text-[#056C69]" />
+        </div>
+      ) : error ? (
+        <div className="text-red-500 text-center p-4">{error}</div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+          {getCardsData().map(({ key, icon, label, value }) => (
+            <div
+              key={key}
+              className="p-2 bg-white rounded-xl flex flex-col"
+            >
+              <div className="flex items-center mb-1">
+                <img
+                  src={icon}
+                  alt={label}
+                  className="h-4 w-4 object-contain mr-1"
+                />
+                <span className="text-[#1E1E1E] font-sfpro font-medium text-[11px] leading-[100%] tracking-[-0.05em] truncate">
+                  {label}
+                </span>
+              </div>
+              <hr className="border-gray-200 w-full my-1" />
+              <span className="text-[#056C69] font-sfpro font-bold text-[14px] leading-tight">
+                {value}
               </span>
             </div>
-            <hr className="border-gray-200 w-full my-2" />
-            <span className="text-[#056C69] font-sfpro font-bold text-[18px] leading-tight">
-              {value}
-            </span>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

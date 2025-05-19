@@ -3,8 +3,8 @@
 import { useState, Suspense } from 'react';
 import axios from 'axios';
 import Loader from '../../../components/loader/Loader';
+import EmailModal from '../../../components/modals/EmailModal';
 import { toast } from 'react-hot-toast';
-import { useRouter } from 'next/navigation';
 
 // Import our custom styles from styles.js
 import {
@@ -18,21 +18,12 @@ import {
   grayPlaceholder,
 } from './styles';
 
-// Create axios instance with default config
-const api = axios.create({
-  baseURL: 'https://services.dcarbon.solutions/api',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  withCredentials: true,
-});
-
 // Main component that will be wrapped in Suspense
 function AdminRegisterCardContent() {
   const [loading, setLoading] = useState(false);
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const [error, setError] = useState('');
-  const router = useRouter();
 
   // Form field states
   const [firstName, setFirstName] = useState('');
@@ -74,37 +65,22 @@ function AdminRegisterCardContent() {
     };
   
     try {
-      const response = await api.post('/admin/create', payload, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        }
-      });
-
-      // Store response data in local storage
+      const response = await axios.post(
+        'https://services.dcarbon.solutions/api/admin/create',
+        payload,
+        { headers: { 'Content-Type': 'application/json' } }
+      );
+  
+      // Store the full response in local storage
       localStorage.setItem('adminData', JSON.stringify(response.data));
+      // Store email separately for verification
+      localStorage.setItem('userEmail', email);
       
-      toast.success('Admin registration successful!');
-      
-      // Redirect to login page
-      router.push('/signin/login');
+      toast.success('Admin registration successful');
+      setShowModal(true);
     } catch (err) {
-      console.error('Admin registration error:', err);
-      
-      if (err.response) {
-        // The request was made and the server responded with a status code
-        if (err.response.status === 409) {
-          toast.error('Email already exists');
-        } else {
-          toast.error(err.response.data?.message || 'Registration failed');
-        }
-      } else if (err.request) {
-        // The request was made but no response was received
-        toast.error('Network error - please check your connection');
-      } else {
-        // Something happened in setting up the request
-        toast.error('An unexpected error occurred');
-      }
+      console.error('Registration error:', err);
+      toast.error(err.response?.data?.message || 'Admin registration failed');
     } finally {
       setLoading(false);
     }
@@ -125,7 +101,7 @@ function AdminRegisterCardContent() {
         {/* Logo Section */}
         <div className="mb-6">
           <img
-            src="/signin_images/Login_logo.png"
+            src="/auth_images/Login_logo.png"
             alt="DCarbon Logo"
             style={{ width: '116px', height: '37px', objectFit: 'contain' }}
           />
@@ -134,12 +110,10 @@ function AdminRegisterCardContent() {
         {/* Title Section */}
         <h1 className={pageTitle}>
           <span className="block lg:hidden">
-            Admin Registration Portal
+            Admin Registration
           </span>
           <span className="hidden lg:block">
             Admin Registration
-            <br />
-            Portal
           </span>
         </h1>
 
@@ -163,6 +137,7 @@ function AdminRegisterCardContent() {
                   First Name <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
+                  {/* Profile icon placeholder for First Name */}
                   <img
                     src="/vectors/profile_icon.png"
                     alt="Profile icon"
@@ -175,7 +150,6 @@ function AdminRegisterCardContent() {
                     className={`${inputClass} ${grayPlaceholder} pl-10`}
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    disabled={loading}
                   />
                 </div>
               </div>
@@ -186,6 +160,7 @@ function AdminRegisterCardContent() {
                   Last Name <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
+                  {/* Profile icon placeholder for Last Name */}
                   <img
                     src="/vectors/profile_icon.png"
                     alt="Profile icon"
@@ -198,7 +173,6 @@ function AdminRegisterCardContent() {
                     className={`${inputClass} ${grayPlaceholder} pl-10`}
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    disabled={loading}
                   />
                 </div>
               </div>
@@ -220,7 +194,6 @@ function AdminRegisterCardContent() {
                   className={`${inputClass} ${grayPlaceholder} pl-10`}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  disabled={loading}
                 />
               </div>
             </div>
@@ -240,13 +213,11 @@ function AdminRegisterCardContent() {
                   className={`${inputClass} ${grayPlaceholder} pl-12`}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  disabled={loading}
                 />
                 <button
                   type="button"
                   onClick={togglePasswordVisibility}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-black"
-                  disabled={loading}
                 >
                   {passwordVisible ? (
                     <svg
@@ -297,21 +268,25 @@ function AdminRegisterCardContent() {
             )}
 
             {/* Create Account Button */}
-            <button 
-              type="submit" 
-              className={buttonPrimary}
-              disabled={loading}
-            >
-              {loading ? 'Registering...' : 'Register Admin'}
+            <button type="submit" className={buttonPrimary}>
+              Create Admin Account
             </button>
           </form>
+
+          {/* Already have an account? Sign in */}
+          <p className="mt-6 text-center font-sfpro font-[400] text-[14px] leading-[100%] tracking-[-0.05em] text-[#626060]">
+            Already have an account?{' '}
+            <a href="/login" className="text-[#039994] underline">
+              Sign in
+            </a>
+          </p>
 
           {/* Horizontal Divider */}
           <hr className="w-full border border-gray-200 mt-4" />
 
           {/* Terms and Conditions */}
           <p className={termsTextContainer}>
-            By registering as an admin, you agree to our{' '}
+            By clicking on 'Create Account', you agree to our{' '}
             <a href="/terms" className="text-[#039994] underline">
               Terms and Conditions
             </a>{' '}
@@ -322,13 +297,16 @@ function AdminRegisterCardContent() {
           </p>
         </div>
       </div>
+
+      {/* Email Verification Modal */}
+      {showModal && <EmailModal closeModal={() => setShowModal(false)} />}
     </>
   );
 }
 
 export default function AdminRegisterCard() {
   return (
-    <Suspense fallback={<div className="flex justify-center items-center h-full">Loading admin registration form...</div>}>
+    <Suspense fallback={<div className="flex justify-center items-center h-full">Loading registration form...</div>}>
       <AdminRegisterCardContent />
     </Suspense>
   );
