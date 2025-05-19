@@ -1,30 +1,236 @@
 "use client"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Filter, ChevronDown, ChevronLeft, ChevronRight, CalendarIcon, X } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import BuyerManagement from "./BuyerManagement"
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"
+import { format } from "date-fns"
+import { DatePicker } from "@/components/ui/date-picker"
+import toast from "react-hot-toast"
+
+const API_URL = "https://services.dcarbon.solutions"
 
 export default function RecEntries() {
   const [activeTab, setActiveTab] = useState("rec-entries")
   const [isNewRecModalOpen, setIsNewRecModalOpen] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
+  const [recEntries, setRecEntries] = useState([])
+  const [buyers, setBuyers] = useState([])
+  const [currentPrice, setCurrentPrice] = useState(0)
+  const [filters, setFilters] = useState({
+    type: '',
+    party: '',
+    vintageDate: ''
+  })
+  const [loading, setLoading] = useState(true)
   
-  const tableData = [
-    { type: "Sale", transferDate: "16-03-2023", vintageDate: "05-03-2021", recs: "3,321", cec: "Yes", price: "$500", total: "$500.00", party: "3Degrees", beginningInventory: "1,437", endingInventory: "1,437" },
-    { type: "Sale", transferDate: "16-03-2023", vintageDate: "05-03-2021", recs: "3,321", cec: "Yes", price: "$500", total: "$500.00", party: "Enron", beginningInventory: "1,437", endingInventory: "1,437" },
-    { type: "Sale", transferDate: "16-03-2023", vintageDate: "05-03-2021", recs: "3,321", cec: "Yes", price: "$500", total: "$500.00", party: "Enron", beginningInventory: "1,437", endingInventory: "1,437" },
-    { type: "Deposit", transferDate: "16-03-2023", vintageDate: "05-03-2021", recs: "3,321", cec: "Yes", price: "$500", total: "$500.00", party: "WREGIS", beginningInventory: "1,437", endingInventory: "1,437" },
-  ]
+  const [newRecData, setNewRecData] = useState({
+    transferDate: new Date(),
+    vintageDate: new Date(),
+    amountOfRecs: 0,
+    cec: false,
+    recBuyer: ''
+  })
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true)
+        await Promise.all([
+          fetchRecEntries(),
+          fetchBuyers(),
+          fetchCurrentPrice()
+        ])
+      } catch (error) {
+        toast.error('Failed to load data')
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [])
+
+  const fetchRecEntries = async () => {
+    try {
+      const token = localStorage.getItem('authToken')
+      const response = await fetch(`${API_URL}/api/rec`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      const data = await response.json()
+      if (data.status === 'success') {
+        setRecEntries(data.data?.entries || [])
+      } else {
+        setRecEntries([])
+        toast.error(data.message || 'Failed to fetch REC entries')
+      }
+    } catch (error) {
+      setRecEntries([])
+      toast.error('Failed to fetch REC entries')
+    }
+  }
+
+  const fetchBuyers = async () => {
+    try {
+      const token = localStorage.getItem('authToken')
+      const response = await fetch(`${API_URL}/api/rec/buyers`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      const data = await response.json()
+      if (data.status === 'success') {
+        setBuyers(data.data?.buyers || [])
+      } else {
+        setBuyers([])
+        toast.error(data.message || 'Failed to fetch buyers')
+      }
+    } catch (error) {
+      setBuyers([])
+      toast.error('Failed to fetch buyers')
+    }
+  }
+
+  const fetchCurrentPrice = async () => {
+    try {
+      const token = localStorage.getItem('authToken')
+      const response = await fetch(`${API_URL}/api/rec/price/current`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      const data = await response.json()
+      if (data.status === 'success') {
+        setCurrentPrice(data.data?.price || 0)
+      } else {
+        setCurrentPrice(0)
+        toast.error(data.message || 'Failed to fetch current price')
+      }
+    } catch (error) {
+      setCurrentPrice(0)
+      toast.error('Failed to fetch current price')
+    }
+  }
+
+  const handleCreateRecSale = async () => {
+    try {
+      if (!newRecData.recBuyer || !newRecData.amountOfRecs) {
+        toast.error('Please fill all required fields')
+        return
+      }
+
+      const token = localStorage.getItem('authToken')
+      const response = await fetch(`${API_URL}/api/rec/create`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ...newRecData,
+          transferDate: newRecData.transferDate.toISOString(),
+          vintageDate: newRecData.vintageDate.toISOString()
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (data.status === 'success') {
+        toast.success('REC sale created successfully')
+        fetchRecEntries()
+        setIsNewRecModalOpen(false)
+        // Reset form
+        setNewRecData({
+          transferDate: new Date(),
+          vintageDate: new Date(),
+          amountOfRecs: 0,
+          cec: false,
+          recBuyer: ''
+        })
+      } else {
+        toast.error(data.message || 'Failed to create REC sale')
+      }
+    } catch (error) {
+      toast.error('Failed to create REC sale')
+    }
+  }
+
+  const handleSetPrice = async (price) => {
+    try {
+      const token = localStorage.getItem('authToken')
+      const response = await fetch(`${API_URL}/api/rec/price/set`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ price })
+      })
+      
+      const data = await response.json()
+      
+      if (data.status === 'success') {
+        toast.success('Price set successfully')
+        setCurrentPrice(price)
+      } else {
+        toast.error(data.message || 'Failed to set price')
+      }
+    } catch (error) {
+      toast.error('Failed to set price')
+    }
+  }
+
+  const filteredEntries = recEntries.filter(entry => {
+    return (
+      (filters.type === '' || (entry.type && entry.type.toLowerCase().includes(filters.type.toLowerCase()))) &&
+      (filters.party === '' || (entry.party && entry.party.toLowerCase().includes(filters.party.toLowerCase()))) &&
+      (filters.vintageDate === '' || (entry.vintageDate && entry.vintageDate.includes(filters.vintageDate)))
+    )
+  })
+
+  const entriesPerPage = 10
+  const totalPages = Math.ceil(filteredEntries.length / entriesPerPage)
+  const paginatedEntries = filteredEntries.slice(
+    (currentPage - 1) * entriesPerPage,
+    currentPage * entriesPerPage
+  )
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#039994]"></div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
       {activeTab === "rec-entries" ? (
         <>
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-medium text-[#039994]">REC Entries</h2>
+            <DropdownMenu>
+              <DropdownMenuTrigger className="flex items-center text-xl font-medium text-[#039994] focus:outline-none">
+                REC Entries <ChevronDown className="ml-2 h-5 w-5" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-48">
+                <DropdownMenuItem 
+                  className="cursor-pointer"
+                  onClick={() => setActiveTab("rec-entries")}
+                >
+                  REC Entries
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  className="cursor-pointer"
+                  onClick={() => setActiveTab("buyer-management")}
+                >
+                  Buyer Management
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <div className="flex space-x-2">
               <Button variant="outline" className="flex items-center bg-white">
                 <Filter className="h-4 w-4 mr-2" /> Filter by
@@ -39,6 +245,44 @@ export default function RecEntries() {
           </div>
           
           <div className="bg-white rounded-md shadow">
+            <div className="p-4 border-b">
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                  <Input 
+                    placeholder="Filter by type" 
+                    value={filters.type}
+                    onChange={(e) => {
+                      setFilters({...filters, type: e.target.value})
+                      setCurrentPage(1)
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Party</label>
+                  <Input 
+                    placeholder="Filter by party" 
+                    value={filters.party}
+                    onChange={(e) => {
+                      setFilters({...filters, party: e.target.value})
+                      setCurrentPage(1)
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Vintage Date</label>
+                  <Input 
+                    placeholder="Filter by vintage date (YYYY-MM-DD)" 
+                    value={filters.vintageDate}
+                    onChange={(e) => {
+                      setFilters({...filters, vintageDate: e.target.value})
+                      setCurrentPage(1)
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+            
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -56,55 +300,60 @@ export default function RecEntries() {
                   </tr>
                 </thead>
                 <tbody>
-                  {tableData.map((row, index) => (
-                    <tr key={index} className="border-b hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm">{row.type}</td>
-                      <td className="px-4 py-3 text-sm">{row.transferDate}</td>
-                      <td className="px-4 py-3 text-sm">{row.vintageDate}</td>
-                      <td className="px-4 py-3 text-sm">{row.recs}</td>
-                      <td className="px-4 py-3 text-sm">{row.cec}</td>
-                      <td className="px-4 py-3 text-sm">{row.price}</td>
-                      <td className="px-4 py-3 text-sm">{row.total}</td>
-                      <td className="px-4 py-3 text-sm">{row.party}</td>
-                      <td className="px-4 py-3 text-sm">{row.beginningInventory}</td>
-                      <td className="px-4 py-3 text-sm">{row.endingInventory}</td>
+                  {paginatedEntries.length > 0 ? (
+                    paginatedEntries.map((entry, index) => (
+                      <tr key={index} className="border-b hover:bg-gray-50">
+                        <td className="px-4 py-3 text-sm">{entry.type || 'N/A'}</td>
+                        <td className="px-4 py-3 text-sm">{entry.transferDate ? format(new Date(entry.transferDate), 'dd-MM-yyyy') : 'N/A'}</td>
+                        <td className="px-4 py-3 text-sm">{entry.vintageDate ? format(new Date(entry.vintageDate), 'dd-MM-yyyy') : 'N/A'}</td>
+                        <td className="px-4 py-3 text-sm">{entry.amountOfRecs?.toLocaleString() || '0'}</td>
+                        <td className="px-4 py-3 text-sm">{entry.cec ? 'Yes' : 'No'}</td>
+                        <td className="px-4 py-3 text-sm">${entry.price?.toFixed(2) || '0.00'}</td>
+                        <td className="px-4 py-3 text-sm">${((entry.amountOfRecs || 0) * (entry.price || 0)).toFixed(2)}</td>
+                        <td className="px-4 py-3 text-sm">{entry.party || 'N/A'}</td>
+                        <td className="px-4 py-3 text-sm">{entry.beginningInventory?.toLocaleString() || 'N/A'}</td>
+                        <td className="px-4 py-3 text-sm">{entry.endingInventory?.toLocaleString() || 'N/A'}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="10" className="px-4 py-6 text-center text-sm text-gray-500">
+                        No REC entries found
+                      </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
             
-            <div className="flex items-center justify-center p-4">
-              <div className="flex items-center space-x-2">
-                <button 
-                  className="p-2 rounded-md hover:bg-gray-100 text-gray-500 flex items-center"
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  <span className="ml-1">Previous</span>
-                </button>
-                <div className="flex items-center">
-                  <span className="px-3 py-1">{currentPage}</span>
-                  <span className="text-gray-500">of</span>
-                  <span className="px-3 py-1">4</span>
+            {filteredEntries.length > 0 && (
+              <div className="flex items-center justify-center p-4">
+                <div className="flex items-center space-x-2">
+                  <button 
+                    className="p-2 rounded-md hover:bg-gray-100 text-gray-500 flex items-center"
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    <span className="ml-1">Previous</span>
+                  </button>
+                  <div className="flex items-center">
+                    <span className="px-3 py-1">{currentPage}</span>
+                    <span className="text-gray-500">of</span>
+                    <span className="px-3 py-1">{totalPages}</span>
+                  </div>
+                  <button 
+                    className="p-2 rounded-md hover:bg-gray-100 text-[#039994] flex items-center"
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                  >
+                    <span className="mr-1">Next</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
                 </div>
-                <button 
-                  className="p-2 rounded-md hover:bg-gray-100 text-[#039994] flex items-center"
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, 4))}
-                >
-                  <span className="mr-1">Next</span>
-                  <ChevronRight className="h-4 w-4" />
-                </button>
               </div>
-            </div>
+            )}
           </div>
-          
-          <button
-            onClick={() => setActiveTab("buyer-management")}
-            className="mt-6 text-[#039994] font-medium flex items-center"
-          >
-            Buyer Management <ChevronDown className="ml-1 h-4 w-4" />
-          </button>
         </>
       ) : (
         <BuyerManagement onBack={() => setActiveTab("rec-entries")} />
@@ -113,12 +362,49 @@ export default function RecEntries() {
       <NewRecSaleModal
         isOpen={isNewRecModalOpen}
         onClose={() => setIsNewRecModalOpen(false)}
+        buyers={buyers}
+        currentPrice={currentPrice}
+        newRecData={newRecData}
+        setNewRecData={setNewRecData}
+        handleCreateRecSale={handleCreateRecSale}
+        handleSetPrice={handleSetPrice}
       />
     </div>
   )
 }
 
-function NewRecSaleModal({ isOpen, onClose }) {
+function NewRecSaleModal({ 
+  isOpen, 
+  onClose, 
+  buyers, 
+  currentPrice,
+  newRecData,
+  setNewRecData,
+  handleCreateRecSale,
+  handleSetPrice
+}) {
+  const [priceInput, setPriceInput] = useState(currentPrice.toString())
+
+  useEffect(() => {
+    setPriceInput(currentPrice.toString())
+  }, [currentPrice])
+
+  const handlePriceChange = (e) => {
+    const value = e.target.value
+    if (/^\d*\.?\d*$/.test(value)) {
+      setPriceInput(value)
+    }
+  }
+
+  const handleSavePrice = () => {
+    const price = parseFloat(priceInput)
+    if (!isNaN(price)) {
+      handleSetPrice(price)
+    } else {
+      toast.error('Please enter a valid price')
+    }
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
@@ -132,34 +418,46 @@ function NewRecSaleModal({ isOpen, onClose }) {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Transfer Date
                 </label>
-                <div className="relative">
-                  <Input placeholder="Input Date" className="pl-3 pr-8" />
-                  <CalendarIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                </div>
+                <DatePicker
+                  selected={newRecData.transferDate}
+                  onChange={(date) => setNewRecData({...newRecData, transferDate: date})}
+                  className="w-full"
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Vintage Date:
+                  Vintage Date
                 </label>
-                <div className="relative">
-                  <Input placeholder="Input Date" className="pl-3 pr-8" />
-                  <CalendarIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                </div>
+                <DatePicker
+                  selected={newRecData.vintageDate}
+                  onChange={(date) => setNewRecData({...newRecData, vintageDate: date})}
+                  className="w-full"
+                />
               </div>
             </div>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Amount of RECs
+                Amount of RECs *
               </label>
-              <Input placeholder="200" defaultValue="200" className="bg-gray-100" />
+              <Input 
+                placeholder="200" 
+                type="number"
+                min="0"
+                step="0.01"
+                value={newRecData.amountOfRecs || ''}
+                onChange={(e) => setNewRecData({...newRecData, amountOfRecs: parseFloat(e.target.value) || 0})}
+              />
             </div>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 CEC?
               </label>
-              <Select defaultValue="yes">
+              <Select 
+                value={newRecData.cec ? "yes" : "no"}
+                onValueChange={(value) => setNewRecData({...newRecData, cec: value === "yes"})}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select" />
                 </SelectTrigger>
@@ -172,26 +470,46 @@ function NewRecSaleModal({ isOpen, onClose }) {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Price
+                Current REC Price
               </label>
-              <div className="relative">
-                <Input placeholder="$200" defaultValue="$200" className="pl-7" />
-                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+              <div className="flex items-center gap-2">
+                <Input 
+                  value={priceInput}
+                  onChange={handlePriceChange}
+                  className="flex-1"
+                />
+                <Button 
+                  className="bg-[#039994] hover:bg-[#028a85] text-white"
+                  onClick={handleSavePrice}
+                >
+                  Set Price
+                </Button>
               </div>
             </div>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                REC Buyers
+                REC Buyers *
               </label>
-              <Select>
+              <Select
+                value={newRecData.recBuyer}
+                onValueChange={(value) => setNewRecData({...newRecData, recBuyer: value})}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Choose buyer" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="3degrees">3Degrees</SelectItem>
-                  <SelectItem value="enron">Enron</SelectItem>
-                  <SelectItem value="wregis">WREGIS</SelectItem>
+                  {buyers.length > 0 ? (
+                    buyers.map((buyer) => (
+                      <SelectItem key={buyer.id} value={buyer.id}>
+                        {buyer.companyName}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="" disabled>
+                      No buyers available
+                    </SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -201,7 +519,7 @@ function NewRecSaleModal({ isOpen, onClose }) {
                 Total Amount
               </label>
               <div className="bg-[#039994] text-white py-3 px-4 rounded-md">
-                $200
+                ${((newRecData.amountOfRecs || 0) * currentPrice).toFixed(2)}
               </div>
             </div>
           </div>
@@ -212,7 +530,8 @@ function NewRecSaleModal({ isOpen, onClose }) {
             </Button>
             <Button 
               className="bg-[#039994] hover:bg-[#028a85] text-white"
-              onClick={onClose}
+              onClick={handleCreateRecSale}
+              disabled={!newRecData.recBuyer || !newRecData.amountOfRecs}
             >
               Done
             </Button>

@@ -11,6 +11,10 @@ import {
   Plus,
   Trash2,
   Loader2,
+  Mail,
+  Clock,
+  Check,
+  X,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -18,6 +22,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+import toast from "react-hot-toast";
 
 // Styles for form elements
 const styles = {
@@ -30,10 +35,13 @@ export default function UtilityProviderManagement({ onViewChange }) {
   const [selectedProvider, setSelectedProvider] = useState(null);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [showAddUtilityModal, setShowAddUtilityModal] = useState(false);
+  const [showRequestsModal, setShowRequestsModal] = useState(false);
   const [currentView, setCurrentView] = useState("list"); // "list" or "details"
   const [utilityProviders, setUtilityProviders] = useState([]);
   const [filteredProviders, setFilteredProviders] = useState([]);
+  const [providerRequests, setProviderRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingRequests, setIsLoadingRequests] = useState(false);
   const [error, setError] = useState(null);
   const [filterValues, setFilterValues] = useState({
     name: "",
@@ -55,7 +63,6 @@ export default function UtilityProviderManagement({ onViewChange }) {
       setError(null);
       
       try {
-        // Get auth token from local storage
         const authToken = localStorage.getItem("authToken");
         
         if (!authToken) {
@@ -93,6 +100,43 @@ export default function UtilityProviderManagement({ onViewChange }) {
     fetchUtilityProviders();
   }, []);
 
+  // Fetch utility provider requests
+  const fetchProviderRequests = async () => {
+    setIsLoadingRequests(true);
+    try {
+      const authToken = localStorage.getItem("authToken");
+      
+      if (!authToken) {
+        throw new Error("Authentication token not found");
+      }
+      
+      const response = await fetch("https://services.dcarbon.solutions/api/admin/utility-provider-requests", {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${authToken}`,
+          "Content-Type": "application/json"
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error fetching provider requests: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.status === "success") {
+        setProviderRequests(result.data.requests);
+      } else {
+        throw new Error(result.message || "Failed to fetch provider requests");
+      }
+    } catch (err) {
+      toast.error(err.message);
+      console.error("Error fetching provider requests:", err);
+    } finally {
+      setIsLoadingRequests(false);
+    }
+  };
+
   // Apply filters when filter values change
   useEffect(() => {
     applyFilters();
@@ -101,28 +145,24 @@ export default function UtilityProviderManagement({ onViewChange }) {
   const applyFilters = () => {
     let filtered = [...utilityProviders];
     
-    // Filter by name
     if (filterValues.name) {
       filtered = filtered.filter(provider => 
         provider.name.toLowerCase().includes(filterValues.name.toLowerCase())
       );
     }
     
-    // Filter by ID
     if (filterValues.id) {
       filtered = filtered.filter(provider => 
         provider.id.toLowerCase().includes(filterValues.id.toLowerCase())
       );
     }
     
-    // Filter by website
     if (filterValues.website) {
       filtered = filtered.filter(provider => 
         provider.website.toLowerCase().includes(filterValues.website.toLowerCase())
       );
     }
     
-    // Filter by creation date
     if (filterValues.createdAt) {
       const filterDate = new Date(filterValues.createdAt).setHours(0, 0, 0, 0);
       filtered = filtered.filter(provider => {
@@ -132,7 +172,6 @@ export default function UtilityProviderManagement({ onViewChange }) {
     }
     
     setFilteredProviders(filtered);
-    // Reset to first page when filters change
     setCurrentPage(1);
   };
 
@@ -163,10 +202,66 @@ export default function UtilityProviderManagement({ onViewChange }) {
     }));
   };
 
+  const handleCreateProvider = async (formData) => {
+    try {
+      const authToken = localStorage.getItem("authToken");
+      
+      if (!authToken) {
+        throw new Error("Authentication token not found");
+      }
+      
+      const response = await fetch("https://services.dcarbon.solutions/api/admin/utility-providers", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${authToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          website: formData.website,
+          documentation: formData.documentation
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error creating utility provider: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.status === "success") {
+        toast.success("Utility provider created successfully");
+        // Refresh the providers list
+        const fetchResponse = await fetch("https://services.dcarbon.solutions/api/admin/utility-providers", {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${authToken}`,
+            "Content-Type": "application/json"
+          }
+        });
+        
+        if (fetchResponse.ok) {
+          const fetchResult = await fetchResponse.json();
+          setUtilityProviders(fetchResult.data.utilityProviders);
+          setFilteredProviders(fetchResult.data.utilityProviders);
+        }
+      } else {
+        throw new Error(result.message || "Failed to create utility provider");
+      }
+    } catch (err) {
+      toast.error(err.message);
+      console.error("Error creating utility provider:", err);
+    }
+  };
+
+  const handleViewRequests = async () => {
+    setShowRequestsModal(true);
+    await fetchProviderRequests();
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-white">
       {currentView === "details" && selectedProvider && (
-        // Show Utility Provider Details when a provider is selected
         <UtilityProviderDetails 
           provider={selectedProvider} 
           onBack={handleBackToList} 
@@ -174,18 +269,28 @@ export default function UtilityProviderManagement({ onViewChange }) {
       )}
       
       {currentView === "list" && (
-        // Show Utility Provider Management Table
         <>
           {/* ===== Header Row ===== */}
           <div className="flex justify-between mb-6">
-            <Button 
-              variant="outline" 
-              className="gap-2"
-              onClick={() => setShowFilterModal(true)}
-            >
-              <Filter className="h-4 w-4" />
-              Filter by
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                className="gap-2"
+                onClick={() => setShowFilterModal(true)}
+              >
+                <Filter className="h-4 w-4" />
+                Filter by
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                className="gap-2"
+                onClick={handleViewRequests}
+              >
+                <Mail className="h-4 w-4" />
+                View Requests
+              </Button>
+            </div>
 
             <Button
               className="gap-2 bg-[#039994] hover:bg-[#02857f] text-white"
@@ -357,7 +462,18 @@ export default function UtilityProviderManagement({ onViewChange }) {
       {showAddUtilityModal && (
         <AddUtilityProviderModal 
           isOpen={showAddUtilityModal} 
-          onClose={() => setShowAddUtilityModal(false)} 
+          onClose={() => setShowAddUtilityModal(false)}
+          onCreate={handleCreateProvider}
+        />
+      )}
+      
+      {showRequestsModal && (
+        <UtilityProviderRequestsModal 
+          isOpen={showRequestsModal} 
+          onClose={() => setShowRequestsModal(false)}
+          requests={providerRequests}
+          isLoading={isLoadingRequests}
+          onRefresh={fetchProviderRequests}
         />
       )}
     </div>
@@ -442,7 +558,7 @@ function UtilityProviderDetails({ provider, onBack }) {
   );
 }
 
-// Modal component for filtering - improved with working filters
+// Modal component for filtering
 function FilterByUtilityModal({ isOpen, onClose, filterValues, onFilterChange, onApply, onClear }) {
   if (!isOpen) return null;
   
@@ -535,16 +651,17 @@ function FilterByUtilityModal({ isOpen, onClose, filterValues, onFilterChange, o
   );
 }
 
-// Modal component for adding utility provider - improved sizing and layout
-function AddUtilityProviderModal({ isOpen, onClose }) {
+// Modal component for adding utility provider
+function AddUtilityProviderModal({ isOpen, onClose, onCreate }) {
   if (!isOpen) return null;
   
   const [formData, setFormData] = useState({
-    id: "",
     name: "",
     website: "",
     documentation: ""
   });
+  
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -554,11 +671,23 @@ function AddUtilityProviderModal({ isOpen, onClose }) {
     }));
   };
   
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Here you would add the API call to create a new utility provider
-    console.log("Form submitted:", formData);
-    onClose();
+    setIsSubmitting(true);
+    
+    try {
+      await onCreate(formData);
+      onClose();
+      setFormData({
+        name: "",
+        website: "",
+        documentation: ""
+      });
+    } catch (error) {
+      console.error("Error creating provider:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
   return (
@@ -573,18 +702,6 @@ function AddUtilityProviderModal({ isOpen, onClose }) {
               type="text" 
               name="name"
               value={formData.name}
-              onChange={handleChange}
-              className={styles.inputClass} 
-              required
-            />
-          </div>
-          
-          <div>
-            <label className={styles.labelClass}>Utility ID</label>
-            <input 
-              type="text" 
-              name="id"
-              value={formData.id}
               onChange={handleChange}
               className={styles.inputClass} 
               required
@@ -623,17 +740,192 @@ function AddUtilityProviderModal({ isOpen, onClose }) {
               variant="outline"
               className="flex-1"
               onClick={onClose}
+              disabled={isSubmitting}
             >
               Cancel
             </Button>
             <Button
               type="submit"
               className="flex-1 bg-[#039994] hover:bg-[#02857f] text-white"
+              disabled={isSubmitting}
             >
-              Add Provider
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                "Add Provider"
+              )}
             </Button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+// Modal component for viewing utility provider requests
+function UtilityProviderRequestsModal({ isOpen, onClose, requests, isLoading, onRefresh }) {
+  if (!isOpen) return null;
+  
+  const handleApproveRequest = async (requestId) => {
+    try {
+      const authToken = localStorage.getItem("authToken");
+      
+      if (!authToken) {
+        throw new Error("Authentication token not found");
+      }
+      
+      const response = await fetch(`https://services.dcarbon.solutions/api/admin/utility-provider-requests/${requestId}/approve`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${authToken}`,
+          "Content-Type": "application/json"
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error approving request: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.status === "success") {
+        toast.success("Request approved successfully");
+        onRefresh();
+      } else {
+        throw new Error(result.message || "Failed to approve request");
+      }
+    } catch (err) {
+      toast.error(err.message);
+      console.error("Error approving request:", err);
+    }
+  };
+  
+  const handleRejectRequest = async (requestId) => {
+    try {
+      const authToken = localStorage.getItem("authToken");
+      
+      if (!authToken) {
+        throw new Error("Authentication token not found");
+      }
+      
+      const response = await fetch(`https://services.dcarbon.solutions/api/admin/utility-provider-requests/${requestId}/reject`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${authToken}`,
+          "Content-Type": "application/json"
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error rejecting request: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.status === "success") {
+        toast.success("Request rejected successfully");
+        onRefresh();
+      } else {
+        throw new Error(result.message || "Failed to reject request");
+      }
+    } catch (err) {
+      toast.error(err.message);
+      console.error("Error rejecting request:", err);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 overflow-y-auto p-4">
+      <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-4xl my-8 max-h-[80vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-medium">Utility Provider Requests</h2>
+          <Button variant="ghost" onClick={onClose}>
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
+        
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-[#039994]" />
+            <span className="ml-3 text-lg text-gray-600">Loading requests...</span>
+          </div>
+        ) : requests.length === 0 ? (
+          <div className="py-12 text-center">
+            <p className="text-gray-500 text-lg">No pending utility provider requests</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-y">
+                  <th className="py-3 px-4 text-left font-medium">S/N</th>
+                  <th className="py-3 px-4 text-left font-medium">Provider Name</th>
+                  <th className="py-3 px-4 text-left font-medium">Website</th>
+                  <th className="py-3 px-4 text-left font-medium">Contact Email</th>
+                  <th className="py-3 px-4 text-left font-medium">Status</th>
+                  <th className="py-3 px-4 text-left font-medium">Request Date</th>
+                  <th className="py-3 px-4 text-left font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {requests.map((request, index) => (
+                  <tr key={request.id} className="border-b">
+                    <td className="py-3 px-4">{index + 1}</td>
+                    <td className="py-3 px-4">{request.name}</td>
+                    <td className="py-3 px-4">
+                      <a 
+                        href={request.website} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline"
+                      >
+                        {request.website}
+                      </a>
+                    </td>
+                    <td className="py-3 px-4">{request.contactEmail}</td>
+                    <td className="py-3 px-4">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        request.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        request.status === 'approved' ? 'bg-green-100 text-green-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {request.status}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">{new Date(request.createdAt).toLocaleDateString()}</td>
+                    <td className="py-3 px-4">
+                      {request.status === 'pending' && (
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-green-600 border-green-200 hover:bg-green-50"
+                            onClick={() => handleApproveRequest(request.id)}
+                          >
+                            <Check className="h-3 w-3 mr-1" />
+                            Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-red-600 border-red-200 hover:bg-red-50"
+                            onClick={() => handleRejectRequest(request.id)}
+                          >
+                            <X className="h-3 w-3 mr-1" />
+                            Reject
+                          </Button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
