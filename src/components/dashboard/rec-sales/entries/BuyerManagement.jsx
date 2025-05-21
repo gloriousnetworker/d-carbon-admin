@@ -4,21 +4,24 @@ import { Filter, ChevronDown, ChevronLeft, ChevronRight, X } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import toast from "react-hot-toast"
+import { useToast } from "@/components/ui/use-toast"
 
 const API_URL = "https://services.dcarbon.solutions"
 
 export default function BuyerManagement({ onBack }) {
+  const { toast } = useToast()
   const [isNewBuyerModalOpen, setIsNewBuyerModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [buyers, setBuyers] = useState([])
+  const [totalPages, setTotalPages] = useState(1)
   const [selectedBuyer, setSelectedBuyer] = useState(null)
   const [filters, setFilters] = useState({
     companyName: '',
     contactName: '',
     email: ''
   })
+  const [loading, setLoading] = useState(false)
   
   const [newBuyerData, setNewBuyerData] = useState({
     companyName: '',
@@ -33,23 +36,56 @@ export default function BuyerManagement({ onBack }) {
 
   const fetchBuyers = async () => {
     try {
+      setLoading(true)
       const token = localStorage.getItem('authToken')
+      if (!token) {
+        throw new Error('No authentication token found')
+      }
+
       const response = await fetch(`${API_URL}/api/rec/buyers?page=${currentPage}&limit=10`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       })
+      
+      if (!response.ok) {
+        throw new Error('Network response was not ok')
+      }
+      
       const data = await response.json()
       if (data.status === 'success') {
-        setBuyers(data.data.buyers)
+        setBuyers(data.data.buyers || [])
+        setTotalPages(data.data.totalPages || 1)
+      } else {
+        toast({
+          title: "Error",
+          description: data.message || "Failed to fetch buyers",
+          variant: "destructive"
+        })
       }
     } catch (error) {
-      toast.error('Failed to fetch buyers')
+      console.error('Fetch buyers error:', error)
+      toast({
+        title: "Error",
+        description: "Failed to fetch buyers",
+        variant: "destructive"
+      })
+    } finally {
+      setLoading(false)
     }
   }
 
   const handleCreateBuyer = async () => {
     try {
+      if (!newBuyerData.companyName || !newBuyerData.contactName || !newBuyerData.email) {
+        toast({
+          title: "Error",
+          description: "Please fill all required fields",
+          variant: "destructive"
+        })
+        return
+      }
+
       const token = localStorage.getItem('authToken')
       const response = await fetch(`${API_URL}/api/rec/buyers`, {
         method: 'POST',
@@ -60,10 +96,17 @@ export default function BuyerManagement({ onBack }) {
         body: JSON.stringify(newBuyerData)
       })
       
+      if (!response.ok) {
+        throw new Error('Network response was not ok')
+      }
+      
       const data = await response.json()
       
       if (data.status === 'success') {
-        toast.success('Buyer created successfully')
+        toast({
+          title: "Success",
+          description: "Buyer created successfully"
+        })
         fetchBuyers()
         setIsNewBuyerModalOpen(false)
         setNewBuyerData({
@@ -73,15 +116,33 @@ export default function BuyerManagement({ onBack }) {
           address: ''
         })
       } else {
-        toast.error(data.message || 'Failed to create buyer')
+        toast({
+          title: "Error",
+          description: data.message || "Failed to create buyer",
+          variant: "destructive"
+        })
       }
     } catch (error) {
-      toast.error('Failed to create buyer')
+      console.error('Create buyer error:', error)
+      toast({
+        title: "Error",
+        description: "Failed to create buyer",
+        variant: "destructive"
+      })
     }
   }
 
   const handleUpdateBuyer = async () => {
     try {
+      if (!selectedBuyer?.id || !newBuyerData.companyName || !newBuyerData.contactName || !newBuyerData.email) {
+        toast({
+          title: "Error",
+          description: "Please fill all required fields",
+          variant: "destructive"
+        })
+        return
+      }
+
       const token = localStorage.getItem('authToken')
       const response = await fetch(`${API_URL}/api/rec/buyers/${selectedBuyer.id}`, {
         method: 'PUT',
@@ -92,17 +153,33 @@ export default function BuyerManagement({ onBack }) {
         body: JSON.stringify(newBuyerData)
       })
       
+      if (!response.ok) {
+        throw new Error('Network response was not ok')
+      }
+      
       const data = await response.json()
       
       if (data.status === 'success') {
-        toast.success('Buyer updated successfully')
+        toast({
+          title: "Success",
+          description: "Buyer updated successfully"
+        })
         fetchBuyers()
         setIsEditModalOpen(false)
       } else {
-        toast.error(data.message || 'Failed to update buyer')
+        toast({
+          title: "Error",
+          description: data.message || "Failed to update buyer",
+          variant: "destructive"
+        })
       }
     } catch (error) {
-      toast.error('Failed to update buyer')
+      console.error('Update buyer error:', error)
+      toast({
+        title: "Error",
+        description: "Failed to update buyer",
+        variant: "destructive"
+      })
     }
   }
 
@@ -119,11 +196,19 @@ export default function BuyerManagement({ onBack }) {
 
   const filteredBuyers = buyers.filter(buyer => {
     return (
-      (filters.companyName === '' || buyer.companyName.toLowerCase().includes(filters.companyName.toLowerCase())) &&
-      (filters.contactName === '' || buyer.contactName.toLowerCase().includes(filters.contactName.toLowerCase())) &&
-      (filters.email === '' || buyer.email.toLowerCase().includes(filters.email.toLowerCase()))
+      (filters.companyName === '' || (buyer.companyName && buyer.companyName.toLowerCase().includes(filters.companyName.toLowerCase()))) &&
+      (filters.contactName === '' || (buyer.contactName && buyer.contactName.toLowerCase().includes(filters.contactName.toLowerCase()))) &&
+      (filters.email === '' || (buyer.email && buyer.email.toLowerCase().includes(filters.email.toLowerCase())))
     )
   })
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#039994]"></div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -190,153 +275,208 @@ export default function BuyerManagement({ onBack }) {
               </tr>
             </thead>
             <tbody>
-              {filteredBuyers.map((buyer, index) => (
-                <tr key={buyer.id} className="border-b hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm">{index + 1}</td>
-                  <td className="px-4 py-3 text-sm">{buyer.companyName}</td>
-                  <td className="px-4 py-3 text-sm">{buyer.address}</td>
-                  <td className="px-4 py-3 text-sm">{buyer.contactName}</td>
-                  <td className="px-4 py-3 text-sm">{buyer.email}</td>
-                  <td className="px-4 py-3 text-sm">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => handleEditBuyer(buyer)}
-                    >
-                      Edit
-                    </Button>
+              {filteredBuyers.length > 0 ? (
+                filteredBuyers.map((buyer, index) => (
+                  <tr key={buyer.id} className="border-b hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm">{index + 1}</td>
+                    <td className="px-4 py-3 text-sm">{buyer.companyName}</td>
+                    <td className="px-4 py-3 text-sm">{buyer.address}</td>
+                    <td className="px-4 py-3 text-sm">{buyer.contactName}</td>
+                    <td className="px-4 py-3 text-sm">{buyer.email}</td>
+                    <td className="px-4 py-3 text-sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleEditBuyer(buyer)}
+                      >
+                        Edit
+                      </Button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="6" className="px-4 py-6 text-center text-sm text-gray-500">
+                    No buyers found
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
         
-        <div className="flex items-center justify-center p-4">
-          <div className="flex items-center space-x-2">
-            <button 
-              className="p-2 rounded-md hover:bg-gray-100 text-gray-500 flex items-center"
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-            >
-              <ChevronLeft className="h-4 w-4" />
-              <span className="ml-1">Previous</span>
-            </button>
-            <div className="flex items-center">
-              <span className="px-3 py-1">{currentPage}</span>
-              <span className="text-gray-500">of</span>
-              <span className="px-3 py-1">{Math.ceil(filteredBuyers.length / 10)}</span>
+        {filteredBuyers.length > 0 && (
+          <div className="flex items-center justify-center p-4">
+            <div className="flex items-center space-x-2">
+              <button 
+                className="p-2 rounded-md hover:bg-gray-100 text-gray-500 flex items-center"
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span className="ml-1">Previous</span>
+              </button>
+              <div className="flex items-center">
+                <span className="px-3 py-1">{currentPage}</span>
+                <span className="text-gray-500">of</span>
+                <span className="px-3 py-1">{totalPages}</span>
+              </div>
+              <button 
+                className="p-2 rounded-md hover:bg-gray-100 text-gray-500 flex items-center"
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+              >
+                <span className="mr-1">Next</span>
+                <ChevronRight className="h-4 w-4" />
+              </button>
             </div>
-            <button 
-              className="p-2 rounded-md hover:bg-gray-100 text-[#039994] flex items-center"
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(filteredBuyers.length / 10)))}
-              disabled={currentPage === Math.ceil(filteredBuyers.length / 10)}
-            >
-              <span className="mr-1">Next</span>
-              <ChevronRight className="h-4 w-4" />
-            </button>
           </div>
-        </div>
+        )}
       </div>
-      
-      <NewBuyerModal 
-        isOpen={isNewBuyerModalOpen}
-        onClose={() => setIsNewBuyerModalOpen(false)}
-        buyerData={newBuyerData}
-        setBuyerData={setNewBuyerData}
-        onSubmit={handleCreateBuyer}
-        mode="create"
-      />
-      
-      <NewBuyerModal 
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        buyerData={newBuyerData}
-        setBuyerData={setNewBuyerData}
-        onSubmit={handleUpdateBuyer}
-        mode="edit"
-      />
-    </div>
-  )
-}
 
-function NewBuyerModal({ isOpen, onClose, buyerData, setBuyerData, onSubmit, mode }) {
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-[#039994]">
-            {mode === "create" ? "New Buyer" : "Edit Buyer"}
-          </DialogTitle>
-          <button 
-            className="absolute right-4 top-4 text-gray-500 hover:text-gray-700"
-            onClick={onClose}
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </DialogHeader>
-        <div className="border-t border-gray-200 pt-4">
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Company Name
+      {/* New Buyer Modal */}
+      <Dialog open={isNewBuyerModalOpen} onOpenChange={setIsNewBuyerModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add New Buyer</DialogTitle>
+            <button 
+              onClick={() => setIsNewBuyerModalOpen(false)}
+              className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Company Name *
               </label>
-              <Input 
-                placeholder="Company Name" 
-                value={buyerData.companyName}
-                onChange={(e) => setBuyerData({...buyerData, companyName: e.target.value})}
+              <Input
+                placeholder="Enter company name"
+                value={newBuyerData.companyName}
+                onChange={(e) => setNewBuyerData({...newBuyerData, companyName: e.target.value})}
               />
             </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Contact Name
+            <div className="space-y-2">
+              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Contact Name *
               </label>
-              <Input 
-                placeholder="Contact Name" 
-                value={buyerData.contactName}
-                onChange={(e) => setBuyerData({...buyerData, contactName: e.target.value})}
+              <Input
+                placeholder="Enter contact name"
+                value={newBuyerData.contactName}
+                onChange={(e) => setNewBuyerData({...newBuyerData, contactName: e.target.value})}
               />
             </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Contact Email address
+            <div className="space-y-2">
+              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Email *
               </label>
-              <Input 
-                placeholder="name@domain.com" 
+              <Input
                 type="email"
-                value={buyerData.email}
-                onChange={(e) => setBuyerData({...buyerData, email: e.target.value})}
+                placeholder="Enter email"
+                value={newBuyerData.email}
+                onChange={(e) => setNewBuyerData({...newBuyerData, email: e.target.value})}
               />
             </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+            <div className="space-y-2">
+              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                 Address
               </label>
-              <Input 
-                placeholder="Input Address" 
-                value={buyerData.address}
-                onChange={(e) => setBuyerData({...buyerData, address: e.target.value})}
+              <Input
+                placeholder="Enter address"
+                value={newBuyerData.address}
+                onChange={(e) => setNewBuyerData({...newBuyerData, address: e.target.value})}
               />
             </div>
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => setIsNewBuyerModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                className="bg-[#039994] hover:bg-[#028a85] text-white"
+                onClick={handleCreateBuyer}
+              >
+                Create Buyer
+              </Button>
+            </div>
           </div>
-          
-          <div className="mt-6 flex justify-between">
-            <Button variant="outline" onClick={onClose}>
-              Back
-            </Button>
-            <Button 
-              className="bg-[#039994] hover:bg-[#028a85] text-white"
-              onClick={onSubmit}
-              disabled={!buyerData.companyName || !buyerData.contactName || !buyerData.email}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Buyer Modal */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Buyer</DialogTitle>
+            <button 
+              onClick={() => setIsEditModalOpen(false)}
+              className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100"
             >
-              {mode === "create" ? "Create" : "Update"}
-            </Button>
+              <X className="h-4 w-4" />
+            </button>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Company Name *
+              </label>
+              <Input
+                placeholder="Enter company name"
+                value={newBuyerData.companyName}
+                onChange={(e) => setNewBuyerData({...newBuyerData, companyName: e.target.value})}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Contact Name *
+              </label>
+              <Input
+                placeholder="Enter contact name"
+                value={newBuyerData.contactName}
+                onChange={(e) => setNewBuyerData({...newBuyerData, contactName: e.target.value})}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Email *
+              </label>
+              <Input
+                type="email"
+                placeholder="Enter email"
+                value={newBuyerData.email}
+                onChange={(e) => setNewBuyerData({...newBuyerData, email: e.target.value})}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Address
+              </label>
+              <Input
+                placeholder="Enter address"
+                value={newBuyerData.address}
+                onChange={(e) => setNewBuyerData({...newBuyerData, address: e.target.value})}
+              />
+            </div>
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => setIsEditModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                className="bg-[#039994] hover:bg-[#028a85] text-white"
+                onClick={handleUpdateBuyer}
+              >
+                Update Buyer
+              </Button>
+            </div>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+    </div>
   )
 }

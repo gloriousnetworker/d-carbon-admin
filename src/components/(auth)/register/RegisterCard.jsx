@@ -3,7 +3,6 @@
 import { useState, Suspense } from 'react';
 import axios from 'axios';
 import Loader from '../../../components/loader/Loader';
-import EmailModal from '../../../components/modals/EmailModal';
 import { toast } from 'react-hot-toast';
 
 // Import our custom styles from styles.js
@@ -22,7 +21,6 @@ import {
 function AdminRegisterCardContent() {
   const [loading, setLoading] = useState(false);
   const [passwordVisible, setPasswordVisible] = useState(false);
-  const [showModal, setShowModal] = useState(false);
   const [error, setError] = useState('');
 
   // Form field states
@@ -71,13 +69,10 @@ function AdminRegisterCardContent() {
         { headers: { 'Content-Type': 'application/json' } }
       );
   
-      // Store the full response in local storage
-      localStorage.setItem('adminData', JSON.stringify(response.data));
-      // Store email separately for verification
-      localStorage.setItem('userEmail', email);
-      
       toast.success('Admin registration successful');
-      setShowModal(true);
+      
+      // Redirect to login page directly - no email verification needed
+      window.location.href = '/login';
     } catch (err) {
       console.error('Registration error:', err);
       toast.error(err.response?.data?.message || 'Admin registration failed');
@@ -297,9 +292,6 @@ function AdminRegisterCardContent() {
           </p>
         </div>
       </div>
-
-      {/* Email Verification Modal */}
-      {showModal && <EmailModal closeModal={() => setShowModal(false)} />}
     </>
   );
 }

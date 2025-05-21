@@ -1,71 +1,88 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ChevronLeft, ChevronRight, Filter } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 
-// Sample data for the Commercial REC table - reduced to 3 rows
-const commercialRecData = [
-  {
-    guid: "GUID",
-    userId: "User ID",
-    address: "Address",
-    startDate: "16-03-2",
-    endDate: "16-03-2",
-    vintage: "16-03-2",
-    mwhReported: "3.321",
-    startingRECs: "20",
-    recsGenerated: "3",
-    proRataRECSold: "0.49",
-    recsEnd: "22.51",
-    periodRECsSold: "500",
-    proRata: "0.01%",
-    salePrice: "$22.00",
-    revShare: "60%",
-    periodEarned: "$6.47",
-  },
-  {
-    guid: "GUID",
-    userId: "User ID",
-    address: "Address",
-    startDate: "16-03-2",
-    endDate: "16-03-2",
-    vintage: "16-03-2",
-    mwhReported: "3.321",
-    startingRECs: "20",
-    recsGenerated: "3",
-    proRataRECSold: "0.49",
-    recsEnd: "22.51",
-    periodRECsSold: "500",
-    proRata: "0.01%",
-    salePrice: "$22.00",
-    revShare: "60%",
-    periodEarned: "$6.47",
-  },
-  {
-    guid: "GUID",
-    userId: "User ID",
-    address: "Address",
-    startDate: "16-03-2",
-    endDate: "16-03-2",
-    vintage: "16-03-2",
-    mwhReported: "3.321",
-    startingRECs: "20",
-    recsGenerated: "3",
-    proRataRECSold: "0.49",
-    recsEnd: "22.51",
-    periodRECsSold: "500",
-    proRata: "0.01%",
-    salePrice: "$22.00",
-    revShare: "60%",
-    periodEarned: "$6.47",
-  }
-]
-
 export default function CommercialRECGeneration() {
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [data, setData] = useState([])
+  const [metadata, setMetadata] = useState({
+    total: 0,
+    page: 1,
+    limit: 10,
+    totalPages: 0,
+    hasNextPage: false,
+    hasPrevPage: false
+  })
   const [currentPage, setCurrentPage] = useState(1)
-  const totalPages = 4
+
+  const fetchCommercialData = async (page = 1) => {
+    setLoading(true)
+    try {
+      // Get the auth token from local storage
+      const authToken = localStorage.getItem("authToken")
+      
+      if (!authToken) {
+        throw new Error("Authentication token not found")
+      }
+
+      const response = await fetch(`https://services.dcarbon.solutions/api/admin/meter-records/commercial?page=${page}`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${authToken}`,
+          "Content-Type": "application/json"
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error(`API request failed with status ${response.status}`)
+      }
+
+      const result = await response.json()
+      
+      if (result.status === "success") {
+        setData(result.data.records)
+        setMetadata(result.data.metadata)
+      } else {
+        throw new Error(result.message || "Failed to fetch data")
+      }
+    } catch (err) {
+      setError(err.message)
+      console.error("Error fetching commercial records:", err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchCommercialData(currentPage)
+  }, [currentPage])
+
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage)
+  }
+
+  // Format date string to a more readable format
+  const formatDate = (dateString) => {
+    if (!dateString) return "-"
+    const date = new Date(dateString)
+    return date.toLocaleDateString()
+  }
+
+  // Format number to show a fixed number of decimal places
+  const formatNumber = (num, decimals = 4) => {
+    if (num === undefined || num === null) return "-"
+    return Number(num).toFixed(decimals)
+  }
+
+  // Format kWh values
+  const formatKWh = (value) => {
+    if (value === undefined || value === null) return "-"
+    return formatNumber(value, 3)
+  }
 
   return (
     <Card className="border-gray-200 mb-6">
@@ -78,75 +95,116 @@ export default function CommercialRECGeneration() {
           </Button>
         </div>
 
+        {/* Error state */}
+        {error && (
+          <div className="p-6 text-center text-red-500">
+            <p>Error loading data: {error}</p>
+            <Button 
+              variant="outline" 
+              className="mt-4"
+              onClick={() => {
+                setError(null)
+                fetchCommercialData(currentPage)
+              }}
+            >
+              Retry
+            </Button>
+          </div>
+        )}
+
+        {/* Loading state */}
+        {loading && !error && (
+          <div className="p-6 text-center text-gray-500">
+            <p>Loading commercial meter records...</p>
+          </div>
+        )}
+
         {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-y text-sm">
-                <th className="py-3 px-2 text-left font-medium">GUID</th>
-                <th className="py-3 px-2 text-left font-medium">User ID</th>
-                <th className="py-3 px-2 text-left font-medium">Address</th>
-                <th className="py-3 px-2 text-left font-medium">Start date</th>
-                <th className="py-3 px-2 text-left font-medium">End date</th>
-                <th className="py-3 px-2 text-left font-medium">Vintage</th>
-                <th className="py-3 px-2 text-left font-medium">MWh Reported</th>
-                <th className="py-3 px-2 text-left font-medium">Starting RECs</th>
-                <th className="py-3 px-2 text-left font-medium">RECs Generated</th>
-                <th className="py-3 px-2 text-left font-medium">Pro-Rata REC sold</th>
-                <th className="py-3 px-2 text-left font-medium">RECs End</th>
-                <th className="py-3 px-2 text-left font-medium">Period RECs sold</th>
-                <th className="py-3 px-2 text-left font-medium">Pro-Rata</th>
-                <th className="py-3 px-2 text-left font-medium">Sale Price</th>
-                <th className="py-3 px-2 text-left font-medium">Rev. Share</th>
-                <th className="py-3 px-2 text-left font-medium">Period Earned</th>
-              </tr>
-            </thead>
-            <tbody>
-              {commercialRecData.map((item, index) => (
-                <tr key={index} className="border-b text-sm hover:bg-gray-50">
-                  <td className="py-3 px-2">{item.guid}</td>
-                  <td className="py-3 px-2">{item.userId}</td>
-                  <td className="py-3 px-2">{item.address}</td>
-                  <td className="py-3 px-2">{item.startDate}</td>
-                  <td className="py-3 px-2">{item.endDate}</td>
-                  <td className="py-3 px-2">{item.vintage}</td>
-                  <td className="py-3 px-2">{item.mwhReported}</td>
-                  <td className="py-3 px-2">{item.startingRECs}</td>
-                  <td className="py-3 px-2">{item.recsGenerated}</td>
-                  <td className="py-3 px-2">{item.proRataRECSold}</td>
-                  <td className="py-3 px-2">{item.recsEnd}</td>
-                  <td className="py-3 px-2">{item.periodRECsSold}</td>
-                  <td className="py-3 px-2">{item.proRata}</td>
-                  <td className="py-3 px-2">{item.salePrice}</td>
-                  <td className="py-3 px-2">{item.revShare}</td>
-                  <td className="py-3 px-2">{item.periodEarned}</td>
+        {!loading && !error && (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-y text-sm">
+                  <th className="py-3 px-2 text-left font-medium">ID</th>
+                  <th className="py-3 px-2 text-left font-medium">Meter UID</th>
+                  <th className="py-3 px-2 text-left font-medium">Facility Name</th>
+                  <th className="py-3 px-2 text-left font-medium">Address</th>
+                  <th className="py-3 px-2 text-left font-medium">User</th>
+                  <th className="py-3 px-2 text-left font-medium">Utility</th>
+                  <th className="py-3 px-2 text-left font-medium">Start Date</th>
+                  <th className="py-3 px-2 text-left font-medium">End Date</th>
+                  <th className="py-3 px-2 text-left font-medium">Interval kWh</th>
+                  <th className="py-3 px-2 text-left font-medium">Forward kWh</th>
+                  <th className="py-3 px-2 text-left font-medium">Net kWh</th>
+                  <th className="py-3 px-2 text-left font-medium">Reverse kWh</th>
+                  <th className="py-3 px-2 text-left font-medium">Points</th>
+                  <th className="py-3 px-2 text-left font-medium">RECs</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {data.length > 0 ? (
+                  data.map((item) => (
+                    <tr key={item.id} className="border-b text-sm hover:bg-gray-50">
+                      <td className="py-3 px-2">{item.id.slice(0, 8)}...</td>
+                      <td className="py-3 px-2">{item.meterUid}</td>
+                      <td className="py-3 px-2">{item.commercialFacility?.facilityName || '-'}</td>
+                      <td className="py-3 px-2">{item.utilityServiceAddress}</td>
+                      <td className="py-3 px-2">
+                        {item.commercialFacility?.commercialUser?.user ? 
+                          `${item.commercialFacility.commercialUser.user.firstName} ${item.commercialFacility.commercialUser.user.lastName}` : 
+                          '-'}
+                      </td>
+                      <td className="py-3 px-2">{item.utility}</td>
+                      <td className="py-3 px-2">{formatDate(item.intervalStart)}</td>
+                      <td className="py-3 px-2">{formatDate(item.intervalEnd)}</td>
+                      <td className="py-3 px-2">{formatKWh(item.intervalKWh)}</td>
+                      <td className="py-3 px-2">{formatKWh(item.fwdKWh)}</td>
+                      <td className="py-3 px-2">{formatKWh(item.netKWh)}</td>
+                      <td className="py-3 px-2">{formatKWh(item.revKWh)}</td>
+                      <td className="py-3 px-2">{formatNumber(item.points)}</td>
+                      <td className="py-3 px-2">{formatNumber(item.recs, 8)}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="14" className="py-8 text-center text-gray-500">
+                      No records found
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* Pagination */}
-        <div className="p-4 flex items-center justify-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            disabled={currentPage === 1}
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="text-sm">
-            {currentPage} of {totalPages}
-          </span>
-          <Button
-            variant="ghost"
-            size="icon"
-            disabled={currentPage === totalPages}
-            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+        <div className="p-4 flex items-center justify-between">
+          <div className="text-sm text-gray-500">
+            {!loading && !error && metadata.total > 0 && 
+              `Showing ${(metadata.page - 1) * metadata.limit + 1} to ${Math.min(metadata.page * metadata.limit, metadata.total)} of ${metadata.total} records`
+            }
+          </div>
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              disabled={loading || !metadata.hasPrevPage}
+              onClick={() => handlePageChange(currentPage - 1)}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm">
+              {currentPage} of {metadata.totalPages || 1}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              disabled={loading || !metadata.hasNextPage}
+              onClick={() => handlePageChange(currentPage + 1)}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

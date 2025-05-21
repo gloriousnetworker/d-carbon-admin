@@ -10,16 +10,25 @@ export default function AdminLoginCard() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const [error, setError] = useState('');
 
   const togglePasswordVisibility = () => {
     setPasswordVisible(!passwordVisible);
   };
 
   const handleLogin = async () => {
+    // Basic validation
+    if (!email.trim() || !password.trim()) {
+      setError('Please enter both email and password');
+      return;
+    }
+    
     setLoading(true);
+    setError('');
+    
     try {
       const baseUrl = 'https://services.dcarbon.solutions';
-      const url = `${baseUrl}/api/auth/login`;
+      const url = `${baseUrl}/api/auth/admin/login`;
 
       const response = await axios.post(
         url,
@@ -27,33 +36,40 @@ export default function AdminLoginCard() {
         { headers: { 'Content-Type': 'application/json' } }
       );
 
+      // Store the entire response in localStorage like the normal login
       localStorage.setItem('loginResponse', JSON.stringify(response.data));
 
-      const { user, token, requiresTwoFactor, tempToken } = response.data.data;
-
-      // Check if login requires Two Factor Authentication
-      if (requiresTwoFactor) {
-        localStorage.setItem('tempToken', tempToken);
-        localStorage.setItem('userId', user.id);
-        toast.success(response.data.message || '2FA verification required');
-        window.location.href = '/login/two-factor-authentication';
-        return;
+      const { status, message, data } = response.data;
+      
+      if (status !== 'success') {
+        throw new Error(message || 'Login failed');
       }
 
-      // Store admin details and token
-      localStorage.setItem('userFirstName', user.firstName);
-      localStorage.setItem('userProfilePicture', user.profilePicture || '');
-      localStorage.setItem('authToken', token);
-      localStorage.setItem('userId', user.id);
-      localStorage.setItem('userRole', user.role || '');
+      const { admin, token } = data;
 
+      // Verify admin role
+      if (admin.role !== 'ADMIN') {
+        throw new Error('Access denied. Admin privileges required.');
+      }
+
+      // Store token and essential admin info
+      localStorage.setItem('authToken', token);
+      localStorage.setItem('userId', admin.id);
+      localStorage.setItem('userFirstName', admin.firstName);
+      if (admin.profilePicture) {
+        localStorage.setItem('userProfilePicture', admin.profilePicture);
+      }
+      
       toast.success('Admin login successful');
       
       // Redirect to admin dashboard
       window.location.href = '/admin-dashboard';
       
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Login failed');
+      console.error('Login error:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Login failed';
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -94,6 +110,13 @@ export default function AdminLoginCard() {
 
         {/* Horizontal Line */}
         <hr className="border-t-2 border-gray-200 mb-4 opacity-70" />
+
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+            <span className="block sm:inline font-sfpro text-[14px] font-[400]">{error}</span>
+          </div>
+        )}
 
         {/* Email Field */}
         <div className="space-y-6">

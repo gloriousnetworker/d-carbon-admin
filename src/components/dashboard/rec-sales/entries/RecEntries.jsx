@@ -26,6 +26,7 @@ export default function RecEntries() {
     vintageDate: ''
   })
   const [loading, setLoading] = useState(true)
+  const [buyersLoading, setBuyersLoading] = useState(true)
   
   const [newRecData, setNewRecData] = useState({
     transferDate: new Date(),
@@ -39,12 +40,17 @@ export default function RecEntries() {
     const fetchData = async () => {
       try {
         setLoading(true)
+        const token = localStorage.getItem('authToken')
+        if (!token) {
+          throw new Error('No authentication token found')
+        }
+        
         await Promise.all([
           fetchRecEntries(),
-          fetchBuyers(),
           fetchCurrentPrice()
         ])
       } catch (error) {
+        console.error('Fetch error:', error)
         toast.error('Failed to load data')
       } finally {
         setLoading(false)
@@ -52,6 +58,12 @@ export default function RecEntries() {
     }
     fetchData()
   }, [])
+
+  useEffect(() => {
+    if (isNewRecModalOpen) {
+      fetchAllBuyers()
+    }
+  }, [isNewRecModalOpen])
 
   const fetchRecEntries = async () => {
     try {
@@ -61,6 +73,9 @@ export default function RecEntries() {
           'Authorization': `Bearer ${token}`
         }
       })
+      if (!response.ok) {
+        throw new Error('Network response was not ok')
+      }
       const data = await response.json()
       if (data.status === 'success') {
         setRecEntries(data.data?.entries || [])
@@ -69,19 +84,24 @@ export default function RecEntries() {
         toast.error(data.message || 'Failed to fetch REC entries')
       }
     } catch (error) {
+      console.error('Fetch REC entries error:', error)
       setRecEntries([])
       toast.error('Failed to fetch REC entries')
     }
   }
 
-  const fetchBuyers = async () => {
+  const fetchAllBuyers = async () => {
     try {
+      setBuyersLoading(true)
       const token = localStorage.getItem('authToken')
-      const response = await fetch(`${API_URL}/api/rec/buyers`, {
+      const response = await fetch(`${API_URL}/api/rec/buyers/all`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       })
+      if (!response.ok) {
+        throw new Error('Network response was not ok')
+      }
       const data = await response.json()
       if (data.status === 'success') {
         setBuyers(data.data?.buyers || [])
@@ -90,8 +110,11 @@ export default function RecEntries() {
         toast.error(data.message || 'Failed to fetch buyers')
       }
     } catch (error) {
+      console.error('Fetch buyers error:', error)
       setBuyers([])
       toast.error('Failed to fetch buyers')
+    } finally {
+      setBuyersLoading(false)
     }
   }
 
@@ -103,6 +126,9 @@ export default function RecEntries() {
           'Authorization': `Bearer ${token}`
         }
       })
+      if (!response.ok) {
+        throw new Error('Network response was not ok')
+      }
       const data = await response.json()
       if (data.status === 'success') {
         setCurrentPrice(data.data?.price || 0)
@@ -111,6 +137,7 @@ export default function RecEntries() {
         toast.error(data.message || 'Failed to fetch current price')
       }
     } catch (error) {
+      console.error('Fetch current price error:', error)
       setCurrentPrice(0)
       toast.error('Failed to fetch current price')
     }
@@ -137,13 +164,16 @@ export default function RecEntries() {
         })
       })
       
+      if (!response.ok) {
+        throw new Error('Network response was not ok')
+      }
+      
       const data = await response.json()
       
       if (data.status === 'success') {
         toast.success('REC sale created successfully')
         fetchRecEntries()
         setIsNewRecModalOpen(false)
-        // Reset form
         setNewRecData({
           transferDate: new Date(),
           vintageDate: new Date(),
@@ -155,6 +185,7 @@ export default function RecEntries() {
         toast.error(data.message || 'Failed to create REC sale')
       }
     } catch (error) {
+      console.error('Create REC sale error:', error)
       toast.error('Failed to create REC sale')
     }
   }
@@ -171,6 +202,10 @@ export default function RecEntries() {
         body: JSON.stringify({ price })
       })
       
+      if (!response.ok) {
+        throw new Error('Network response was not ok')
+      }
+      
       const data = await response.json()
       
       if (data.status === 'success') {
@@ -180,6 +215,7 @@ export default function RecEntries() {
         toast.error(data.message || 'Failed to set price')
       }
     } catch (error) {
+      console.error('Set price error:', error)
       toast.error('Failed to set price')
     }
   }
@@ -363,6 +399,7 @@ export default function RecEntries() {
         isOpen={isNewRecModalOpen}
         onClose={() => setIsNewRecModalOpen(false)}
         buyers={buyers}
+        buyersLoading={buyersLoading}
         currentPrice={currentPrice}
         newRecData={newRecData}
         setNewRecData={setNewRecData}
@@ -377,6 +414,7 @@ function NewRecSaleModal({
   isOpen, 
   onClose, 
   buyers, 
+  buyersLoading,
   currentPrice,
   newRecData,
   setNewRecData,
@@ -491,27 +529,33 @@ function NewRecSaleModal({
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 REC Buyers *
               </label>
-              <Select
-                value={newRecData.recBuyer}
-                onValueChange={(value) => setNewRecData({...newRecData, recBuyer: value})}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Choose buyer" />
-                </SelectTrigger>
-                <SelectContent>
-                  {buyers.length > 0 ? (
-                    buyers.map((buyer) => (
-                      <SelectItem key={buyer.id} value={buyer.id}>
-                        {buyer.companyName}
+              {buyersLoading ? (
+                <div className="flex justify-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-[#039994]"></div>
+                </div>
+              ) : (
+                <Select
+                  value={newRecData.recBuyer}
+                  onValueChange={(value) => setNewRecData({...newRecData, recBuyer: value})}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Choose buyer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {buyers.length > 0 ? (
+                      buyers.map((buyer) => (
+                        <SelectItem key={buyer.id} value={buyer.id.toString()}>
+                          {buyer.companyName}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="no-buyers" disabled>
+                        No buyers available. Please add buyers first.
                       </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="" disabled>
-                      No buyers available
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
+                    )}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             
             <div>
@@ -531,7 +575,7 @@ function NewRecSaleModal({
             <Button 
               className="bg-[#039994] hover:bg-[#028a85] text-white"
               onClick={handleCreateRecSale}
-              disabled={!newRecData.recBuyer || !newRecData.amountOfRecs}
+              disabled={!newRecData.recBuyer || !newRecData.amountOfRecs || buyersLoading}
             >
               Done
             </Button>
