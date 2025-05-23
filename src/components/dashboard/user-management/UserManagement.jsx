@@ -31,7 +31,7 @@ import SendReminderModal from "./modals/customerManagement/SendReminderModal";
 import InviteCustomerModal from "./modals/customerManagement/InviteCustomerModal";
 import InviteBulkCustomersModal from "./modals/customerManagement/InviteBulkCustomersModal";
 import PartnerManagement from "./PartnerManagement";
-import UtilityProviderManagement from "./UtilityProviderManagement";
+import UtilityProviderManagement from "./utility-provider-management/UtilityProviderManagement";
 
 const mockCustomers = [
   { id: 1, name: "Alice Johnson", type: "Residential", utility: "Water Co.", finance: "Finance Comp.", address: "123 Main St", date: "16-03-2025", status: "Registered", hasIssue: true },
