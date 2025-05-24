@@ -2,13 +2,16 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  FiGrid,
+  FiHome,
   FiUsers,
-  FiSettings,
+  FiPieChart,
+  FiLayers,
+  FiDollarSign,
+  FiCreditCard,
+  FiFileText,
   FiHeadphones,
   FiUser,
-  FiChevronDown,
-  FiChevronRight
+  FiLogOut
 } from 'react-icons/fi';
 import Image from 'next/image';
 import { useProfile } from '@/components/contexts/ProfileContext';
@@ -20,7 +23,6 @@ const DashboardSidebar = ({
   hasPendingActions = false,
 }) => {
   const [isClient, setIsClient] = useState(false);
-  const [isCustomersOpen, setIsCustomersOpen] = useState(false);
   const { profile, loading } = useProfile();
 
   useEffect(() => {
@@ -29,34 +31,26 @@ const DashboardSidebar = ({
 
   const isActive = (section) => section === selectedSection;
 
-  // Check if any customer subsection is active
-  const isCustomerSectionActive = () => {
-    return isActive('userManagement') || isActive('recSalesManagement');
-  };
-
   // Style constants
-  const sidebarContainer = 'bg-[#3B4859] w-64 min-h-screen flex flex-col overflow-y-auto hide-scrollbar';
-  const headerContainer = 'px-6 py-6 border-b border-[#4A5568]';
-  const headerTitle = 'text-white text-xl font-semibold';
-  const menuSection = 'px-4 py-4';
-  const menuItemBase = 'flex items-center gap-3 px-4 py-3 rounded-lg w-full text-left transition-all duration-200 text-sm font-medium mb-1';
-  const menuItemActive = 'bg-[#039994] text-white shadow-lg';
-  const menuItemInactive = 'text-gray-300 hover:bg-[#4A5568] hover:text-white';
-  const submenuItemBase = 'flex items-center gap-3 px-8 py-2 rounded-lg w-full text-left transition-all duration-200 text-sm font-normal mb-1';
-  const submenuItemActive = 'bg-[#039994] text-white shadow-lg';
-  const submenuItemInactive = 'text-gray-400 hover:bg-[#4A5568] hover:text-white';
-  const iconBase = 'w-5 h-5 flex-shrink-0';
-  const userInfoContainer = 'px-4 py-4 mt-auto border-t border-[#4A5568]';
-  const userProfile = 'flex items-center space-x-3 mb-3 px-2';
-  const greetingText = 'text-gray-300 text-sm';
-  const userName = 'text-white text-sm font-medium';
+  const sidebarContainer = 'bg-white w-64 min-h-screen flex flex-col border-r border-gray-200 overflow-y-auto hide-scrollbar';
+  const sidebarSection = 'px-4 py-2';
+  const sidebarDivider = 'my-2 border-gray-200 mx-4';
+  const sectionHeading = 'text-xs font-sfpro font-normal tracking-[0.2em] text-[#1E1E1E] uppercase';
+  const menuItemBase = 'flex items-center gap-2 px-4 py-2 rounded-md w-full text-left transition-colors text-sm font-sfpro';
+  const menuItemActive = 'bg-[#039994] text-white';
+  const menuItemInactive = 'text-[#1E1E1E] hover:bg-gray-100';
+  const iconBase = 'w-4 h-4';
+  const userInfoContainer = 'px-4 py-3 flex flex-col items-start mt-auto';
+  const userProfile = 'flex items-center space-x-3 mb-3';
+  const greetingText = 'text-[#1E1E1E] font-sfpro text-sm';
+  const userName = 'text-[#1E1E1E] font-sfpro text-sm font-semibold';
   const activeDot = 'w-2 h-2 rounded-full bg-[#039994] ml-2';
 
   if (!isClient) {
     return (
       <aside className={sidebarContainer}>
-        <div className={headerContainer}>
-          <div className="h-6 w-32 bg-gray-600 rounded"></div>
+        <div className="flex justify-center p-4">
+          <div className="h-8 w-[120px] bg-gray-200 rounded"></div>
         </div>
       </aside>
     );
@@ -68,96 +62,123 @@ const DashboardSidebar = ({
         <div className="md:hidden flex justify-end p-4">
           <button
             onClick={toggleSidebar}
-            className="text-gray-300 hover:text-white text-2xl"
+            className="text-gray-700 hover:text-gray-900 text-2xl"
           >
             &times;
           </button>
         </div>
       )}
 
-      {/* Header */}
-      <div className={headerContainer}>
-        <h1 className={headerTitle}>Admin Panel</h1>
+      <div className="flex justify-center p-4">
+        <Image
+          src="/dashboard_images/logo.png"
+          alt="Company Logo"
+          width={120}
+          height={40}
+          className="h-8 w-auto"
+        />
       </div>
 
-      {/* Main Navigation */}
-      <nav className={menuSection}>
-        {/* Dashboard */}
+      {/* MAIN MENU */}
+      <div className={sidebarSection}>
+        <h3 className={sectionHeading}>Dashboard</h3>
+      </div>
+      <nav className="flex flex-col space-y-1 px-2">
         <button
           onClick={() => onSectionChange('overview')}
           className={`${menuItemBase} ${isActive('overview') ? menuItemActive : menuItemInactive}`}
         >
-          <FiGrid className={iconBase} />
-          <span>Dashboard</span>
+          <FiHome className={iconBase} color={isActive('overview') ? '#FFFFFF' : '#039994'} />
+          <span>Overview</span>
         </button>
-
-        {/* Customers with Dropdown */}
-        <div className="mb-1">
-          <button
-            onClick={() => setIsCustomersOpen(!isCustomersOpen)}
-            className={`${menuItemBase} ${isCustomerSectionActive() ? menuItemActive : menuItemInactive}`}
-          >
-            <FiUsers className={iconBase} />
-            <span className="flex-1 text-left">Customers</span>
-            {isCustomersOpen ? (
-              <FiChevronDown className="w-4 h-4 flex-shrink-0" />
-            ) : (
-              <FiChevronRight className="w-4 h-4 flex-shrink-0" />
-            )}
-          </button>
-          
-          {/* Submenu */}
-          {isCustomersOpen && (
-            <div className="mt-1 space-y-1">
-              <button
-                onClick={() => onSectionChange('userManagement')}
-                className={`${submenuItemBase} ${isActive('userManagement') ? submenuItemActive : submenuItemInactive}`}
-              >
-                <FiSettings className="w-4 h-4 flex-shrink-0" />
-                <span>Manage Customers</span>
-              </button>
-              <button
-                onClick={() => onSectionChange('recSalesManagement')}
-                className={`${submenuItemBase} ${isActive('recSalesManagement') ? submenuItemActive : submenuItemInactive}`}
-              >
-                <FiUsers className="w-4 h-4 flex-shrink-0" />
-                <span>List Customers</span>
-              </button>
-            </div>
-          )}
-        </div>
+        <button
+          onClick={() => onSectionChange('userManagement')}
+          className={`${menuItemBase} ${isActive('userManagement') ? menuItemActive : menuItemInactive}`}
+        >
+          <FiUsers className={iconBase} color={isActive('userManagement') ? '#FFFFFF' : '#039994'} />
+          <span>User Management</span>
+        </button>
+        <button
+          onClick={() => onSectionChange('recSalesManagement')}
+          className={`${menuItemBase} ${isActive('recSalesManagement') ? menuItemActive : menuItemInactive}`}
+        >
+          <FiPieChart className={iconBase} color={isActive('recSalesManagement') ? '#FFFFFF' : '#039994'} />
+          <span>REC Sales Management</span>
+        </button>
+        <button
+          onClick={() => onSectionChange('resiGroupManagement')}
+          className={`${menuItemBase} ${isActive('resiGroupManagement') ? menuItemActive : menuItemInactive}`}
+        >
+          <FiLayers className={iconBase} color={isActive('resiGroupManagement') ? '#FFFFFF' : '#039994'} />
+          <span>Resi. Group Management</span>
+        </button>
+        <button
+          onClick={() => onSectionChange('commissionStructure')}
+          className={`${menuItemBase} ${isActive('commissionStructure') ? menuItemActive : menuItemInactive}`}
+        >
+          <FiDollarSign className={iconBase} color={isActive('commissionStructure') ? '#FFFFFF' : '#039994'} />
+          <span>Commission Structure</span>
+        </button>
+        <button
+          onClick={() => onSectionChange('payoutProcessing')}
+          className={`${menuItemBase} ${isActive('payoutProcessing') ? menuItemActive : menuItemInactive}`}
+        >
+          <FiCreditCard className={iconBase} color={isActive('payoutProcessing') ? '#FFFFFF' : '#039994'} />
+          <span>Payout Processing</span>
+        </button>
+        <button
+          onClick={() => onSectionChange('reporting')}
+          className={`${menuItemBase} ${isActive('reporting') ? menuItemActive : menuItemInactive}`}
+        >
+          <FiFileText className={iconBase} color={isActive('reporting') ? '#FFFFFF' : '#039994'} />
+          <span>Reporting</span>
+        </button>
       </nav>
 
-      {/* Settings Section */}
-      <div className="px-4 py-2">
-        <div className="border-t border-[#4A5568] pt-4">
-          <button
-            onClick={() => onSectionChange('myAccount')}
-            className={`${menuItemBase} ${isActive('myAccount') ? menuItemActive : menuItemInactive}`}
-          >
-            <FiUser className={iconBase} />
-            <span>My Account</span>
-          </button>
-        </div>
-      </div>
+      <hr className={sidebarDivider} />
 
-      {/* Support Section */}
-      <div className="px-4 py-2">
+      {/* SETTINGS */}
+      <div className={sidebarSection}>
+        <h3 className={sectionHeading}>Settings</h3>
+      </div>
+      <nav className="flex flex-col space-y-1 px-2">
+        <button
+          onClick={() => onSectionChange('myAccount')}
+          className={`${menuItemBase} ${isActive('myAccount') ? menuItemActive : menuItemInactive}`}
+        >
+          <FiUser className={iconBase} color={isActive('myAccount') ? '#FFFFFF' : '#039994'} />
+          <span>My Account</span>
+        </button>
+        <button
+          onClick={() => onSectionChange('agreementManagement')}
+          className={`${menuItemBase} ${isActive('agreementManagement') ? menuItemActive : menuItemInactive}`}
+        >
+          <FiFileText className={iconBase} color={isActive('agreementManagement') ? '#FFFFFF' : '#039994'} />
+          <span>Agreement Management</span>
+        </button>
+      </nav>
+
+      <hr className={sidebarDivider} />
+
+      {/* SUPPORT */}
+      <div className={sidebarSection}>
+        <h3 className={sectionHeading}>Support</h3>
+      </div>
+      <nav className="flex flex-col space-y-1 px-2">
         <button
           onClick={() => onSectionChange('userSupport')}
           className={`${menuItemBase} ${isActive('userSupport') ? menuItemActive : menuItemInactive}`}
         >
-          <FiHeadphones className={iconBase} />
-          <span>Support</span>
+          <FiHeadphones className={iconBase} color={isActive('userSupport') ? '#FFFFFF' : '#039994'} />
+          <span>User Support</span>
         </button>
-      </div>
+      </nav>
 
-      {/* User Profile Section */}
       <div className={userInfoContainer}>
         <div className={userProfile}>
-          <div className="w-8 h-8 rounded-full overflow-hidden relative bg-[#4A5568]">
+          <div className="w-8 h-8 rounded-full overflow-hidden relative">
             {loading ? (
-              <div className="w-full h-full bg-gray-600 animate-pulse"></div>
+              <div className="w-full h-full bg-gray-200 animate-pulse"></div>
             ) : profile?.picture ? (
               <Image
                 src={profile.picture}
@@ -172,8 +193,8 @@ const DashboardSidebar = ({
                 unoptimized
               />
             ) : (
-              <div className="w-full h-full bg-[#4A5568] flex items-center justify-center">
-                <FiUser className="text-gray-400 w-4 h-4" />
+              <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                <FiUser className="text-gray-500" />
               </div>
             )}
           </div>
@@ -185,6 +206,13 @@ const DashboardSidebar = ({
             <span className={activeDot}></span>
           </div>
         </div>
+        <button
+          onClick={() => onSectionChange('logout')}
+          className={`${menuItemBase} ${isActive('logout') ? menuItemActive : menuItemInactive}`}
+        >
+          <FiLogOut className={iconBase} color={isActive('logout') ? '#FFFFFF' : '#039994'} />
+          <span>Log Out</span>
+        </button>
       </div>
     </aside>
   );
