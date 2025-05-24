@@ -40,7 +40,7 @@ export default function UserDashboard() {
     myAccount: 'My Account',
     agreementManagement: 'Agreement Management',
     userSupport: 'User Support',
-    notifications: 'Notification',
+    notifications: 'Notifications',
     helpCenter: 'Help Centre (FAQs)',
     contactSupport: 'Contact Support',
     logout: 'Log Out',
@@ -82,6 +82,7 @@ export default function UserDashboard() {
           selectedSection={activeSection}
           sectionDisplayMap={sectionDisplayMap}
           onSectionChange={handleSectionChange}
+          isSidebarCollapsed={sidebarOpen}
         />
 
         {/* Mobile Sidebar Overlay */}
