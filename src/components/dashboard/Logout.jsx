@@ -15,7 +15,7 @@ const Logout = ({ onClose, onNavigateToOverview }) => {
     toast.success('Logged out successfully');
     
     // Redirect to login page
-    router.push('/login');
+    router.push('/');
   };
 
   const handleCancel = () => {
