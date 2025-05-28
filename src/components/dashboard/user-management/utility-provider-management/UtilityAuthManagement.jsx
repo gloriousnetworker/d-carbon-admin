@@ -9,6 +9,7 @@ export default function UtilityAuthManagement({ onBack }) {
   const [auths, setAuths] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     const fetchAuths = async () => {
@@ -45,18 +46,25 @@ export default function UtilityAuthManagement({ onBack }) {
     fetchAuths();
   }, []);
 
-  const handleDeleteAuth = async (authId, userId) => {
+  const handleDeleteAuth = async (authId, userId, utilityAuthEmail) => {
     try {
+      setDeletingId(authId);
       const authToken = localStorage.getItem("authToken");
       if (!authToken) throw new Error("Authentication token not found");
       
-      const response = await fetch(`https://services.dcarbon.solutions/api/auth/utility-auth/${userId}`, {
-        method: "DELETE",
-        headers: { 
-          "Authorization": `Bearer ${authToken}`, 
-          "Content-Type": "application/json" 
+      const response = await fetch(
+        `https://services.dcarbon.solutions/api/auth/utility-auth/${userId}`,
+        {
+          method: "DELETE",
+          headers: { 
+            "Authorization": `Bearer ${authToken}`, 
+            "Content-Type": "application/json" 
+          },
+          body: JSON.stringify({
+            utilityAuthEmail: utilityAuthEmail
+          })
         }
-      });
+      );
       
       if (!response.ok) throw new Error(`Error deleting utility authorization: ${response.statusText}`);
       
@@ -70,6 +78,8 @@ export default function UtilityAuthManagement({ onBack }) {
     } catch (err) {
       toast.error(err.message);
       console.error("Error deleting utility authorization:", err);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -140,16 +150,21 @@ export default function UtilityAuthManagement({ onBack }) {
                       {auth.status}
                     </span>
                   </td>
-                  <td className="py-3 px-4">{auth.authorization_uid}</td>
+                  <td className="py-3 px-4">{auth.authorization_uid || "N/A"}</td>
                   <td className="py-3 px-4">{new Date(auth.createdAt).toLocaleDateString()}</td>
                   <td className="py-3 px-4">
                     <Button
                       size="sm"
                       variant="outline"
                       className="h-8 text-red-600 border-red-200 hover:bg-red-50"
-                      onClick={() => handleDeleteAuth(auth.id, auth.userId)}
+                      onClick={() => handleDeleteAuth(auth.id, auth.userId, auth.utilityAuthEmail)}
+                      disabled={deletingId === auth.id}
                     >
-                      <Trash2 className="h-3 w-3 mr-1" />
+                      {deletingId === auth.id ? (
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3 w-3 mr-1" />
+                      )}
                       Delete
                     </Button>
                   </td>
