@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Filter,
@@ -26,18 +26,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import CustomerDetails from "./CustomerDetails";
 import CustomerReport from "./CustomerReport";
-import FilterByModal from "./modals/customerManagement/FilterBy";
 import SendReminderModal from "./modals/customerManagement/SendReminderModal";
 import InviteCustomerModal from "./modals/customerManagement/InviteCustomerModal";
 import InviteBulkCustomersModal from "./modals/customerManagement/InviteBulkCustomersModal";
+import FilterByModal from "./modals/customerManagement/FilterBy";
 import PartnerManagement from "./PartnerManagement";
 import UtilityProviderManagement from "./utility-provider-management/UtilityProviderManagement";
-
-const mockCustomers = [
-  { id: 1, name: "Alice Johnson", type: "Residential", utility: "Water Co.", finance: "Finance Comp.", address: "123 Main St", date: "16-03-2025", status: "Registered", hasIssue: true },
-  { id: 2, name: "Bob Smith", type: "Commercial", utility: "Power Inc.", finance: "Finance Comp.", address: "456 Elm Ave", date: "16-03-2025", status: "Active", hasIssue: false },
-  { id: 3, name: "Carol Lee", type: "Residential", utility: "Gas & Co.", finance: "Finance Comp.", address: "789 Oak Blvd", date: "16-03-2025", status: "Invited", hasIssue: true },
-];
 
 export default function CustomerManagement() {
   const [currentPage, setCurrentPage] = useState(1);
@@ -46,13 +40,89 @@ export default function CustomerManagement() {
   const [showReminderModal, setShowReminderModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showBulkInviteModal, setShowBulkInviteModal] = useState(false);
-  const [currentView, setCurrentView] = useState("management"); // "management", "details", "report", "partner-management", "utility-management"
-  
-  const usersPerPage = 10;
-  const indexOfLast = currentPage * usersPerPage;
-  const indexOfFirst = indexOfLast - usersPerPage;
-  const currentUsers = mockCustomers.slice(indexOfFirst, indexOfLast);
-  const totalPages = Math.ceil(mockCustomers.length / usersPerPage);
+  const [currentView, setCurrentView] = useState("management");
+  const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [filters, setFilters] = useState({
+    customerType: "",
+    status: "",
+    utilityProvider: "",
+    documentStatus: ""
+  });
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+
+  const fetchCustomers = async () => {
+    try {
+      setLoading(true);
+      const authToken = localStorage.getItem("authToken");
+      if (!authToken) {
+        throw new Error("Authentication token not found");
+      }
+
+      const queryParams = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: "10",
+      });
+
+      // Add filters only if they have values
+      if (filters.customerType) {
+        queryParams.append("userType", filters.customerType);
+      }
+      if (filters.status) {
+        queryParams.append("status", filters.status);
+      }
+      if (filters.utilityProvider) {
+        queryParams.append("utility", filters.utilityProvider);
+      }
+      if (filters.documentStatus) {
+        if (filters.documentStatus === "issue") {
+          queryParams.append("facilityStatus", "PENDING");
+        } else if (filters.documentStatus === "verified") {
+          queryParams.append("facilityStatus", "APPROVED");
+        }
+      }
+
+      console.log("Fetching customers with params:", queryParams.toString()); // Debug log
+
+      const response = await fetch(
+        `https://services.dcarbon.solutions/api/admin/get-all-users?${queryParams}`,
+        {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("API Response:", data); // Debug log
+      
+      if (data.data && data.data.users) {
+        setCustomers(data.data.users);
+        setTotalPages(data.data.metadata?.totalPages || 1);
+        setTotalCount(data.data.metadata?.total || 0);
+      } else {
+        setCustomers([]);
+        setTotalPages(1);
+        setTotalCount(0);
+      }
+      setLoading(false);
+    } catch (err) {
+      console.error("Error fetching customers:", err);
+      setError(err.message || "An unknown error occurred");
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCustomers();
+  }, [currentPage, filters]);
 
   const handleCustomerClick = (customer) => {
     setSelectedCustomer(customer);
@@ -79,11 +149,58 @@ export default function CustomerManagement() {
     }
   };
 
+  const handleApplyFilters = (newFilters) => {
+    console.log("Applying new filters:", newFilters); // Debug log
+    setFilters(newFilters);
+    setCurrentPage(1);
+    setShowFilterModal(false);
+  };
+
+  const resetFilters = () => {
+    const emptyFilters = {
+      customerType: "",
+      status: "",
+      utilityProvider: "",
+      documentStatus: ""
+    };
+    console.log("Resetting filters to:", emptyFilters); // Debug log
+    setFilters(emptyFilters);
+    setCurrentPage(1);
+  };
+
+  const calculateStatusDistribution = () => {
+    const statusCounts = {
+      Terminated: 0,
+      Invited: 0,
+      Active: 0,
+      Registered: 0,
+      Inactive: 0
+    };
+
+    customers.forEach(customer => {
+      if (customer.status === "Terminated") statusCounts.Terminated++;
+      else if (customer.status === "Invited") statusCounts.Invited++;
+      else if (customer.status === "Active") statusCounts.Active++;
+      else if (customer.status === "Registered") statusCounts.Registered++;
+      else if (customer.status === "Inactive") statusCounts.Inactive++;
+    });
+
+    const total = customers.length || 1;
+    return {
+      Terminated: (statusCounts.Terminated / total) * 100,
+      Invited: (statusCounts.Invited / total) * 100,
+      Active: (statusCounts.Active / total) * 100,
+      Registered: (statusCounts.Registered / total) * 100,
+      Inactive: (statusCounts.Inactive / total) * 100
+    };
+  };
+
+  const statusDistribution = calculateStatusDistribution();
+
   return (
     <div className="flex flex-col min-h-screen bg-white">
       <div className="flex-1 overflow-hidden p-10">
         {currentView === "details" && selectedCustomer && (
-          // Show Customer Details when a customer is selected
           <CustomerDetails 
             customer={selectedCustomer} 
             onBack={handleBackToList} 
@@ -91,30 +208,25 @@ export default function CustomerManagement() {
         )}
         
         {currentView === "report" && (
-          // Show Customer Report view
           <CustomerReport 
             onBack={() => handleViewChange("management")} 
           />
         )}
         
         {currentView === "partner-management" && (
-          // Show Partner Management view
           <PartnerManagement 
             onViewChange={handleViewChange}
           />
         )}
         
         {currentView === "utility-management" && (
-          // Show Utility Provider Management view
           <UtilityProviderManagement 
             onViewChange={handleViewChange}
           />
         )}
         
         {currentView === "management" && (
-          // Show Customer Management Table
           <>
-            {/* ===== Header Row ===== */}
             <div className="flex justify-between mb-6">
               <Button 
                 variant="outline" 
@@ -135,7 +247,6 @@ export default function CustomerManagement() {
                   Send Reminder
                 </Button>
 
-                {/* Invite New Customer Dropdown */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button className="gap-2 bg-teal-500 hover:bg-teal-600">
@@ -157,7 +268,6 @@ export default function CustomerManagement() {
               </div>
             </div>
 
-            {/* ===== Title / Sub‑nav ===== */}
             <div className="mb-6 p-4 border-b flex items-center justify-between bg-white">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -183,92 +293,121 @@ export default function CustomerManagement() {
               <InfoIcon />
             </div>
 
-            {/* ===== Status Bar ===== */}
-            <div className="flex h-6 mb-1">
-              <div className="bg-red-500 w-[15%]" />
-              <div className="bg-amber-400 w-[25%]" />
-              <div className="bg-teal-500 w-[35%]" />
-              <div className="bg-black w-[25%]" />
-            </div>
-            <div className="flex text-xs mb-6">
-              <div className="w-[15%] text-center">
-                <LegendDot className="bg-red-500" /> Terminated
+            <div className="flex items-center mb-6">
+              <div className="flex-1 flex h-4 rounded-full overflow-hidden bg-gray-200">
+                <div 
+                  className="bg-red-500" 
+                  style={{ width: `${statusDistribution.Terminated}%` }}
+                />
+                <div 
+                  className="bg-amber-400" 
+                  style={{ width: `${statusDistribution.Invited}%` }}
+                />
+                <div 
+                  className="bg-teal-500" 
+                  style={{ width: `${statusDistribution.Active}%` }}
+                />
+                <div 
+                  className="bg-black" 
+                  style={{ width: `${statusDistribution.Registered}%` }}
+                />
+                <div 
+                  className="bg-gray-400" 
+                  style={{ width: `${statusDistribution.Inactive}%` }}
+                />
               </div>
-              <div className="w-[25%] text-center">
-                <LegendDot className="bg-amber-400" /> Invited
-              </div>
-              <div className="w-[35%] text-center">
-                <LegendDot className="bg-teal-500" /> Active
-              </div>
-              <div className="w-[25%] text-center">
-                <LegendDot className="bg-black" /> Registered
+              
+              <div className="ml-4 flex items-center gap-4">
+                <div className="text-xs flex items-center">
+                  <LegendDot className="bg-red-500" /> Terminated
+                </div>
+                <div className="text-xs flex items-center">
+                  <LegendDot className="bg-amber-400" /> Invited
+                </div>
+                <div className="text-xs flex items-center">
+                  <LegendDot className="bg-teal-500" /> Active
+                </div>
+                <div className="text-xs flex items-center">
+                  <LegendDot className="bg-black" /> Registered
+                </div>
+                <div className="text-xs flex items-center">
+                  <LegendDot className="bg-gray-400" /> Inactive
+                </div>
               </div>
             </div>
 
-            {/* ===== Customer Table ===== */}
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-y">
-                    <th className="py-3 px-4 text-left font-medium">S/N</th>
-                    <th className="py-3 px-4 text-left font-medium">Name</th>
-                    <th className="py-3 px-4 text-left font-medium">Cus. Type</th>
-                    <th className="py-3 px-4 text-left font-medium">
-                      <div className="flex items-center gap-1">
-                        Utility <InfoIcon />
-                      </div>
-                    </th>
-                    <th className="py-3 px-4 text-left font-medium">Finance Com.</th>
-                    <th className="py-3 px-4 text-left font-medium">Address</th>
-                    <th className="py-3 px-4 text-left font-medium">Date Reg.</th>
-                    <th className="py-3 px-4 text-left font-medium">
-                      <div className="flex items-center gap-1">
-                        Cus. Status <InfoIcon />
-                      </div>
-                    </th>
-                    <th className="py-3 px-4 text-left font-medium">Doc. Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {currentUsers.map((customer) => (
-                    <tr
-                      key={customer.id}
-                      className="border-b cursor-pointer hover:bg-gray-50"
-                      onClick={() => handleCustomerClick(customer)}
-                    >
-                      <td className="py-3 px-4">{customer.id}</td>
-                      <td className="py-3 px-4">{customer.name}</td>
-                      <td className="py-3 px-4">{customer.type}</td>
-                      <td className="py-3 px-4">{customer.utility}</td>
-                      <td className="py-3 px-4">{customer.finance}</td>
-                      <td className="py-3 px-4">{customer.address}</td>
-                      <td className="py-3 px-4">{customer.date}</td>
-                      <td className="py-3 px-4">
-                        <StatusBadge status={customer.status} />
-                      </td>
-                      <td className="py-3 px-4">
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              {customer.hasIssue ? (
-                                <AlertTriangle className="h-5 w-5 text-amber-400" />
-                              ) : (
-                                <CheckCircle className="h-5 w-5 text-teal-500" />
-                              )}
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              {customer.hasIssue ? "Document issue" : "Documents verified"}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </td>
+              {loading ? (
+                <div className="flex justify-center items-center h-64">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-teal-500"></div>
+                </div>
+              ) : error ? (
+                <div className="text-center py-10 text-red-500">{error}</div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-y">
+                      <th className="py-3 px-4 text-left font-medium">S/N</th>
+                      <th className="py-3 px-4 text-left font-medium">Name</th>
+                      <th className="py-3 px-4 text-left font-medium">Cus. Type</th>
+                      <th className="py-3 px-4 text-left font-medium">
+                        <div className="flex items-center gap-1">
+                          Utility <InfoIcon />
+                        </div>
+                      </th>
+                      <th className="py-3 px-4 text-left font-medium">Finance Com.</th>
+                      <th className="py-3 px-4 text-left font-medium">Address</th>
+                      <th className="py-3 px-4 text-left font-medium">Date Reg.</th>
+                      <th className="py-3 px-4 text-left font-medium">
+                        <div className="flex items-center gap-1">
+                          Cus. Status <InfoIcon />
+                        </div>
+                      </th>
+                      <th className="py-3 px-4 text-left font-medium">Doc. Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {customers.map((customer, index) => (
+                      <tr
+                        key={customer.id}
+                        className="border-b cursor-pointer hover:bg-gray-50"
+                        onClick={() => handleCustomerClick(customer)}
+                      >
+                        <td className="py-3 px-4">{(currentPage - 1) * 10 + index + 1}</td>
+                        <td className="py-3 px-4">{customer.name}</td>
+                        <td className="py-3 px-4">{customer.userType}</td>
+                        <td className="py-3 px-4">{customer.utility}</td>
+                        <td className="py-3 px-4">{customer.financeCompany}</td>
+                        <td className="py-3 px-4">{customer.address}</td>
+                        <td className="py-3 px-4">
+                          {new Date(customer.date).toLocaleDateString()}
+                        </td>
+                        <td className="py-3 px-4">
+                          <StatusBadge status={customer.status} />
+                        </td>
+                        <td className="py-3 px-4">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                {customer.facilityStatus === "PENDING" ? (
+                                  <AlertTriangle className="h-5 w-5 text-amber-400" />
+                                ) : (
+                                  <CheckCircle className="h-5 w-5 text-teal-500" />
+                                )}
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {customer.facilityStatus === "PENDING" ? "Document issue" : "Documents verified"}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
 
-            {/* ===== Pagination ===== */}
             <div className="p-4 flex items-center justify-center gap-4">
               <Button
                 variant="ghost"
@@ -294,10 +433,11 @@ export default function CustomerManagement() {
         )}
       </div>
 
-      {/* Modals */}
       <FilterByModal 
         isOpen={showFilterModal} 
-        onClose={() => setShowFilterModal(false)} 
+        onClose={() => setShowFilterModal(false)}
+        onApply={handleApplyFilters}
+        currentFilters={filters}
       />
       
       <SendReminderModal 
@@ -317,8 +457,6 @@ export default function CustomerManagement() {
     </div>
   );
 }
-
-// ——— Helpers ———
 
 function InfoIcon() {
   return (
@@ -340,7 +478,7 @@ function InfoIcon() {
 }
 
 function LegendDot({ className }) {
-  return <span className={`inline-block h-2 w-2 rounded-full ${className}`}></span>;
+  return <span className={`inline-block h-2 w-2 rounded-full ${className} mr-1`}></span>;
 }
 
 function StatusBadge({ status }) {
@@ -357,6 +495,9 @@ function StatusBadge({ status }) {
       break;
     case "Terminated":
       classes = "bg-red-500 text-white";
+      break;
+    case "Inactive":
+      classes = "bg-gray-400 text-white";
       break;
     default:
       classes = "bg-gray-300 text-black";

@@ -1,19 +1,66 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 
-// This is a placeholder for the FilterBy modal component
-// You'll replace this with your actual FilterBy component code
-
-export default function FilterByModal({ isOpen, onClose }) {
+export default function FilterByModal({ isOpen, onClose, onApply, currentFilters }) {
   const [filters, setFilters] = useState({
     customerType: "",
     status: "",
     utilityProvider: "",
-    registrationDate: "",
     documentStatus: ""
   });
+  const [utilityProviders, setUtilityProviders] = useState([]);
+  const [loadingUtilities, setLoadingUtilities] = useState(false);
+
+  // Update local filters when currentFilters prop changes
+  useEffect(() => {
+    if (currentFilters) {
+      setFilters(currentFilters);
+    }
+  }, [currentFilters]);
+
+  // Fetch utility providers when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchUtilityProviders();
+    }
+  }, [isOpen]);
+
+  const fetchUtilityProviders = async () => {
+    try {
+      setLoadingUtilities(true);
+      const authToken = localStorage.getItem("authToken");
+      if (!authToken) {
+        console.error("Authentication token not found");
+        setLoadingUtilities(false);
+        return;
+      }
+
+      const response = await fetch(
+        "https://services.dcarbon.solutions/api/auth/utility-providers",
+        {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.status === "success" && data.data) {
+        setUtilityProviders(data.data);
+      }
+      setLoadingUtilities(false);
+    } catch (err) {
+      console.error("Error fetching utility providers:", err);
+      setLoadingUtilities(false);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -25,26 +72,33 @@ export default function FilterByModal({ isOpen, onClose }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Apply filters logic here
-    console.log("Applying filters:", filters);
-    onClose();
+    console.log("Applying filters:", filters); // Debug log
+    // Call the onApply function passed from parent component
+    onApply(filters);
   };
 
   const resetFilters = () => {
-    setFilters({
+    const emptyFilters = {
       customerType: "",
       status: "",
       utilityProvider: "",
-      registrationDate: "",
       documentStatus: ""
-    });
+    };
+    console.log("Resetting filters"); // Debug log
+    setFilters(emptyFilters);
+    // Apply empty filters immediately
+    onApply(emptyFilters);
+  };
+
+  const handleClose = () => {
+    onClose();
   };
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
+      <div className="bg-white rounded-lg p-6 w-full max-w-md relative">
         <h2 className="text-xl font-semibold mb-4 text-teal-500">Filter Customers</h2>
         
         <form onSubmit={handleSubmit}>
@@ -55,11 +109,12 @@ export default function FilterByModal({ isOpen, onClose }) {
                 name="customerType" 
                 value={filters.customerType}
                 onChange={handleChange}
-                className="w-full p-2 border rounded-md"
+                className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
               >
                 <option value="">All Types</option>
-                <option value="Residential">Residential</option>
-                <option value="Commercial">Commercial</option>
+                <option value="RESIDENTIAL">Residential</option>
+                <option value="COMMERCIAL">Commercial</option>
+                <option value="PARTNER">Partner</option>
               </select>
             </div>
             
@@ -69,13 +124,14 @@ export default function FilterByModal({ isOpen, onClose }) {
                 name="status" 
                 value={filters.status}
                 onChange={handleChange}
-                className="w-full p-2 border rounded-md"
+                className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
               >
                 <option value="">All Statuses</option>
                 <option value="Active">Active</option>
                 <option value="Invited">Invited</option>
                 <option value="Registered">Registered</option>
                 <option value="Terminated">Terminated</option>
+                <option value="Inactive">Inactive</option>
               </select>
             </div>
             
@@ -85,12 +141,18 @@ export default function FilterByModal({ isOpen, onClose }) {
                 name="utilityProvider" 
                 value={filters.utilityProvider}
                 onChange={handleChange}
-                className="w-full p-2 border rounded-md"
+                className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                disabled={loadingUtilities}
               >
-                <option value="">All Providers</option>
-                <option value="Water Co.">Water Co.</option>
-                <option value="Power Inc.">Power Inc.</option>
-                <option value="Gas & Co.">Gas & Co.</option>
+                <option value="">
+                  {loadingUtilities ? "Loading..." : "All Providers"}
+                </option>
+                {utilityProviders.map((provider) => (
+                  <option key={provider.id} value={provider.name}>
+                    {provider.name}
+                  </option>
+                ))}
+                <option value="Not specified">Not specified</option>
               </select>
             </div>
             
@@ -100,7 +162,7 @@ export default function FilterByModal({ isOpen, onClose }) {
                 name="documentStatus" 
                 value={filters.documentStatus}
                 onChange={handleChange}
-                className="w-full p-2 border rounded-md"
+                className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
               >
                 <option value="">All Statuses</option>
                 <option value="verified">Verified</option>
@@ -129,8 +191,8 @@ export default function FilterByModal({ isOpen, onClose }) {
         
         <Button
           variant="ghost"
-          className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
-          onClick={onClose}
+          className="absolute top-2 right-2 text-gray-500 hover:text-gray-700 p-1"
+          onClick={handleClose}
         >
           ✕
         </Button>

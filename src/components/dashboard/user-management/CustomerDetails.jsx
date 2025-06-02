@@ -1,32 +1,84 @@
 "use client";
 
-import React, { useState } from "react";
-import { ChevronLeft, Trash2, Eye, EyeOff, Download, ChevronDown } from "lucide-react";
-import * as styles from './styles';
+import React, { useState, useEffect } from "react";
+import { ChevronLeft, Trash2, Eye, EyeOff, Download, ChevronDown, AlertTriangle, CheckCircle, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
+import { toast } from "react-hot-toast";
 
 export default function CustomerDetails({ customer, onBack }) {
   const [systemActive, setSystemActive] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [facilities, setFacilities] = useState([]);
+  const [facilitiesLoading, setFacilitiesLoading] = useState(false);
+  const [facilitiesError, setFacilitiesError] = useState(null);
+  const [approvingDoc, setApprovingDoc] = useState(null);
+  const [verifyingFacility, setVerifyingFacility] = useState(null);
+  const [rejectionReasons, setRejectionReasons] = useState({});
+  const [showRejectionInput, setShowRejectionInput] = useState(null);
 
-  // Mock data for demo purposes
-  const customerDetails = {
-    name: customer?.name || "Customer Name",
-    email: "name@domain.com",
-    phone: "+234-000-0000-000",
-    type: customer?.type || "Residential",
-    utility: customer?.utility || "Utility",
-    kWSize: "200",
-    meterId: "Meter ID",
-    address: customer?.address || "Address",
-    dateRegistered: customer?.date || "16-03-2025",
+  // Fetch facilities when component mounts
+  useEffect(() => {
+    if (customer?.id) {
+      fetchFacilities();
+    }
+  }, [customer?.id]);
+
+  const fetchFacilities = async () => {
+    setFacilitiesLoading(true);
+    setFacilitiesError(null);
+    
+    try {
+      const authToken = localStorage.getItem('authToken');
+      if (!authToken) {
+        throw new Error('No authentication token found');
+      }
+
+      const response = await fetch(
+        `https://services.dcarbon.solutions/api/facility/get-user-facilities-by-userId/${customer.id}`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.status === 'success' && data.data?.facilities) {
+        setFacilities(data.data.facilities);
+      } else {
+        throw new Error(data.message || 'Failed to fetch facilities');
+      }
+    } catch (err) {
+      console.error('Error fetching facilities:', err);
+      setFacilitiesError(err.message);
+    } finally {
+      setFacilitiesLoading(false);
+    }
   };
 
-  const documents = [
-    { id: 1, name: "NEM Agreement (NEM)", fileName: "Doc1.jpg", status: "Approved" },
-    { id: 2, name: "Meter ID Photo", fileName: "", status: "Required" },
-    { id: 3, name: "Installer Agreement", fileName: "Doc2.jpg", status: "Pending" },
-    { id: 4, name: "Single Line Diagram", fileName: "Doc3.jpg", status: "Rejected" },
-    { id: 5, name: "Utility PTO Letter", fileName: "Doc1.jpg", status: "Approved" },
-  ];
+  // Format date to be more readable
+  const formatDate = (dateString) => {
+    if (!dateString || dateString === "Not specified") return "Not specified";
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
 
   // Determine the progress status from customer.status
   const getProgressStatus = () => {
@@ -37,7 +89,7 @@ export default function CustomerDetails({ customer, onBack }) {
       case "Registered": return 3;
       case "Invited": return 0;
       case "Terminated": return 5;
-      default: return 1; // Default to Documents Pending
+      default: return 1;
     }
   };
 
@@ -46,14 +98,386 @@ export default function CustomerDetails({ customer, onBack }) {
   // Helper function to get status colors
   const getStatusColor = (status) => {
     switch (status) {
-      case "Approved": return "bg-[#DEF5F4] text-[#039994]";
-      case "Pending": return "bg-[#FFF8E6] text-[#FFB200]";
-      case "Rejected": return "bg-[#FFEBEB] text-[#FF0000]";
-      case "Required": return "bg-[#F2F2F2] text-gray-500";
+      case "APPROVED": return "bg-[#DEF5F4] text-[#039994]";
+      case "PENDING": return "bg-[#FFF8E6] text-[#FFB200]";
+      case "REJECTED": return "bg-[#FFEBEB] text-[#FF0000]";
+      case "Required": 
+      case "REQUIRED": 
+        return "bg-[#F2F2F2] text-gray-500";
       default: return "bg-gray-100 text-gray-500";
     }
   };
 
+  // Status badge component
+  const StatusBadge = ({ status }) => {
+    let classes = "";
+    switch (status) {
+      case "Active":
+      case "ACTIVE":
+      case "VERIFIED":
+        classes = "bg-teal-500 text-white";
+        break;
+      case "Invited":
+        classes = "bg-amber-400 text-white";
+        break;
+      case "Registered":
+        classes = "bg-black text-white";
+        break;
+      case "Terminated":
+        classes = "bg-red-500 text-white";
+        break;
+      case "Inactive":
+      case "INACTIVE":
+        classes = "bg-gray-400 text-white";
+        break;
+      case "PENDING":
+        classes = "bg-amber-400 text-white";
+        break;
+      default:
+        classes = "bg-gray-300 text-black";
+    }
+    return (
+      <span className={`inline-block px-2 py-1 rounded-full text-xs ${classes}`}>
+        {status}
+      </span>
+    );
+  };
+
+  // Handle document approval/rejection
+  const handleDocumentStatusChange = async (facilityId, docType, status) => {
+    const docKey = `${facilityId}-${docType}`;
+    setApprovingDoc(docKey);
+    
+    try {
+      const authToken = localStorage.getItem('authToken');
+      if (!authToken) {
+        throw new Error('No authentication token found');
+      }
+
+      const endpoint = `https://services.dcarbon.solutions/api/admin/commercial-facility/${facilityId}/document/${docType}/status`;
+      
+      const body = {
+        status,
+        ...(status === "REJECTED" && { 
+          rejectionReason: rejectionReasons[docType] || "No reason provided" 
+        })
+      };
+
+      const response = await fetch(endpoint, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.status === 'success') {
+        toast.success(data.message);
+        fetchFacilities(); // Refresh the facilities data
+        setShowRejectionInput(null);
+      } else {
+        throw new Error(data.message || 'Failed to update document status');
+      }
+    } catch (err) {
+      console.error('Error updating document status:', err);
+      toast.error(err.message || 'Failed to update document status');
+    } finally {
+      setApprovingDoc(null);
+    }
+  };
+
+  // Handle facility verification
+  const handleVerifyFacility = async (facilityId) => {
+    setVerifyingFacility(facilityId);
+    
+    try {
+      const authToken = localStorage.getItem('authToken');
+      if (!authToken) {
+        throw new Error('No authentication token found');
+      }
+
+      const endpoint = `https://services.dcarbon.solutions/api/admin/commercial-facility/${facilityId}/verify`;
+
+      const response = await fetch(endpoint, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.status === 'success') {
+        toast.success(data.message);
+        fetchFacilities(); // Refresh the facilities data
+      } else {
+        throw new Error(data.message || 'Failed to verify facility');
+      }
+    } catch (err) {
+      console.error('Error verifying facility:', err);
+      toast.error(err.message || 'Failed to verify facility');
+    } finally {
+      setVerifyingFacility(null);
+    }
+  };
+
+  // Facility Card Component
+  const FacilityCard = ({ facility }) => {
+    const documents = [
+      { 
+        name: "Finance Agreement", 
+        url: facility.financeAgreementUrl, 
+        status: facility.financeAgreementStatus,
+        type: "financeAgreement"
+      },
+      { 
+        name: "Proof of Address", 
+        url: facility.proofOfAddressUrl, 
+        status: facility.proofOfAddressStatus,
+        type: "proofOfAddress"
+      },
+      { 
+        name: "Info Release Authorization", 
+        url: facility.infoReleaseAuthUrl, 
+        status: facility.infoReleaseAuthStatus,
+        type: "infoReleaseAuth"
+      },
+      { 
+        name: "WREGIS Assignment", 
+        url: facility.wregisAssignmentUrl, 
+        status: facility.wregisAssignmentStatus,
+        type: "wregisAssignment"
+      },
+      { 
+        name: "Multiple Owner Declaration", 
+        url: facility.multipleOwnerDeclUrl, 
+        status: facility.multipleOwnerDeclStatus,
+        type: "multipleOwnerDecl"
+      },
+      { 
+        name: "System Operator Data Access", 
+        url: facility.sysOpDataAccessUrl, 
+        status: facility.sysOpDataAccessStatus,
+        type: "sysOpDataAccess"
+      },
+    ];
+
+    const allDocumentsApproved = documents.every(doc => 
+      doc.status === "APPROVED" || doc.status === "Not required"
+    );
+
+    const canVerifyFacility = allDocumentsApproved && facility.status !== "VERIFIED";
+
+    return (
+      <div className="border border-gray-200 rounded-lg p-6 mb-6 bg-white">
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h4 className="text-lg font-semibold text-[#039994]">{facility.facilityName}</h4>
+            <p className="text-sm text-gray-600">{facility.address}</p>
+          </div>
+          <StatusBadge status={facility.status} />
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="space-y-3">
+            <div>
+              <p className="text-sm text-gray-500">Utility Provider</p>
+              <p className="font-medium">{facility.utilityProvider}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Meter IDs</p>
+              <p className="font-medium">{facility.meterIds?.join(', ') || 'Not specified'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Commercial Role</p>
+              <p className="font-medium capitalize">{facility.commercialRole}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Entity Type</p>
+              <p className="font-medium capitalize">{facility.entityType}</p>
+            </div>
+          </div>
+          
+          <div className="space-y-3">
+            <div>
+              <p className="text-sm text-gray-500">Total RECs</p>
+              <p className="font-medium">{facility.totalRecs}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Last REC Calculation</p>
+              <p className="font-medium">{formatDate(facility.lastRecCalculation)}</p>
+            </div>
+            {facility.name && (
+              <div>
+                <p className="text-sm text-gray-500">Company Name</p>
+                <p className="font-medium">{facility.name}</p>
+              </div>
+            )}
+            {facility.website && (
+              <div>
+                <p className="text-sm text-gray-500">Website</p>
+                <a href={facility.website} target="_blank" rel="noopener noreferrer" 
+                   className="font-medium text-[#039994] hover:underline">
+                  {facility.website}
+                </a>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Documents Section */}
+        <div>
+          <h5 className="text-md font-semibold text-[#039994] mb-3">Facility Documents</h5>
+          <div className="border rounded-lg overflow-hidden">
+            <div className="grid grid-cols-12 bg-gray-50 p-3 border-b text-sm">
+              <div className="col-span-5 font-medium">Document Name</div>
+              <div className="col-span-3 font-medium">File</div>
+              <div className="col-span-2 font-medium">Status</div>
+              <div className="col-span-2 font-medium">Actions</div>
+            </div>
+            
+            {documents.map((doc, index) => (
+              <div key={index} className="grid grid-cols-12 p-3 border-b last:border-b-0 items-center text-sm">
+                <div className="col-span-5">
+                  <p className="font-medium">{doc.name}</p>
+                </div>
+                
+                <div className="col-span-3">
+                  {doc.url ? (
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6"
+                        onClick={() => window.open(doc.url, '_blank')}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6"
+                        onClick={() => {
+                          const link = document.createElement('a');
+                          link.href = doc.url;
+                          link.download = doc.name;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }}
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-gray-400">No document uploaded</span>
+                  )}
+                </div>
+                
+                <div className="col-span-2">
+                  <span className={`text-xs font-semibold px-3 py-1 rounded-full ${getStatusColor(doc.status)}`}>
+                    {doc.status || 'Required'}
+                  </span>
+                </div>
+                
+                <div className="col-span-2 flex gap-2">
+                  {doc.url && doc.status !== "APPROVED" && (
+                    <>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-8 text-xs"
+                        onClick={() => handleDocumentStatusChange(facility.id, doc.type, "APPROVED")}
+                        disabled={approvingDoc === `${facility.id}-${doc.type}`}
+                      >
+                        {approvingDoc === `${facility.id}-${doc.type}` ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : "Approve"}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-8 text-xs bg-red-50 text-red-600 hover:bg-red-100"
+                        onClick={() => setShowRejectionInput(showRejectionInput === doc.type ? null : doc.type)}
+                      >
+                        Reject
+                      </Button>
+                    </>
+                  )}
+                </div>
+                
+                {showRejectionInput === doc.type && (
+                  <div className="col-span-12 mt-2 flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Enter rejection reason"
+                      className="flex-1 border rounded px-2 py-1 text-sm"
+                      value={rejectionReasons[doc.type] || ''}
+                      onChange={(e) => setRejectionReasons(prev => ({
+                        ...prev,
+                        [doc.type]: e.target.value
+                      }))}
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs"
+                      onClick={() => {
+                        if (rejectionReasons[doc.type]) {
+                          handleDocumentStatusChange(
+                            facility.id, 
+                            doc.type, 
+                            "REJECTED"
+                          );
+                        } else {
+                          toast.error("Please enter a rejection reason");
+                        }
+                      }}
+                      disabled={approvingDoc === `${facility.id}-${doc.type}`}
+                    >
+                      {approvingDoc === `${facility.id}-${doc.type}` ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : "Submit"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Facility verification button */}
+        {canVerifyFacility && (
+          <div className="mt-4 flex justify-end">
+            <Button
+              onClick={() => handleVerifyFacility(facility.id)}
+              disabled={verifyingFacility === facility.id}
+              className="bg-[#039994] hover:bg-[#02857f]"
+            >
+              {verifyingFacility === facility.id ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              {verifyingFacility === facility.id ? "Verifying..." : "Verify Facility"}
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Rest of the component remains the same...
   return (
     <div className="min-h-screen w-full flex flex-col py-8 px-4 bg-white">
       {/* Header with back button, actions, and delete */}
@@ -68,10 +492,10 @@ export default function CustomerDetails({ customer, onBack }) {
 
         <div className="flex items-center space-x-4">
           <div className="relative">
-            <button className="px-4 py-2 rounded-md border border-gray-300 bg-white flex items-center">
+            <Button variant="outline" className="flex items-center gap-2">
               Choose action
-              <ChevronDown className="h-4 w-4 ml-2" />
-            </button>
+              <ChevronDown className="h-4 w-4" />
+            </Button>
           </div>
 
           <div className="flex items-center space-x-2">
@@ -133,104 +557,154 @@ export default function CustomerDetails({ customer, onBack }) {
         </div>
       </div>
 
-      {/* Main Content: Customer Info + Documentation */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Main Content: Customer Info + System Information */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         {/* Customer Information Card */}
-        <div className="border border-[#FF0000] rounded-lg bg-[#069B960D]">
-          <div className="p-4 grid grid-cols-2 gap-y-3 gap-x-4">
-            <div className="font-medium">Name</div>
-            <div className="text-right">{customerDetails.name}</div>
+        <div className="border border-gray-200 rounded-lg bg-[#069B960D] p-6">
+          <h3 className="text-lg font-semibold text-[#039994] mb-4">Customer Information</h3>
+          
+          <div className="grid grid-cols-2 gap-y-4 gap-x-6">
+            <div className="space-y-1">
+              <p className="text-sm text-gray-500">User ID</p>
+              <p className="font-medium">{customer?.id || "Not specified"}</p>
+            </div>
             
-            <div className="font-medium">Email Address</div>
-            <div className="text-right">{customerDetails.email}</div>
+            <div className="space-y-1">
+              <p className="text-sm text-gray-500">Name</p>
+              <p className="font-medium">{customer?.name || "Not specified"}</p>
+            </div>
             
-            <div className="font-medium">Phone number</div>
-            <div className="text-right">{customerDetails.phone}</div>
+            <div className="space-y-1">
+              <p className="text-sm text-gray-500">Customer Type</p>
+              <p className="font-medium">{customer?.userType || "Not specified"}</p>
+            </div>
             
-            <div className="font-medium">Customer Type</div>
-            <div className="text-right">{customerDetails.type}</div>
+            <div className="space-y-1">
+              <p className="text-sm text-gray-500">Utility Provider</p>
+              <p className="font-medium">{customer?.utility || "Not specified"}</p>
+            </div>
             
-            <div className="font-medium">Utility Provider</div>
-            <div className="text-right">{customerDetails.utility}</div>
+            <div className="space-y-1">
+              <p className="text-sm text-gray-500">Finance Company</p>
+              <p className="font-medium">{customer?.financeCompany || "Not specified"}</p>
+            </div>
             
-            <div className="font-medium">kW System Size</div>
-            <div className="text-right">{customerDetails.kWSize}</div>
+            <div className="space-y-1">
+              <p className="text-sm text-gray-500">Address</p>
+              <p className="font-medium">{customer?.address || "Not specified"}</p>
+            </div>
             
-            <div className="font-medium">Meter ID</div>
-            <div className="text-right">{customerDetails.meterId}</div>
+            <div className="space-y-1">
+              <p className="text-sm text-gray-500">Date Registered</p>
+              <p className="font-medium">{formatDate(customer?.date)}</p>
+            </div>
             
-            <div className="font-medium">Address</div>
-            <div className="text-right">{customerDetails.address}</div>
-            
-            <div className="font-medium">Date Registered</div>
-            <div className="text-right">{customerDetails.dateRegistered}</div>
+            <div className="space-y-1">
+              <p className="text-sm text-gray-500">Status</p>
+              <p className="font-medium">
+                <StatusBadge status={customer?.status || "Not specified"} />
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* User Agreement Card */}
-        <div className="border border-black rounded-lg">
-          <div className="p-4">
-            <h3 className="text-[#039994] font-medium mb-4">User Agreement e-signature</h3>
+        {/* System Information & User Agreement Card */}
+        <div className="border border-gray-200 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-[#039994] mb-4">System Information</h3>
+          
+          <div className="grid grid-cols-2 gap-y-4 gap-x-6">
+            <div className="space-y-1">
+              <p className="text-sm text-gray-500">Total Facilities</p>
+              <p className="font-medium">{facilities.length}</p>
+            </div>
+            
+            <div className="space-y-1">
+              <p className="text-sm text-gray-500">Active Facilities</p>
+              <p className="font-medium">
+                {facilities.filter(f => f.status === 'VERIFIED' || f.status === 'ACTIVE').length}
+              </p>
+            </div>
+            
+            <div className="space-y-1 col-span-2">
+              <p className="text-sm text-gray-500">System Status</p>
+              <div className="flex items-center gap-2">
+                <span className="font-medium">
+                  {systemActive ? "Active" : "Inactive"}
+                </span>
+                <button
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                    systemActive ? "bg-[#039994]" : "bg-gray-200"
+                  }`}
+                  onClick={() => setSystemActive(!systemActive)}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                      systemActive ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <div className="mt-6">
+            <h3 className="text-lg font-semibold text-[#039994] mb-4">User Agreement</h3>
             
             <div className="space-y-3">
-              <button className="w-full rounded-md border border-black py-2 px-3 flex justify-between items-center">
+              <Button variant="outline" className="w-full flex justify-between items-center">
                 View User Agreement
                 <Eye className="h-4 w-4" />
-              </button>
+              </Button>
               
               <div className="flex space-x-3">
-                <button className="flex-1 rounded-md border border-black py-2 px-3 flex justify-between items-center">
+                <Button variant="outline" className="flex-1 flex justify-between items-center">
                   View E-Signature
                   <Eye className="h-4 w-4" />
-                </button>
-                <button className="bg-white p-2 border border-black rounded-md">
+                </Button>
+                <Button variant="outline" size="icon">
                   <Download className="h-4 w-4" />
-                </button>
+                </Button>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Documentation Section */}
-      <div className="mt-6">
-        <h3 className="text-[#039994] font-medium mb-2">Documentation</h3>
-        
-        <hr className="border-gray-300 my-2" />
-        
-        <div className="space-y-2">
-          {documents.map((doc) => (
-            <div key={doc.id} className="py-2 flex items-center justify-between">
-              <div className="flex-1">
-                <p className="font-medium">{doc.name}</p>
-              </div>
-              
-              <div className="flex items-center space-x-3">
-                {doc.fileName ? (
-                  <>
-                    <div className="px-2 py-1 rounded border border-gray-300 flex items-center">
-                      <span className="text-xs mr-1">{doc.fileName}</span>
-                    </div>
-                    <button className="border border-gray-300 rounded-md p-2" title="View Document">
-                      <Eye className="h-4 w-4" />
-                    </button>
-                    <button className="border border-gray-300 rounded-md p-2" title="Download Document">
-                      <Download className="h-4 w-4" />
-                    </button>
-                  </>
-                ) : (
-                  <button className="px-3 py-1 border border-gray-300 rounded-md text-xs">
-                    Upload Document
-                  </button>
-                )}
-                
-                <div className={`text-xs font-semibold px-3 py-1 rounded-full ${getStatusColor(doc.status)}`}>
-                  {doc.status}
-                </div>
-              </div>
+      {/* Facilities Section */}
+      <div className="mb-8">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-[#039994]">Facilities</h3>
+          {facilitiesLoading && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading facilities...
             </div>
-          ))}
+          )}
         </div>
+        
+        {facilitiesError && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+            <p className="text-red-600 text-sm">Error loading facilities: {facilitiesError}</p>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="mt-2"
+              onClick={fetchFacilities}
+            >
+              Retry
+            </Button>
+          </div>
+        )}
+        
+        {!facilitiesLoading && !facilitiesError && facilities.length === 0 && (
+          <div className="border border-gray-200 rounded-lg p-8 text-center">
+            <p className="text-gray-500">No facilities found for this customer.</p>
+          </div>
+        )}
+        
+        {facilities.map((facility) => (
+          <FacilityCard key={facility.id} facility={facility} />
+        ))}
       </div>
     </div>
   );
