@@ -1,20 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { ChevronLeft, Trash2, Eye, EyeOff, Download, ChevronDown, AlertTriangle, CheckCircle, Loader2 } from "lucide-react";
+import { ChevronLeft, Trash2, Eye, Download, ChevronDown, AlertTriangle, CheckCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-  TooltipProvider,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { toast } from "react-hot-toast";
 
-export default function CustomerDetails({ customer, onBack }) {
+export default function CommercialDetails({ customer, onBack }) {
   const [systemActive, setSystemActive] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [facilities, setFacilities] = useState([]);
   const [facilitiesLoading, setFacilitiesLoading] = useState(false);
   const [facilitiesError, setFacilitiesError] = useState(null);
@@ -23,11 +16,8 @@ export default function CustomerDetails({ customer, onBack }) {
   const [rejectionReasons, setRejectionReasons] = useState({});
   const [showRejectionInput, setShowRejectionInput] = useState(null);
 
-  // Fetch facilities when component mounts
   useEffect(() => {
-    if (customer?.id) {
-      fetchFacilities();
-    }
+    if (customer?.id) fetchFacilities();
   }, [customer?.id]);
 
   const fetchFacilities = async () => {
@@ -36,9 +26,7 @@ export default function CustomerDetails({ customer, onBack }) {
     
     try {
       const authToken = localStorage.getItem('authToken');
-      if (!authToken) {
-        throw new Error('No authentication token found');
-      }
+      if (!authToken) throw new Error('No authentication token found');
 
       const response = await fetch(
         `https://services.dcarbon.solutions/api/facility/get-user-facilities-by-userId/${customer.id}`,
@@ -51,9 +39,7 @@ export default function CustomerDetails({ customer, onBack }) {
         }
       );
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
       const data = await response.json();
       if (data.status === 'success' && data.data?.facilities) {
@@ -69,7 +55,6 @@ export default function CustomerDetails({ customer, onBack }) {
     }
   };
 
-  // Format date to be more readable
   const formatDate = (dateString) => {
     if (!dateString || dateString === "Not specified") return "Not specified";
     const date = new Date(dateString);
@@ -80,10 +65,8 @@ export default function CustomerDetails({ customer, onBack }) {
     });
   };
 
-  // Determine the progress status from customer.status
   const getProgressStatus = () => {
     const currentStatus = customer?.status || "Invited";
-    
     switch (currentStatus) {
       case "Active": return 4;
       case "Registered": return 3;
@@ -95,7 +78,6 @@ export default function CustomerDetails({ customer, onBack }) {
 
   const progressStatus = getProgressStatus();
 
-  // Helper function to get status colors
   const getStatusColor = (status) => {
     switch (status) {
       case "APPROVED": return "bg-[#DEF5F4] text-[#039994]";
@@ -108,7 +90,6 @@ export default function CustomerDetails({ customer, onBack }) {
     }
   };
 
-  // Status badge component
   const StatusBadge = ({ status }) => {
     let classes = "";
     switch (status) {
@@ -143,16 +124,13 @@ export default function CustomerDetails({ customer, onBack }) {
     );
   };
 
-  // Handle document approval/rejection
   const handleDocumentStatusChange = async (facilityId, docType, status) => {
     const docKey = `${facilityId}-${docType}`;
     setApprovingDoc(docKey);
     
     try {
       const authToken = localStorage.getItem('authToken');
-      if (!authToken) {
-        throw new Error('No authentication token found');
-      }
+      if (!authToken) throw new Error('No authentication token found');
 
       const endpoint = `https://services.dcarbon.solutions/api/admin/commercial-facility/${facilityId}/document/${docType}/status`;
       
@@ -180,7 +158,7 @@ export default function CustomerDetails({ customer, onBack }) {
       const data = await response.json();
       if (data.status === 'success') {
         toast.success(data.message);
-        fetchFacilities(); // Refresh the facilities data
+        fetchFacilities();
         setShowRejectionInput(null);
       } else {
         throw new Error(data.message || 'Failed to update document status');
@@ -193,15 +171,12 @@ export default function CustomerDetails({ customer, onBack }) {
     }
   };
 
-  // Handle facility verification
   const handleVerifyFacility = async (facilityId) => {
     setVerifyingFacility(facilityId);
     
     try {
       const authToken = localStorage.getItem('authToken');
-      if (!authToken) {
-        throw new Error('No authentication token found');
-      }
+      if (!authToken) throw new Error('No authentication token found');
 
       const endpoint = `https://services.dcarbon.solutions/api/admin/commercial-facility/${facilityId}/verify`;
 
@@ -221,7 +196,7 @@ export default function CustomerDetails({ customer, onBack }) {
       const data = await response.json();
       if (data.status === 'success') {
         toast.success(data.message);
-        fetchFacilities(); // Refresh the facilities data
+        fetchFacilities();
       } else {
         throw new Error(data.message || 'Failed to verify facility');
       }
@@ -233,51 +208,17 @@ export default function CustomerDetails({ customer, onBack }) {
     }
   };
 
-  // Facility Card Component
   const FacilityCard = ({ facility }) => {
     const documents = [
-      { 
-        name: "Finance Agreement", 
-        url: facility.financeAgreementUrl, 
-        status: facility.financeAgreementStatus,
-        type: "financeAgreement"
-      },
-      { 
-        name: "Proof of Address", 
-        url: facility.proofOfAddressUrl, 
-        status: facility.proofOfAddressStatus,
-        type: "proofOfAddress"
-      },
-      { 
-        name: "Info Release Authorization", 
-        url: facility.infoReleaseAuthUrl, 
-        status: facility.infoReleaseAuthStatus,
-        type: "infoReleaseAuth"
-      },
-      { 
-        name: "WREGIS Assignment", 
-        url: facility.wregisAssignmentUrl, 
-        status: facility.wregisAssignmentStatus,
-        type: "wregisAssignment"
-      },
-      { 
-        name: "Multiple Owner Declaration", 
-        url: facility.multipleOwnerDeclUrl, 
-        status: facility.multipleOwnerDeclStatus,
-        type: "multipleOwnerDecl"
-      },
-      { 
-        name: "System Operator Data Access", 
-        url: facility.sysOpDataAccessUrl, 
-        status: facility.sysOpDataAccessStatus,
-        type: "sysOpDataAccess"
-      },
+      { name: "Finance Agreement", url: facility.financeAgreementUrl, status: facility.financeAgreementStatus, type: "financeAgreement" },
+      { name: "Proof of Address", url: facility.proofOfAddressUrl, status: facility.proofOfAddressStatus, type: "proofOfAddress" },
+      { name: "Info Release Authorization", url: facility.infoReleaseAuthUrl, status: facility.infoReleaseAuthStatus, type: "infoReleaseAuth" },
+      { name: "WREGIS Assignment", url: facility.wregisAssignmentUrl, status: facility.wregisAssignmentStatus, type: "wregisAssignment" },
+      { name: "Multiple Owner Declaration", url: facility.multipleOwnerDeclUrl, status: facility.multipleOwnerDeclStatus, type: "multipleOwnerDecl" },
+      { name: "System Operator Data Access", url: facility.sysOpDataAccessUrl, status: facility.sysOpDataAccessStatus, type: "sysOpDataAccess" },
     ];
 
-    const allDocumentsApproved = documents.every(doc => 
-      doc.status === "APPROVED" || doc.status === "Not required"
-    );
-
+    const allDocumentsApproved = documents.every(doc => doc.status === "APPROVED" || doc.status === "Not required");
     const canVerifyFacility = allDocumentsApproved && facility.status !== "VERIFIED";
 
     return (
@@ -328,8 +269,7 @@ export default function CustomerDetails({ customer, onBack }) {
             {facility.website && (
               <div>
                 <p className="text-sm text-gray-500">Website</p>
-                <a href={facility.website} target="_blank" rel="noopener noreferrer" 
-                   className="font-medium text-[#039994] hover:underline">
+                <a href={facility.website} target="_blank" rel="noopener noreferrer" className="font-medium text-[#039994] hover:underline">
                   {facility.website}
                 </a>
               </div>
@@ -337,7 +277,6 @@ export default function CustomerDetails({ customer, onBack }) {
           </div>
         </div>
 
-        {/* Documents Section */}
         <div>
           <h5 className="text-md font-semibold text-[#039994] mb-3">Facility Documents</h5>
           <div className="border rounded-lg overflow-hidden">
@@ -357,27 +296,17 @@ export default function CustomerDetails({ customer, onBack }) {
                 <div className="col-span-3">
                   {doc.url ? (
                     <div className="flex items-center gap-2">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-6 w-6"
-                        onClick={() => window.open(doc.url, '_blank')}
-                      >
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => window.open(doc.url, '_blank')}>
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-6 w-6"
-                        onClick={() => {
-                          const link = document.createElement('a');
-                          link.href = doc.url;
-                          link.download = doc.name;
-                          document.body.appendChild(link);
-                          link.click();
-                          document.body.removeChild(link);
-                        }}
-                      >
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
+                        const link = document.createElement('a');
+                        link.href = doc.url;
+                        link.download = doc.name;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                      }}>
                         <Download className="h-4 w-4" />
                       </Button>
                     </div>
@@ -395,23 +324,10 @@ export default function CustomerDetails({ customer, onBack }) {
                 <div className="col-span-2 flex gap-2">
                   {doc.url && doc.status !== "APPROVED" && (
                     <>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="h-8 text-xs"
-                        onClick={() => handleDocumentStatusChange(facility.id, doc.type, "APPROVED")}
-                        disabled={approvingDoc === `${facility.id}-${doc.type}`}
-                      >
-                        {approvingDoc === `${facility.id}-${doc.type}` ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : "Approve"}
+                      <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => handleDocumentStatusChange(facility.id, doc.type, "APPROVED")} disabled={approvingDoc === `${facility.id}-${doc.type}`}>
+                        {approvingDoc === `${facility.id}-${doc.type}` ? <Loader2 className="h-4 w-4 animate-spin" /> : "Approve"}
                       </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="h-8 text-xs bg-red-50 text-red-600 hover:bg-red-100"
-                        onClick={() => setShowRejectionInput(showRejectionInput === doc.type ? null : doc.type)}
-                      >
+                      <Button variant="outline" size="sm" className="h-8 text-xs bg-red-50 text-red-600 hover:bg-red-100" onClick={() => setShowRejectionInput(showRejectionInput === doc.type ? null : doc.type)}>
                         Reject
                       </Button>
                     </>
@@ -420,36 +336,15 @@ export default function CustomerDetails({ customer, onBack }) {
                 
                 {showRejectionInput === doc.type && (
                   <div className="col-span-12 mt-2 flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Enter rejection reason"
-                      className="flex-1 border rounded px-2 py-1 text-sm"
-                      value={rejectionReasons[doc.type] || ''}
-                      onChange={(e) => setRejectionReasons(prev => ({
-                        ...prev,
-                        [doc.type]: e.target.value
-                      }))}
-                    />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 text-xs"
-                      onClick={() => {
-                        if (rejectionReasons[doc.type]) {
-                          handleDocumentStatusChange(
-                            facility.id, 
-                            doc.type, 
-                            "REJECTED"
-                          );
-                        } else {
-                          toast.error("Please enter a rejection reason");
-                        }
-                      }}
-                      disabled={approvingDoc === `${facility.id}-${doc.type}`}
-                    >
-                      {approvingDoc === `${facility.id}-${doc.type}` ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : "Submit"}
+                    <input type="text" placeholder="Enter rejection reason" className="flex-1 border rounded px-2 py-1 text-sm" value={rejectionReasons[doc.type] || ''} onChange={(e) => setRejectionReasons(prev => ({ ...prev, [doc.type]: e.target.value }))} />
+                    <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => {
+                      if (rejectionReasons[doc.type]) {
+                        handleDocumentStatusChange(facility.id, doc.type, "REJECTED");
+                      } else {
+                        toast.error("Please enter a rejection reason");
+                      }
+                    }} disabled={approvingDoc === `${facility.id}-${doc.type}`}>
+                      {approvingDoc === `${facility.id}-${doc.type}` ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit"}
                     </Button>
                   </div>
                 )}
@@ -458,17 +353,10 @@ export default function CustomerDetails({ customer, onBack }) {
           </div>
         </div>
 
-        {/* Facility verification button */}
         {canVerifyFacility && (
           <div className="mt-4 flex justify-end">
-            <Button
-              onClick={() => handleVerifyFacility(facility.id)}
-              disabled={verifyingFacility === facility.id}
-              className="bg-[#039994] hover:bg-[#02857f]"
-            >
-              {verifyingFacility === facility.id ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : null}
+            <Button onClick={() => handleVerifyFacility(facility.id)} disabled={verifyingFacility === facility.id} className="bg-[#039994] hover:bg-[#02857f]">
+              {verifyingFacility === facility.id ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               {verifyingFacility === facility.id ? "Verifying..." : "Verify Facility"}
             </Button>
           </div>
@@ -477,15 +365,10 @@ export default function CustomerDetails({ customer, onBack }) {
     );
   };
 
-  // Rest of the component remains the same...
   return (
     <div className="min-h-screen w-full flex flex-col py-8 px-4 bg-white">
-      {/* Header with back button, actions, and delete */}
       <div className="flex justify-between items-center mb-6">
-        <button
-          className="flex items-center text-[#039994] hover:text-[#02857f] pl-0"
-          onClick={onBack}
-        >
+        <button className="flex items-center text-[#039994] hover:text-[#02857f] pl-0" onClick={onBack}>
           <ChevronLeft className="h-5 w-5 mr-1" />
           <span>Customer Details</span>
         </button>
@@ -500,17 +383,8 @@ export default function CustomerDetails({ customer, onBack }) {
 
           <div className="flex items-center space-x-2">
             <span className="text-sm font-normal">Activate System</span>
-            <button
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                systemActive ? "bg-[#039994]" : "bg-gray-200"
-              }`}
-              onClick={() => setSystemActive(!systemActive)}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                  systemActive ? "translate-x-6" : "translate-x-1"
-                }`}
-              />
+            <button className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${systemActive ? "bg-[#039994]" : "bg-gray-200"}`} onClick={() => setSystemActive(!systemActive)}>
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${systemActive ? "translate-x-6" : "translate-x-1"}`} />
             </button>
           </div>
 
@@ -520,14 +394,10 @@ export default function CustomerDetails({ customer, onBack }) {
         </div>
       </div>
 
-      {/* Program Progress */}
       <div className="mb-6">
         <p className="text-sm font-medium mb-2">Program Progress</p>
         <div className="h-1 w-full bg-gray-200 mb-3 rounded-full">
-          <div 
-            className="h-full bg-black rounded-full" 
-            style={{ width: `${(progressStatus / 5) * 100}%` }}
-          />
+          <div className="h-full bg-black rounded-full" style={{ width: `${(progressStatus / 5) * 100}%` }} />
         </div>
         <div className="flex justify-between text-xs">
           <div className="flex items-center">
@@ -557,48 +427,38 @@ export default function CustomerDetails({ customer, onBack }) {
         </div>
       </div>
 
-      {/* Main Content: Customer Info + System Information */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        {/* Customer Information Card */}
         <div className="border border-gray-200 rounded-lg bg-[#069B960D] p-6">
           <h3 className="text-lg font-semibold text-[#039994] mb-4">Customer Information</h3>
-          
           <div className="grid grid-cols-2 gap-y-4 gap-x-6">
             <div className="space-y-1">
               <p className="text-sm text-gray-500">User ID</p>
               <p className="font-medium">{customer?.id || "Not specified"}</p>
             </div>
-            
             <div className="space-y-1">
               <p className="text-sm text-gray-500">Name</p>
               <p className="font-medium">{customer?.name || "Not specified"}</p>
             </div>
-            
             <div className="space-y-1">
               <p className="text-sm text-gray-500">Customer Type</p>
               <p className="font-medium">{customer?.userType || "Not specified"}</p>
             </div>
-            
             <div className="space-y-1">
               <p className="text-sm text-gray-500">Utility Provider</p>
               <p className="font-medium">{customer?.utility || "Not specified"}</p>
             </div>
-            
             <div className="space-y-1">
               <p className="text-sm text-gray-500">Finance Company</p>
               <p className="font-medium">{customer?.financeCompany || "Not specified"}</p>
             </div>
-            
             <div className="space-y-1">
               <p className="text-sm text-gray-500">Address</p>
               <p className="font-medium">{customer?.address || "Not specified"}</p>
             </div>
-            
             <div className="space-y-1">
               <p className="text-sm text-gray-500">Date Registered</p>
               <p className="font-medium">{formatDate(customer?.date)}</p>
             </div>
-            
             <div className="space-y-1">
               <p className="text-sm text-gray-500">Status</p>
               <p className="font-medium">
@@ -608,40 +468,23 @@ export default function CustomerDetails({ customer, onBack }) {
           </div>
         </div>
 
-        {/* System Information & User Agreement Card */}
         <div className="border border-gray-200 rounded-lg p-6">
           <h3 className="text-lg font-semibold text-[#039994] mb-4">System Information</h3>
-          
           <div className="grid grid-cols-2 gap-y-4 gap-x-6">
             <div className="space-y-1">
               <p className="text-sm text-gray-500">Total Facilities</p>
               <p className="font-medium">{facilities.length}</p>
             </div>
-            
             <div className="space-y-1">
               <p className="text-sm text-gray-500">Active Facilities</p>
-              <p className="font-medium">
-                {facilities.filter(f => f.status === 'VERIFIED' || f.status === 'ACTIVE').length}
-              </p>
+              <p className="font-medium">{facilities.filter(f => f.status === 'VERIFIED' || f.status === 'ACTIVE').length}</p>
             </div>
-            
             <div className="space-y-1 col-span-2">
               <p className="text-sm text-gray-500">System Status</p>
               <div className="flex items-center gap-2">
-                <span className="font-medium">
-                  {systemActive ? "Active" : "Inactive"}
-                </span>
-                <button
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                    systemActive ? "bg-[#039994]" : "bg-gray-200"
-                  }`}
-                  onClick={() => setSystemActive(!systemActive)}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                      systemActive ? "translate-x-6" : "translate-x-1"
-                    }`}
-                  />
+                <span className="font-medium">{systemActive ? "Active" : "Inactive"}</span>
+                <button className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${systemActive ? "bg-[#039994]" : "bg-gray-200"}`} onClick={() => setSystemActive(!systemActive)}>
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${systemActive ? "translate-x-6" : "translate-x-1"}`} />
                 </button>
               </div>
             </div>
@@ -649,13 +492,11 @@ export default function CustomerDetails({ customer, onBack }) {
           
           <div className="mt-6">
             <h3 className="text-lg font-semibold text-[#039994] mb-4">User Agreement</h3>
-            
             <div className="space-y-3">
               <Button variant="outline" className="w-full flex justify-between items-center">
                 View User Agreement
                 <Eye className="h-4 w-4" />
               </Button>
-              
               <div className="flex space-x-3">
                 <Button variant="outline" className="flex-1 flex justify-between items-center">
                   View E-Signature
@@ -670,7 +511,6 @@ export default function CustomerDetails({ customer, onBack }) {
         </div>
       </div>
 
-      {/* Facilities Section */}
       <div className="mb-8">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-[#039994]">Facilities</h3>
@@ -685,12 +525,7 @@ export default function CustomerDetails({ customer, onBack }) {
         {facilitiesError && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
             <p className="text-red-600 text-sm">Error loading facilities: {facilitiesError}</p>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="mt-2"
-              onClick={fetchFacilities}
-            >
+            <Button variant="outline" size="sm" className="mt-2" onClick={fetchFacilities}>
               Retry
             </Button>
           </div>

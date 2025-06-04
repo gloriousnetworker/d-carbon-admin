@@ -24,8 +24,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import CustomerDetails from "./CustomerDetails";
-import CustomerReport from "./CustomerReport";
+import CommercialDetails from "./customer-details/CommercialDetails";
+import ResidentialDetails from "./customer-details/ResidentialDetails";
+import PartnerDetails from "./customer-details/PartnerDetails";
 import SendReminderModal from "./modals/customerManagement/SendReminderModal";
 import InviteCustomerModal from "./modals/customerManagement/InviteCustomerModal";
 import InviteBulkCustomersModal from "./modals/customerManagement/InviteBulkCustomersModal";
@@ -66,25 +67,13 @@ export default function CustomerManagement() {
         limit: "10",
       });
 
-      // Add filters only if they have values
-      if (filters.customerType) {
-        queryParams.append("userType", filters.customerType);
-      }
-      if (filters.status) {
-        queryParams.append("status", filters.status);
-      }
-      if (filters.utilityProvider) {
-        queryParams.append("utility", filters.utilityProvider);
-      }
+      if (filters.customerType) queryParams.append("userType", filters.customerType);
+      if (filters.status) queryParams.append("status", filters.status);
+      if (filters.utilityProvider) queryParams.append("utility", filters.utilityProvider);
       if (filters.documentStatus) {
-        if (filters.documentStatus === "issue") {
-          queryParams.append("facilityStatus", "PENDING");
-        } else if (filters.documentStatus === "verified") {
-          queryParams.append("facilityStatus", "APPROVED");
-        }
+        if (filters.documentStatus === "issue") queryParams.append("facilityStatus", "PENDING");
+        else if (filters.documentStatus === "verified") queryParams.append("facilityStatus", "APPROVED");
       }
-
-      console.log("Fetching customers with params:", queryParams.toString()); // Debug log
 
       const response = await fetch(
         `https://services.dcarbon.solutions/api/admin/get-all-users?${queryParams}`,
@@ -96,13 +85,9 @@ export default function CustomerManagement() {
         }
       );
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
       const data = await response.json();
-      console.log("API Response:", data); // Debug log
-      
       if (data.data && data.data.users) {
         setCustomers(data.data.users);
         setTotalPages(data.data.metadata?.totalPages || 1);
@@ -135,36 +120,28 @@ export default function CustomerManagement() {
   };
 
   const handleInviteCustomerType = (type) => {
-    if (type === "individual") {
-      setShowInviteModal(true);
-    } else if (type === "bulk") {
-      setShowBulkInviteModal(true);
-    }
+    if (type === "individual") setShowInviteModal(true);
+    else if (type === "bulk") setShowBulkInviteModal(true);
   };
 
   const handleViewChange = (view) => {
     setCurrentView(view);
-    if (view === "management") {
-      setSelectedCustomer(null);
-    }
+    if (view === "management") setSelectedCustomer(null);
   };
 
   const handleApplyFilters = (newFilters) => {
-    console.log("Applying new filters:", newFilters); // Debug log
     setFilters(newFilters);
     setCurrentPage(1);
     setShowFilterModal(false);
   };
 
   const resetFilters = () => {
-    const emptyFilters = {
+    setFilters({
       customerType: "",
       status: "",
       utilityProvider: "",
       documentStatus: ""
-    };
-    console.log("Resetting filters to:", emptyFilters); // Debug log
-    setFilters(emptyFilters);
+    });
     setCurrentPage(1);
   };
 
@@ -197,32 +174,36 @@ export default function CustomerManagement() {
 
   const statusDistribution = calculateStatusDistribution();
 
+  const renderCustomerDetails = () => {
+    if (!selectedCustomer) return null;
+    
+    switch (selectedCustomer.userType) {
+      case "COMMERCIAL":
+        return <CommercialDetails customer={selectedCustomer} onBack={handleBackToList} />;
+      case "RESIDENTIAL":
+        return <ResidentialDetails customer={selectedCustomer} onBack={handleBackToList} />;
+      case "PARTNER":
+        return <PartnerDetails customer={selectedCustomer} onBack={handleBackToList} />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-white">
       <div className="flex-1 overflow-hidden p-10">
-        {currentView === "details" && selectedCustomer && (
-          <CustomerDetails 
-            customer={selectedCustomer} 
-            onBack={handleBackToList} 
-          />
-        )}
+        {currentView === "details" && renderCustomerDetails()}
         
         {currentView === "report" && (
-          <CustomerReport 
-            onBack={() => handleViewChange("management")} 
-          />
+          <CustomerReport onBack={() => handleViewChange("management")} />
         )}
         
         {currentView === "partner-management" && (
-          <PartnerManagement 
-            onViewChange={handleViewChange}
-          />
+          <PartnerManagement onViewChange={handleViewChange} />
         )}
         
         {currentView === "utility-management" && (
-          <UtilityProviderManagement 
-            onViewChange={handleViewChange}
-          />
+          <UtilityProviderManagement onViewChange={handleViewChange} />
         )}
         
         {currentView === "management" && (
@@ -295,26 +276,11 @@ export default function CustomerManagement() {
 
             <div className="flex items-center mb-6">
               <div className="flex-1 flex h-4 rounded-full overflow-hidden bg-gray-200">
-                <div 
-                  className="bg-red-500" 
-                  style={{ width: `${statusDistribution.Terminated}%` }}
-                />
-                <div 
-                  className="bg-amber-400" 
-                  style={{ width: `${statusDistribution.Invited}%` }}
-                />
-                <div 
-                  className="bg-teal-500" 
-                  style={{ width: `${statusDistribution.Active}%` }}
-                />
-                <div 
-                  className="bg-black" 
-                  style={{ width: `${statusDistribution.Registered}%` }}
-                />
-                <div 
-                  className="bg-gray-400" 
-                  style={{ width: `${statusDistribution.Inactive}%` }}
-                />
+                <div className="bg-red-500" style={{ width: `${statusDistribution.Terminated}%` }} />
+                <div className="bg-amber-400" style={{ width: `${statusDistribution.Invited}%` }} />
+                <div className="bg-teal-500" style={{ width: `${statusDistribution.Active}%` }} />
+                <div className="bg-black" style={{ width: `${statusDistribution.Registered}%` }} />
+                <div className="bg-gray-400" style={{ width: `${statusDistribution.Inactive}%` }} />
               </div>
               
               <div className="ml-4 flex items-center gap-4">
