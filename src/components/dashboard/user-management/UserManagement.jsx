@@ -31,7 +31,7 @@ import SendReminderModal from "./modals/customerManagement/SendReminderModal";
 import InviteCustomerModal from "./modals/customerManagement/InviteCustomerModal";
 import InviteBulkCustomersModal from "./modals/customerManagement/InviteBulkCustomersModal";
 import FilterByModal from "./modals/customerManagement/FilterBy";
-import PartnerManagement from "./PartnerManagement";
+import PartnerManagement from "./partner-management/PartnerManagement";
 import UtilityProviderManagement from "./utility-provider-management/UtilityProviderManagement";
 
 export default function CustomerManagement() {

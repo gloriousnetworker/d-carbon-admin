@@ -14,7 +14,7 @@ export default function CommercialDetails({ customer, onBack }) {
   const [approvingDoc, setApprovingDoc] = useState(null);
   const [verifyingFacility, setVerifyingFacility] = useState(null);
   const [rejectionReasons, setRejectionReasons] = useState({});
-  const [showRejectionInput, setShowRejectionInput] = useState(null);
+  const [showRejectionInput, setShowRejectionInput] = useState({});
 
   useEffect(() => {
     if (customer?.id) fetchFacilities();
@@ -137,7 +137,7 @@ export default function CommercialDetails({ customer, onBack }) {
       const body = {
         status,
         ...(status === "REJECTED" && { 
-          rejectionReason: rejectionReasons[docType] || "No reason provided" 
+          reason: rejectionReasons[docKey] || "No reason provided" 
         })
       };
 
@@ -159,7 +159,7 @@ export default function CommercialDetails({ customer, onBack }) {
       if (data.status === 'success') {
         toast.success(data.message);
         fetchFacilities();
-        setShowRejectionInput(null);
+        setShowRejectionInput(prev => ({ ...prev, [docKey]: false }));
       } else {
         throw new Error(data.message || 'Failed to update document status');
       }
@@ -287,69 +287,105 @@ export default function CommercialDetails({ customer, onBack }) {
               <div className="col-span-2 font-medium">Actions</div>
             </div>
             
-            {documents.map((doc, index) => (
-              <div key={index} className="grid grid-cols-12 p-3 border-b last:border-b-0 items-center text-sm">
-                <div className="col-span-5">
-                  <p className="font-medium">{doc.name}</p>
-                </div>
-                
-                <div className="col-span-3">
-                  {doc.url ? (
-                    <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => window.open(doc.url, '_blank')}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
-                        const link = document.createElement('a');
-                        link.href = doc.url;
-                        link.download = doc.name;
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                      }}>
-                        <Download className="h-4 w-4" />
-                      </Button>
+            {documents.map((doc, index) => {
+              const docKey = `${facility.id}-${doc.type}`;
+              return (
+                <React.Fragment key={index}>
+                  <div className="grid grid-cols-12 p-3 border-b last:border-b-0 items-center text-sm">
+                    <div className="col-span-5">
+                      <p className="font-medium">{doc.name}</p>
                     </div>
-                  ) : (
-                    <span className="text-sm text-gray-400">No document uploaded</span>
-                  )}
-                </div>
-                
-                <div className="col-span-2">
-                  <span className={`text-xs font-semibold px-3 py-1 rounded-full ${getStatusColor(doc.status)}`}>
-                    {doc.status || 'Required'}
-                  </span>
-                </div>
-                
-                <div className="col-span-2 flex gap-2">
-                  {doc.url && doc.status !== "APPROVED" && (
-                    <>
-                      <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => handleDocumentStatusChange(facility.id, doc.type, "APPROVED")} disabled={approvingDoc === `${facility.id}-${doc.type}`}>
-                        {approvingDoc === `${facility.id}-${doc.type}` ? <Loader2 className="h-4 w-4 animate-spin" /> : "Approve"}
-                      </Button>
-                      <Button variant="outline" size="sm" className="h-8 text-xs bg-red-50 text-red-600 hover:bg-red-100" onClick={() => setShowRejectionInput(showRejectionInput === doc.type ? null : doc.type)}>
-                        Reject
-                      </Button>
-                    </>
-                  )}
-                </div>
-                
-                {showRejectionInput === doc.type && (
-                  <div className="col-span-12 mt-2 flex gap-2">
-                    <input type="text" placeholder="Enter rejection reason" className="flex-1 border rounded px-2 py-1 text-sm" value={rejectionReasons[doc.type] || ''} onChange={(e) => setRejectionReasons(prev => ({ ...prev, [doc.type]: e.target.value }))} />
-                    <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => {
-                      if (rejectionReasons[doc.type]) {
-                        handleDocumentStatusChange(facility.id, doc.type, "REJECTED");
-                      } else {
-                        toast.error("Please enter a rejection reason");
-                      }
-                    }} disabled={approvingDoc === `${facility.id}-${doc.type}`}>
-                      {approvingDoc === `${facility.id}-${doc.type}` ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit"}
-                    </Button>
+                    
+                    <div className="col-span-3">
+                      {doc.url ? (
+                        <div className="flex items-center gap-2">
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => window.open(doc.url, '_blank')}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
+                            const link = document.createElement('a');
+                            link.href = doc.url;
+                            link.download = doc.name;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                          }}>
+                            <Download className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-gray-400">No document uploaded</span>
+                      )}
+                    </div>
+                    
+                    <div className="col-span-2">
+                      <span className={`text-xs font-semibold px-3 py-1 rounded-full ${getStatusColor(doc.status)}`}>
+                        {doc.status || 'Required'}
+                      </span>
+                    </div>
+                    
+                    <div className="col-span-2 flex gap-2">
+                      {doc.url && doc.status !== "APPROVED" && (
+                        <>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-8 text-xs" 
+                            onClick={() => handleDocumentStatusChange(facility.id, doc.type, "APPROVED")} 
+                            disabled={approvingDoc === docKey}
+                          >
+                            {approvingDoc === docKey ? <Loader2 className="h-4 w-4 animate-spin" /> : "Approve"}
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-8 text-xs bg-red-50 text-red-600 hover:bg-red-100" 
+                            onClick={() => setShowRejectionInput(prev => ({
+                              ...prev,
+                              [docKey]: !prev[docKey]
+                            }))}
+                          >
+                            Reject
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </div>
-                )}
-              </div>
-            ))}
+                  
+                  {showRejectionInput[docKey] && (
+                    <div className="p-3 border-b bg-gray-50">
+                      <div className="flex gap-2">
+                        <input 
+                          type="text" 
+                          placeholder="Enter rejection reason" 
+                          className="flex-1 border rounded px-2 py-1 text-sm" 
+                          value={rejectionReasons[docKey] || ''} 
+                          onChange={(e) => setRejectionReasons(prev => ({ 
+                            ...prev, 
+                            [docKey]: e.target.value 
+                          }))} 
+                        />
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-8 text-xs" 
+                          onClick={() => {
+                            if (rejectionReasons[docKey]) {
+                              handleDocumentStatusChange(facility.id, doc.type, "REJECTED");
+                            } else {
+                              toast.error("Please enter a rejection reason");
+                            }
+                          }} 
+                          disabled={approvingDoc === docKey}
+                        >
+                          {approvingDoc === docKey ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit"}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </React.Fragment>
+              );
+            })}
           </div>
         </div>
 

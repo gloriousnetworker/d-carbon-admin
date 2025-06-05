@@ -29,6 +29,93 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 
+function FilterDialogContent({ filterOptions, activeFilters, onApply }) {
+  const [localFilters, setLocalFilters] = useState({});
+  const [searchQueries, setSearchQueries] = useState({});
+  
+  // Initialize local filters with active filters
+  useEffect(() => {
+    setLocalFilters({...activeFilters});
+  }, [activeFilters]);
+  
+  const updateSearch = (key, value) => {
+    setSearchQueries(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+  
+  const toggleFilterValue = (key, value) => {
+    setLocalFilters(prev => {
+      const newFilters = {...prev};
+      
+      if (!newFilters[key]) {
+        newFilters[key] = [value];
+      } else if (newFilters[key].includes(value)) {
+        newFilters[key] = newFilters[key].filter(v => v !== value);
+        if (newFilters[key].length === 0) {
+          delete newFilters[key];
+        }
+      } else {
+        newFilters[key] = [...newFilters[key], value];
+      }
+      
+      return newFilters;
+    });
+  };
+  
+  const applyFilters = () => {
+    onApply(localFilters);
+  };
+  
+  return (
+    <div className="space-y-4">
+      {Object.entries(filterOptions).map(([key, values]) => {
+        // Filter values based on search query
+        const searchQuery = searchQueries[key] || '';
+        const filteredValues = values.filter(value => 
+          value.toString().toLowerCase().includes(searchQuery.toLowerCase())
+        );
+        
+        return (
+          <div key={key} className="space-y-2">
+            <Label className="font-medium">{key}</Label>
+            <Input 
+              placeholder={`Search ${key}...`}
+              value={searchQueries[key] || ''}
+              onChange={(e) => updateSearch(key, e.target.value)}
+              className="mb-2"
+            />
+            <div className="max-h-40 overflow-y-auto space-y-2 pl-1">
+              {filteredValues.map((value, index) => (
+                <div key={index} className="flex items-center space-x-2">
+                  <Checkbox 
+                    id={`${key}-${index}`}
+                    checked={localFilters[key]?.includes(value) || false}
+                    onCheckedChange={() => toggleFilterValue(key, value)}
+                  />
+                  <Label htmlFor={`${key}-${index}`} className="text-sm cursor-pointer">
+                    {value}
+                  </Label>
+                </div>
+              ))}
+              {filteredValues.length === 0 && (
+                <div className="text-sm text-gray-500 italic">No matching options</div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+      <Button 
+        onClick={applyFilters}
+        className="w-full bg-teal-500 hover:bg-teal-600 text-white"
+      >
+        Apply Filters
+      </Button>
+    </div>
+  );
+}
+
 export default function CustomerReport({ onBack }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [activeReportType, setActiveReportType] = useState("Commercial REC Generation");
@@ -48,16 +135,13 @@ export default function CustomerReport({ onBack }) {
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
   const [filterOptions, setFilterOptions] = useState({});
   const [activeFilters, setActiveFilters] = useState({});
-  
-  // State for sorting
+
   const [sortConfig, setSortConfig] = useState({
     key: null,
     direction: 'asc'
   });
 
-  // Initialize with mock data
   useEffect(() => {
-    // Mock data for REC Sales
     const mockSalesData = Array(25).fill().map((_, i) => ({
       name: `Customer ${i + 1}`,
       customerId: `CUS-${1000 + i}`,
@@ -114,7 +198,6 @@ export default function CustomerReport({ onBack }) {
     }
   };
 
-  // Get column definitions for the current view
   const getColumns = () => {
     if (activeReportType === "Commercial REC Generation") {
       if (activeTab === "Commercial REC Sales") {
@@ -153,7 +236,6 @@ export default function CustomerReport({ onBack }) {
     }
   };
 
-  // Get original data source based on active report type and tab
   const getOriginalData = () => {
     if (activeReportType === "Commercial REC Generation") {
       if (activeTab === "Commercial REC Sales") {
@@ -166,7 +248,6 @@ export default function CustomerReport({ onBack }) {
     }
   };
 
-  // Update filtered data when filters change
   const updateFilteredData = () => {
     const originalData = getOriginalData();
     const filters = activeFilters;
@@ -186,27 +267,22 @@ export default function CustomerReport({ onBack }) {
         }
       });
     }
-    
-    // Apply sorting
+
     if (sortConfig.key) {
       result.sort((a, b) => {
-        // Remove currency symbols for numeric comparison
         let aValue = a[sortConfig.key];
         let bValue = b[sortConfig.key];
-        
-        // Handle currency values
+
         if (typeof aValue === 'string' && aValue.startsWith('$')) {
           aValue = parseFloat(aValue.substring(1));
           bValue = parseFloat(bValue.substring(1));
         }
-        
-        // Handle percentage values
+
         if (typeof aValue === 'string' && aValue.endsWith('%')) {
           aValue = parseFloat(aValue);
           bValue = parseFloat(bValue);
         }
-        
-        // Handle numeric strings
+
         if (!isNaN(aValue) && !isNaN(bValue)) {
           aValue = Number(aValue);
           bValue = Number(bValue);
@@ -221,8 +297,7 @@ export default function CustomerReport({ onBack }) {
         return 0;
       });
     }
-    
-    // Update the appropriate filtered data
+
     if (activeReportType === "Commercial REC Generation") {
       if (activeTab === "Commercial REC Sales") {
         setFilteredSalesData(result);
@@ -233,18 +308,15 @@ export default function CustomerReport({ onBack }) {
       setFilteredWregisData(result);
     }
   };
-  
-  // Effect to update filtered data when filters or sort change
+
   useEffect(() => {
     updateFilteredData();
   }, [activeFilters, sortConfig.key, sortConfig.direction]);
 
-  // Effect to reset pagination when data view changes
   useEffect(() => {
     setCurrentPage(1);
   }, [activeReportType, activeTab]);
 
-  // Effect to gather filter options when tab or report type changes
   useEffect(() => {
     const columns = getColumns();
     const data = getOriginalData();
@@ -252,14 +324,12 @@ export default function CustomerReport({ onBack }) {
     const newFilterOptions = {};
     
     columns.forEach(column => {
-      // Get unique values for each column
       const uniqueValues = [...new Set(data.map(item => item[column.key]))];
       newFilterOptions[column.key] = uniqueValues;
     });
     
     setFilterOptions(newFilterOptions);
     
-    // Reset active filters when view changes
     setActiveFilters({});
   }, [activeReportType, activeTab]);
 
@@ -677,94 +747,6 @@ export default function CustomerReport({ onBack }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
-  );
-}
-
-// Filter Dialog Component
-function FilterDialogContent({ filterOptions, activeFilters, onApply }) {
-  const [localFilters, setLocalFilters] = useState({});
-  const [searchQueries, setSearchQueries] = useState({});
-  
-  // Initialize local filters with active filters
-  useEffect(() => {
-    setLocalFilters({...activeFilters});
-  }, [activeFilters]);
-  
-  const updateSearch = (key, value) => {
-    setSearchQueries(prev => ({
-      ...prev,
-      [key]: value
-    }));
-  };
-  
-  const toggleFilterValue = (key, value) => {
-    setLocalFilters(prev => {
-      const newFilters = {...prev};
-      
-      if (!newFilters[key]) {
-        newFilters[key] = [value];
-      } else if (newFilters[key].includes(value)) {
-        newFilters[key] = newFilters[key].filter(v => v !== value);
-        if (newFilters[key].length === 0) {
-          delete newFilters[key];
-        }
-      } else {
-        newFilters[key] = [...newFilters[key], value];
-      }
-      
-      return newFilters;
-    });
-  };
-  
-  const applyFilters = () => {
-    onApply(localFilters);
-  };
-  
-  return (
-    <div className="space-y-4">
-      {Object.entries(filterOptions).map(([key, values]) => {
-        // Filter values based on search query
-        const searchQuery = searchQueries[key] || '';
-        const filteredValues = values.filter(value => 
-          value.toString().toLowerCase().includes(searchQuery.toLowerCase())
-        );
-        
-        return (
-          <div key={key} className="space-y-2">
-            <Label className="font-medium">{key}</Label>
-            <Input 
-              placeholder={`Search ${key}...`}
-              value={searchQueries[key] || ''}
-              onChange={(e) => updateSearch(key, e.target.value)}
-              className="mb-2"
-            />
-            <div className="max-h-40 overflow-y-auto space-y-2 pl-1">
-              {filteredValues.map((value, index) => (
-                <div key={index} className="flex items-center space-x-2">
-                  <Checkbox 
-                    id={`${key}-${index}`}
-                    checked={localFilters[key]?.includes(value) || false}
-                    onCheckedChange={() => toggleFilterValue(key, value)}
-                  />
-                  <Label htmlFor={`${key}-${index}`} className="text-sm cursor-pointer">
-                    {value}
-                  </Label>
-                </div>
-              ))}
-              {filteredValues.length === 0 && (
-                <div className="text-sm text-gray-500 italic">No matching options</div>
-              )}
-            </div>
-          </div>
-        );
-      })}
-      <Button 
-        onClick={applyFilters}
-        className="w-full bg-teal-500 hover:bg-teal-600 text-white"
-      >
-        Apply Filters
-      </Button>
     </div>
   );
 }

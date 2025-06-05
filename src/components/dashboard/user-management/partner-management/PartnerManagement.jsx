@@ -9,19 +9,27 @@ import {
   ChevronRight,
   Info,
   ArrowLeft,
-  Loader
+  Loader,
+  ChevronDown,
+  Plus,
+  Users
 } from "lucide-react";
 import PartnerDetails from "./PartnerDetails";
-import FilterByModal from "./modals/partnerManagement/FilterBy";
+import FilterByModal from "./partnerManagementModal/FilterBy";
+import AddPartnerModal from "./partnerManagementModal/AddPartner";
+import GetAllInstallers from "./GetAllInstallers";
+import FinanceTypes from "./finance-types/FinanceType";
 
 export default function PartnerManagement({ onViewChange }) {
   const [partners, setPartners] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedPartner, setSelectedPartner] = useState(null);
   const [showFilterModal, setShowFilterModal] = useState(false);
-  const [currentView, setCurrentView] = useState("table"); // "table" or "details"
+  const [showAddPartnerModal, setShowAddPartnerModal] = useState(false);
+  const [currentView, setCurrentView] = useState("table"); // "table", "details", "installers", "finance"
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showDropdown, setShowDropdown] = useState(false);
   
   const partnersPerPage = 10;
   const indexOfLast = currentPage * partnersPerPage;
@@ -81,6 +89,29 @@ export default function PartnerManagement({ onViewChange }) {
     }
   };
 
+  const handleViewInstallers = () => {
+    setCurrentView("installers");
+  };
+
+  const handleViewFinanceTypes = () => {
+    setCurrentView("finance");
+  };
+
+  const handleDropdownSelect = (option) => {
+    if (option === "customer") {
+      handleBackToManagement();
+    } else if (option === "finance") {
+      handleViewFinanceTypes();
+    }
+    setShowDropdown(false);
+  };
+
+  const handleAddPartnerSuccess = () => {
+    // Refresh the partners list after successful addition
+    fetchPartners();
+    setShowAddPartnerModal(false);
+  };
+
   // Helper function to format date
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -110,32 +141,89 @@ export default function PartnerManagement({ onViewChange }) {
             onBack={handleBackToList} 
           />
         )}
+
+        {currentView === "installers" && (
+          // Show Partner Installers
+          <GetAllInstallers onBack={handleBackToList} />
+        )}
+
+        {currentView === "finance" && (
+          // Show Finance Types
+          <FinanceTypes onBack={handleBackToList} />
+        )}
         
         {currentView === "table" && (
           // Show Partner Management Table
           <>
             {/* ===== Header Row ===== */}
-            <div className="flex justify-between mb-6">
-              <div className="flex gap-3">
+            <div className="flex justify-between items-center mb-6">
+              <div className="flex gap-3 items-center">
                 <Button 
                   variant="outline" 
-                  className="gap-2"
+                  className="gap-2 border-black bg-transparent hover:bg-gray-50"
                   onClick={() => setShowFilterModal(true)}
                 >
                   <Filter className="h-4 w-4" />
                   Filter by
                 </Button>
                 
-                {/* Back to Customer Management Button */}
+                {/* Management Type Dropdown */}
+                <div className="relative">
+                  <Button
+                    variant="outline"
+                    className="gap-2 border-gray-300"
+                    onClick={() => setShowDropdown(!showDropdown)}
+                  >
+                    Partner Management
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                  
+                  {showDropdown && (
+                    <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                      <div className="py-1">
+                        <button
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 text-teal-600 font-medium"
+                          onClick={() => handleDropdownSelect("partner")}
+                        >
+                          Partner Management
+                        </button>
+                        <button
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+                          onClick={() => handleDropdownSelect("customer")}
+                        >
+                          Customer Management
+                        </button>
+                        <button
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+                          onClick={() => handleDropdownSelect("finance")}
+                        >
+                          Finance Types
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* View Partner Installers Button */}
                 <Button
                   variant="outline"
-                  className="gap-2"
-                  onClick={handleBackToManagement}
+                  className="gap-2 border-teal-500 text-teal-600 hover:bg-teal-50"
+                  onClick={handleViewInstallers}
                 >
-                  <ArrowLeft className="h-4 w-4" />
-                  Back to Customer Management
+                  <Users className="h-4 w-4" />
+                  View Partner Installers
                 </Button>
               </div>
+
+              {/* New Partner Button */}
+              <Button
+                className="gap-2 text-white"
+                style={{ backgroundColor: '#039994' }}
+                onClick={() => setShowAddPartnerModal(true)}
+              >
+                <Plus className="h-4 w-4" />
+                New Partner
+              </Button>
             </div>
 
             {/* ===== Title ===== */}
@@ -240,6 +328,20 @@ export default function PartnerManagement({ onViewChange }) {
         isOpen={showFilterModal} 
         onClose={() => setShowFilterModal(false)} 
       />
+      
+      <AddPartnerModal 
+        isOpen={showAddPartnerModal} 
+        onClose={() => setShowAddPartnerModal(false)}
+        onSuccess={handleAddPartnerSuccess}
+      />
+
+      {/* Dropdown overlay */}
+      {showDropdown && (
+        <div 
+          className="fixed inset-0 z-40" 
+          onClick={() => setShowDropdown(false)}
+        />
+      )}
     </div>
   );
 }

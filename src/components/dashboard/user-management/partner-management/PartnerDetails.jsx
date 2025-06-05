@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, Pencil, Trash2, Eye, Loader2 } from "lucide-react";
-import EditPartnerModal from "./modals/partnerManagement/EditPartnerModal";
+import EditPartnerModal from "./partnerManagementModal/EditPartnerModal";
 import { useToast } from "@/components/ui/use-toast";
 
 export default function PartnerDetails({ partner, onBack }) {

@@ -5,24 +5,19 @@ const DashboardNavbar = ({
   toggleSidebar,
   selectedSection,
   sectionDisplayMap,
-  onSectionChange,      // ← new prop
+  onSectionChange,
 }) => {
   return (
     <header className="bg-white border-b border-gray-200">
       <div className="max-w-full px-4 py-3 flex items-center justify-between">
-        {/* Left: Hamburger + Title + Sales Agent */}
+        {/* Left: Hamburger + Title */}
         <div className="flex items-center space-x-4">
           <button className="md:hidden" onClick={toggleSidebar}>
             <FaBars className="text-gray-700" size={20} />
           </button>
-
           <h1 className="font-[550] text-[16px] leading-[50%] tracking-[-0.05em] text-[#1E1E1E] font-sfpro text-center">
             {sectionDisplayMap[selectedSection]}
           </h1>
-
-          <button className="bg-[#1E1E1E] text-white px-2 py-1.5 rounded-full text-[10px] font-medium font-sfpro">
-            Sales Agent
-          </button>
         </div>
 
         {/* Center: Search Bar */}
@@ -43,24 +38,22 @@ const DashboardNavbar = ({
 
         {/* Right: Notifications & Support */}
         <div className="flex items-center space-x-6">
-          {/* Bell → routes to notifications section */}
-          <button
-            onClick={() => onSectionChange("notifications")}
-            className="relative focus:outline-none"
-          >
-            <FaBell
-              className={
-                selectedSection === "notifications"
-                  ? "text-[#039994]"
-                  : "text-[#039994] hover:text-gray-600"
-              }
-              size={20}
-            />
-            <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500" />
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => onSectionChange("notifications")}
+              className="focus:outline-none"
+            >
+              <FaBell className="text-[#039994]" size={20} />
+              <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500" />
+            </button>
+          </div>
 
-          {/* Support icon stays unchanged */}
-          <FaHeadset className="text-[#039994]" size={20} />
+          <button
+            onClick={() => onSectionChange("contactSupport")}
+            className="focus:outline-none"
+          >
+            <FaHeadset className="text-[#039994]" size={20} />
+          </button>
         </div>
       </div>
     </header>
