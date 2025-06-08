@@ -52,12 +52,6 @@ export default function ResidentialDetails({ customer, onBack }) {
               <p className="text-sm text-gray-500">Date Registered</p>
               <p className="font-medium">{new Date(customer?.date).toLocaleDateString()}</p>
             </div>
-            {/* <div className="space-y-1">
-              <p className="text-sm text-gray-500">Status</p>
-              <p className="font-medium">
-                <StatusBadge status={customer?.status || "Not specified"} />
-              </p>
-            </div> */}
           </div>
         </div>
 
