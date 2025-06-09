@@ -1,13 +1,639 @@
 "use client";
 
-import React from "react";
-import { ChevronLeft, Trash2, Eye, Download } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { ChevronLeft, Trash2, Eye, Download, ChevronDown, AlertTriangle, CheckCircle, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-// import { StatusBadge } from "@/components/StatusBadge";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
+import { toast } from "react-hot-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 export default function ResidentialDetails({ customer, onBack }) {
+  const [facilities, setFacilities] = useState([]);
+  const [facilitiesLoading, setFacilitiesLoading] = useState(false);
+  const [facilitiesError, setFacilitiesError] = useState(null);
+  const [facilityDocuments, setFacilityDocuments] = useState({});
+  const [approvingDoc, setApprovingDoc] = useState(null);
+  const [verifyingFacility, setVerifyingFacility] = useState(null);
+  const [pdfModalOpen, setPdfModalOpen] = useState(false);
+  const [currentPdfUrl, setCurrentPdfUrl] = useState("");
+  const [currentDocument, setCurrentDocument] = useState(null);
+  const [currentFacility, setCurrentFacility] = useState(null);
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [actionType, setActionType] = useState(""); // "APPROVE" or "REJECT"
+  const [verifyModalOpen, setVerifyModalOpen] = useState(false);
+  const [verifyActionType, setVerifyActionType] = useState(""); // "VERIFY" or "REJECT"
+
+  useEffect(() => {
+    if (customer?.id) {
+      fetchFacilities();
+    }
+  }, [customer?.id]);
+
+  const fetchFacilities = async () => {
+    setFacilitiesLoading(true);
+    setFacilitiesError(null);
+    
+    try {
+      const authToken = localStorage.getItem('authToken');
+      if (!authToken) throw new Error('No authentication token found');
+
+      const response = await fetch(
+        `https://services.dcarbon.solutions/api/residential-facility/get-user-facilities/${customer.id}`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+      const data = await response.json();
+      if (data.status === 'success' && data.data?.facilities) {
+        setFacilities(data.data.facilities);
+        // Fetch documents for each facility
+        await Promise.all(data.data.facilities.map(facility => fetchFacilityDocuments(facility.id)));
+      } else {
+        throw new Error(data.message || 'Failed to fetch facilities');
+      }
+    } catch (err) {
+      console.error('Error fetching facilities:', err);
+      setFacilitiesError(err.message);
+    } finally {
+      setFacilitiesLoading(false);
+    }
+  };
+
+  const fetchFacilityDocuments = async (facilityId) => {
+    try {
+      const authToken = localStorage.getItem('authToken');
+      if (!authToken) throw new Error('No authentication token found');
+
+      const response = await fetch(
+        `https://services.dcarbon.solutions/api/residential-facility/residential-docs/${facilityId}`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+      const data = await response.json();
+      if (data.status === 'success' && data.data) {
+        setFacilityDocuments(prev => ({
+          ...prev,
+          [facilityId]: data.data
+        }));
+      } else {
+        throw new Error(data.message || 'Failed to fetch facility documents');
+      }
+    } catch (err) {
+      console.error(`Error fetching documents for facility ${facilityId}:`, err);
+      toast.error(`Failed to load documents for facility ${facilityId}`);
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString || dateString === "Not specified") return "Not specified";
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "APPROVED": return "bg-[#DEF5F4] text-[#039994]";
+      case "PENDING": return "bg-[#FFF8E6] text-[#FFB200]";
+      case "REJECTED": return "bg-[#FFEBEB] text-[#FF0000]";
+      case "SUBMITTED": return "bg-[#E6F0FF] text-[#0062FF]";
+      case "Required": 
+      case "REQUIRED": 
+        return "bg-[#F2F2F2] text-gray-500";
+      default: return "bg-gray-100 text-gray-500";
+    }
+  };
+
+  const StatusBadge = ({ status }) => {
+    let classes = "";
+    switch (status) {
+      case "ACTIVE":
+      case "VERIFIED":
+        classes = "bg-teal-500 text-white";
+        break;
+      case "PENDING":
+        classes = "bg-amber-400 text-white";
+        break;
+      case "TERMINATED":
+        classes = "bg-red-500 text-white";
+        break;
+      case "INACTIVE":
+        classes = "bg-gray-400 text-white";
+        break;
+      default:
+        classes = "bg-gray-300 text-black";
+    }
+    return (
+      <span className={`inline-block px-2 py-1 rounded-full text-xs ${classes}`}>
+        {status}
+      </span>
+    );
+  };
+
+  const openPdfModal = (pdfUrl, document, facility) => {
+    setCurrentPdfUrl(pdfUrl);
+    setCurrentDocument(document);
+    setCurrentFacility(facility);
+    setPdfModalOpen(true);
+  };
+
+  const closePdfModal = () => {
+    setPdfModalOpen(false);
+    setCurrentPdfUrl("");
+    setCurrentDocument(null);
+    setCurrentFacility(null);
+  };
+
+  const openStatusModal = (type, document, facility) => {
+    setActionType(type);
+    setCurrentDocument(document);
+    setCurrentFacility(facility);
+    setStatusModalOpen(true);
+  };
+
+  const closeStatusModal = () => {
+    setStatusModalOpen(false);
+    setRejectionReason("");
+    setActionType("");
+  };
+
+  const openVerifyModal = (type, facility) => {
+    setVerifyActionType(type);
+    setCurrentFacility(facility);
+    setVerifyModalOpen(true);
+  };
+
+  const closeVerifyModal = () => {
+    setVerifyModalOpen(false);
+    setRejectionReason("");
+    setVerifyActionType("");
+    setCurrentFacility(null);
+  };
+
+  const handleDocumentStatusChange = async () => {
+    if (!currentFacility || !currentDocument) return;
+    
+    const docKey = `${currentFacility.id}-${currentDocument.type}`;
+    setApprovingDoc(docKey);
+    
+    try {
+      const authToken = localStorage.getItem('authToken');
+      if (!authToken) throw new Error('No authentication token found');
+
+      const endpoint = `https://services.dcarbon.solutions/api/admin/residential-facility/${currentFacility.id}/document/${currentDocument.type}/status`;
+      
+      const requestBody = {
+        status: actionType === "APPROVE" ? "APPROVED" : "REJECTED",
+        ...(actionType === "REJECT" && { 
+          rejectionReason: rejectionReason || "No reason provided" 
+        })
+      };
+
+      const response = await fetch(endpoint, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.status === 'success') {
+        toast.success(data.message);
+        fetchFacilityDocuments(currentFacility.id);
+        closeStatusModal();
+        closePdfModal();
+      } else {
+        throw new Error(data.message || 'Failed to update document status');
+      }
+    } catch (err) {
+      console.error('Error updating document status:', err);
+      toast.error(err.message || 'Failed to update document status');
+    } finally {
+      setApprovingDoc(null);
+    }
+  };
+
+  const handleVerifyFacility = async () => {
+    if (!currentFacility) return;
+    
+    setVerifyingFacility(currentFacility.id);
+    
+    try {
+      const authToken = localStorage.getItem('authToken');
+      if (!authToken) throw new Error('No authentication token found');
+
+      const endpoint = `https://services.dcarbon.solutions/api/admin/residential-facility/${currentFacility.id}/verify`;
+
+      const requestBody = {
+        status: verifyActionType === "VERIFY" ? "VERIFIED" : "REJECTED",
+        ...(verifyActionType === "REJECT" && { 
+          rejectionReason: rejectionReason || "No reason provided" 
+        })
+      };
+
+      const response = await fetch(endpoint, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.status === 'success') {
+        toast.success(data.message);
+        fetchFacilities();
+        closeVerifyModal();
+      } else {
+        throw new Error(data.message || 'Failed to verify facility');
+      }
+    } catch (err) {
+      console.error('Error verifying facility:', err);
+      toast.error(err.message || 'Failed to verify facility');
+    } finally {
+      setVerifyingFacility(null);
+    }
+  };
+
+  const FacilityCard = ({ facility }) => {
+    const documents = facilityDocuments[facility.id] || {};
+    const docTypes = [
+      { name: "REC Agreement", url: documents.recAgreementUrl, status: documents.recAgreementStatus, type: "recAgreement", rejectionReason: documents.recAgreementRejectionReason },
+      { name: "Info Release Authorization", url: documents.infoReleaseAuthUrl, status: documents.infoReleaseAuthStatus, type: "infoReleaseAuth", rejectionReason: documents.infoReleaseAuthRejectionReason },
+      { name: "Solar Installation Contract", url: documents.solarInstallationContractUrl, status: documents.solarInstallationStatus, type: "solarInstallationContract", rejectionReason: documents.solarInstallationRejectionReason },
+      { name: "Interconnection Agreement", url: documents.interconnectionAgreementUrl, status: documents.interconnectionStatus, type: "interconnection", rejectionReason: documents.interconnectionRejectionReason },
+      { name: "Single Line Diagram", url: documents.singleLineDiagramUrl, status: documents.singleLineDiagramStatus, type: "singleLineDiagram", rejectionReason: documents.singleLineDiagramRejectionReason },
+      { name: "System Specs", url: documents.systemSpecsUrl, status: documents.systemSpecsStatus, type: "systemSpecs", rejectionReason: documents.systemSpecsRejectionReason },
+      { name: "PTO Letter", url: documents.ptoLetterUrl, status: documents.ptoLetterStatus, type: "ptoLetter", rejectionReason: documents.ptoLetterRejectionReason },
+      { name: "Utility Meter Photo", url: documents.utilityMeterPhotoUrl, status: documents.utilityMeterPhotoStatus, type: "utilityMeterPhoto", rejectionReason: documents.utilityMeterPhotoRejectionReason },
+      { name: "Utility Access Auth", url: documents.utilityAccessAuthUrl, status: documents.utilityAccessAuthStatus, type: "utilityAccessAuth", rejectionReason: documents.utilityAccessAuthRejectionReason },
+      { name: "Utility Account Info", url: documents.utilityAccountInfoUrl, status: documents.utilityAccountInfoStatus, type: "utilityAccountInfo", rejectionReason: documents.utilityAccountInfoRejectionReason },
+      { name: "Ownership Declaration", url: documents.ownershipDeclarationUrl, status: documents.ownershipDeclarationStatus, type: "ownershipDeclaration", rejectionReason: documents.ownershipDeclarationRejectionReason },
+      { name: "Alternate Location", url: documents.alternateLocationUrl, status: documents.alternateLocationStatus, type: "alternateLocation", rejectionReason: documents.alternateLocationRejectionReason },
+    ];
+
+    const allDocumentsApproved = docTypes.every(doc => doc.status === "APPROVED" || doc.status === "Not required");
+    const canVerifyFacility = allDocumentsApproved && facility.status !== "VERIFIED";
+
+    return (
+      <div className="border border-gray-200 rounded-lg p-6 mb-6 bg-white">
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h4 className="text-lg font-semibold text-[#039994]">{facility.facilityName}</h4>
+            <p className="text-sm text-gray-600">{facility.address}</p>
+            <p className="text-xs text-gray-500 mt-1">Facility ID: {facility.id}</p>
+          </div>
+          <StatusBadge status={facility.status} />
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="space-y-3">
+            <div>
+              <p className="text-sm text-gray-500">Utility Provider</p>
+              <p className="font-medium">{facility.utilityProvider}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Meter ID</p>
+              <p className="font-medium">{facility.meterId || 'Not specified'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Finance Type</p>
+              <p className="font-medium capitalize">{facility.financeType}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Installer</p>
+              <p className="font-medium capitalize">{facility.installer}</p>
+            </div>
+          </div>
+          
+          <div className="space-y-3">
+            <div>
+              <p className="text-sm text-gray-500">System Capacity</p>
+              <p className="font-medium">{facility.systemCapacity}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Total RECs</p>
+              <p className="font-medium">{facility.totalRecs}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Last REC Calculation</p>
+              <p className="font-medium">{formatDate(facility.lastRecCalculation)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Zip Code</p>
+              <p className="font-medium">{facility.zipCode}</p>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h5 className="text-md font-semibold text-[#039994] mb-3">Facility Documents</h5>
+          <div className="border rounded-lg overflow-hidden">
+            <div className="grid grid-cols-12 bg-gray-50 p-3 border-b text-sm">
+              <div className="col-span-5 font-medium">Document Name</div>
+              <div className="col-span-3 font-medium">File</div>
+              <div className="col-span-2 font-medium">Status</div>
+              <div className="col-span-2 font-medium">Actions</div>
+            </div>
+            
+            {docTypes.map((doc, index) => {
+              const docKey = `${facility.id}-${doc.type}`;
+              return (
+                <div key={index} className="grid grid-cols-12 p-3 border-b last:border-b-0 items-center text-sm">
+                  <div className="col-span-5">
+                    <p className="font-medium">{doc.name}</p>
+                    {doc.status === "REJECTED" && doc.rejectionReason && (
+                      <p className="text-xs text-red-500 mt-1">Reason: {doc.rejectionReason}</p>
+                    )}
+                  </div>
+                  
+                  <div className="col-span-3">
+                    {doc.url ? (
+                      <div className="flex items-center gap-2">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-6 w-6" 
+                                onClick={() => openPdfModal(doc.url, doc, facility)}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>View document</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-6 w-6" 
+                                onClick={() => {
+                                  const link = document.createElement('a');
+                                  link.href = doc.url;
+                                  link.download = doc.name;
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                }}
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Download document</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-gray-400">No document uploaded</span>
+                    )}
+                  </div>
+                  
+                  <div className="col-span-2">
+                    <span className={`text-xs font-semibold px-3 py-1 rounded-full ${getStatusColor(doc.status)}`}>
+                      {doc.status || 'Required'}
+                    </span>
+                  </div>
+                  
+                  <div className="col-span-2 flex gap-2">
+                    {doc.url && doc.status !== "APPROVED" && (
+                      <>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-8 text-xs" 
+                          onClick={() => openStatusModal("APPROVE", doc, facility)} 
+                          disabled={approvingDoc === docKey}
+                        >
+                          {approvingDoc === docKey ? <Loader2 className="h-4 w-4 animate-spin" /> : "Approve"}
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-8 text-xs bg-red-50 text-red-600 hover:bg-red-100" 
+                          onClick={() => openStatusModal("REJECT", doc, facility)}
+                          disabled={approvingDoc === docKey}
+                        >
+                          Reject
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {canVerifyFacility && (
+          <div className="mt-4 flex justify-end gap-2">
+            <Button 
+              variant="outline" 
+              className="bg-red-50 text-red-600 hover:bg-red-100" 
+              onClick={() => openVerifyModal("REJECT", facility)}
+              disabled={verifyingFacility === facility.id}
+            >
+              Reject Facility
+            </Button>
+            <Button 
+              onClick={() => openVerifyModal("VERIFY", facility)} 
+              disabled={verifyingFacility === facility.id} 
+              className="bg-[#039994] hover:bg-[#02857f]"
+            >
+              {verifyingFacility === facility.id ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              {verifyingFacility === facility.id ? "Processing..." : "Verify Facility"}
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen w-full flex flex-col py-8 px-4 bg-white">
+      {/* PDF Viewer Modal */}
+      <Dialog open={pdfModalOpen} onOpenChange={closePdfModal}>
+        <DialogContent className="max-w-4xl h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="flex justify-between items-center">
+              <span>
+                {currentDocument?.name} - {currentFacility?.facilityName}
+              </span>
+              <Button variant="ghost" size="icon" onClick={closePdfModal}>
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="h-full w-full">
+            {currentPdfUrl && (
+              <iframe 
+                src={currentPdfUrl} 
+                className="w-full h-full border rounded" 
+                frameBorder="0"
+                title={`PDF Viewer - ${currentDocument?.name}`}
+              />
+            )}
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                const link = document.createElement('a');
+                link.href = currentPdfUrl;
+                link.download = currentDocument?.name || "document";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              }}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Download
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Document Status Modal */}
+      <Dialog open={statusModalOpen} onOpenChange={closeStatusModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {actionType === "APPROVE" ? "Approve Document" : "Reject Document"}
+            </DialogTitle>
+            <DialogDescription>
+              {actionType === "APPROVE" 
+                ? "Are you sure you want to approve this document?"
+                : "Please provide a reason for rejecting this document"}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {actionType === "REJECT" && (
+            <div className="py-4">
+              <Input
+                placeholder="Enter rejection reason (required)"
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                required
+              />
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={closeStatusModal}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleDocumentStatusChange}
+              disabled={
+                approvingDoc === `${currentFacility?.id}-${currentDocument?.type}` || 
+                (actionType === "REJECT" && !rejectionReason.trim())
+              }
+              className={actionType === "APPROVE" ? "bg-[#039994] hover:bg-[#02857f]" : "bg-red-500 hover:bg-red-600"}
+            >
+              {approvingDoc === `${currentFacility?.id}-${currentDocument?.type}` ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : actionType === "APPROVE" ? (
+                <CheckCircle className="h-4 w-4 mr-2" />
+              ) : (
+                <AlertTriangle className="h-4 w-4 mr-2" />
+              )}
+              {actionType === "APPROVE" ? "Approve" : "Reject"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Facility Verification Modal */}
+      <Dialog open={verifyModalOpen} onOpenChange={closeVerifyModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {verifyActionType === "VERIFY" ? "Verify Facility" : "Reject Facility"}
+            </DialogTitle>
+            <DialogDescription>
+              {verifyActionType === "VERIFY" 
+                ? "Are you sure you want to verify this facility?"
+                : "Please provide a reason for rejecting this facility"}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {verifyActionType === "REJECT" && (
+            <div className="py-4">
+              <Input
+                placeholder="Enter rejection reason (required)"
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                required
+              />
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={closeVerifyModal}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleVerifyFacility}
+              disabled={
+                verifyingFacility === currentFacility?.id || 
+                (verifyActionType === "REJECT" && !rejectionReason.trim())
+              }
+              className={verifyActionType === "VERIFY" ? "bg-[#039994] hover:bg-[#02857f]" : "bg-red-500 hover:bg-red-600"}
+            >
+              {verifyingFacility === currentFacility?.id ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : verifyActionType === "VERIFY" ? (
+                <CheckCircle className="h-4 w-4 mr-2" />
+              ) : (
+                <AlertTriangle className="h-4 w-4 mr-2" />
+              )}
+              {verifyActionType === "VERIFY" ? "Verify Facility" : "Reject Facility"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex justify-between items-center mb-6">
         <button className="flex items-center text-[#039994] hover:text-[#02857f] pl-0" onClick={onBack}>
           <ChevronLeft className="h-5 w-5 mr-1" />
@@ -15,9 +641,13 @@ export default function ResidentialDetails({ customer, onBack }) {
         </button>
 
         <div className="flex items-center space-x-4">
-          <Button variant="outline" className="flex items-center gap-2">
-            Choose action
-          </Button>
+          <div className="relative">
+            <Button variant="outline" className="flex items-center gap-2">
+              Choose action
+              <ChevronDown className="h-4 w-4" />
+            </Button>
+          </div>
+
           <button className="text-[#FF0000] hover:text-red-600 p-1">
             <Trash2 className="h-5 w-5" />
           </button>
@@ -50,7 +680,7 @@ export default function ResidentialDetails({ customer, onBack }) {
             </div>
             <div className="space-y-1">
               <p className="text-sm text-gray-500">Date Registered</p>
-              <p className="font-medium">{new Date(customer?.date).toLocaleDateString()}</p>
+              <p className="font-medium">{formatDate(customer?.date)}</p>
             </div>
           </div>
         </div>
@@ -59,8 +689,12 @@ export default function ResidentialDetails({ customer, onBack }) {
           <h3 className="text-lg font-semibold text-[#039994] mb-4">System Information</h3>
           <div className="grid grid-cols-2 gap-y-4 gap-x-6">
             <div className="space-y-1">
-              <p className="text-sm text-gray-500">System Status</p>
-              <p className="font-medium">Active</p>
+              <p className="text-sm text-gray-500">Total Facilities</p>
+              <p className="font-medium">{facilities.length}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-gray-500">Active Facilities</p>
+              <p className="font-medium">{facilities.filter(f => f.status === 'VERIFIED' || f.status === 'ACTIVE').length}</p>
             </div>
           </div>
           
@@ -83,6 +717,37 @@ export default function ResidentialDetails({ customer, onBack }) {
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="mb-8">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-[#039994]">Facilities</h3>
+          {facilitiesLoading && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading facilities...
+            </div>
+          )}
+        </div>
+        
+        {facilitiesError && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+            <p className="text-red-600 text-sm">Error loading facilities: {facilitiesError}</p>
+            <Button variant="outline" size="sm" className="mt-2" onClick={fetchFacilities}>
+              Retry
+            </Button>
+          </div>
+        )}
+        
+        {!facilitiesLoading && !facilitiesError && facilities.length === 0 && (
+          <div className="border border-gray-200 rounded-lg p-8 text-center">
+            <p className="text-gray-500">No facilities found for this customer.</p>
+          </div>
+        )}
+        
+        {facilities.map((facility) => (
+          <FacilityCard key={facility.id} facility={facility} />
+        ))}
       </div>
     </div>
   );
