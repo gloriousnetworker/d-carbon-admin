@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { ChevronLeft, Trash2, Eye, Download, ChevronDown, AlertTriangle, CheckCircle, Loader2 } from "lucide-react";
+import { ChevronLeft, Trash2, Eye, Download, ChevronDown, AlertTriangle, CheckCircle, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { toast } from "react-hot-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 export default function CommercialDetails({ customer, onBack }) {
   const [systemActive, setSystemActive] = useState(false);
@@ -13,8 +15,13 @@ export default function CommercialDetails({ customer, onBack }) {
   const [facilitiesError, setFacilitiesError] = useState(null);
   const [approvingDoc, setApprovingDoc] = useState(null);
   const [verifyingFacility, setVerifyingFacility] = useState(null);
-  const [rejectionReasons, setRejectionReasons] = useState({});
-  const [showRejectionInput, setShowRejectionInput] = useState({});
+  const [pdfModalOpen, setPdfModalOpen] = useState(false);
+  const [currentPdfUrl, setCurrentPdfUrl] = useState("");
+  const [currentDocument, setCurrentDocument] = useState(null);
+  const [currentFacility, setCurrentFacility] = useState(null);
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [actionType, setActionType] = useState(""); // "APPROVE" or "REJECT"
 
   useEffect(() => {
     if (customer?.id) fetchFacilities();
@@ -124,20 +131,47 @@ export default function CommercialDetails({ customer, onBack }) {
     );
   };
 
-  const handleDocumentStatusChange = async (facilityId, docType, status) => {
-    const docKey = `${facilityId}-${docType}`;
+  const openPdfModal = (pdfUrl, document, facility) => {
+    setCurrentPdfUrl(pdfUrl);
+    setCurrentDocument(document);
+    setCurrentFacility(facility);
+    setPdfModalOpen(true);
+  };
+
+  const closePdfModal = () => {
+    setPdfModalOpen(false);
+    setCurrentPdfUrl("");
+    setCurrentDocument(null);
+    setCurrentFacility(null);
+  };
+
+  const openStatusModal = (type) => {
+    setActionType(type);
+    setStatusModalOpen(true);
+  };
+
+  const closeStatusModal = () => {
+    setStatusModalOpen(false);
+    setRejectionReason("");
+    setActionType("");
+  };
+
+  const handleDocumentStatusChange = async (status) => {
+    if (!currentFacility || !currentDocument) return;
+    
+    const docKey = `${currentFacility.id}-${currentDocument.type}`;
     setApprovingDoc(docKey);
     
     try {
       const authToken = localStorage.getItem('authToken');
       if (!authToken) throw new Error('No authentication token found');
 
-      const endpoint = `https://services.dcarbon.solutions/api/admin/commercial-facility/${facilityId}/document/${docType}/status`;
+      const endpoint = `https://services.dcarbon.solutions/api/admin/commercial-facility/${currentFacility.id}/document/${currentDocument.type}/status`;
       
       const body = {
         status,
         ...(status === "REJECTED" && { 
-          reason: rejectionReasons[docKey] || "No reason provided" 
+          rejectionReason: rejectionReason || "No reason provided" 
         })
       };
 
@@ -159,7 +193,8 @@ export default function CommercialDetails({ customer, onBack }) {
       if (data.status === 'success') {
         toast.success(data.message);
         fetchFacilities();
-        setShowRejectionInput(prev => ({ ...prev, [docKey]: false }));
+        closeStatusModal();
+        closePdfModal();
       } else {
         throw new Error(data.message || 'Failed to update document status');
       }
@@ -210,12 +245,12 @@ export default function CommercialDetails({ customer, onBack }) {
 
   const FacilityCard = ({ facility }) => {
     const documents = [
-      { name: "Finance Agreement", url: facility.financeAgreementUrl, status: facility.financeAgreementStatus, type: "financeAgreement" },
-      { name: "Proof of Address", url: facility.proofOfAddressUrl, status: facility.proofOfAddressStatus, type: "proofOfAddress" },
-      { name: "Info Release Authorization", url: facility.infoReleaseAuthUrl, status: facility.infoReleaseAuthStatus, type: "infoReleaseAuth" },
-      { name: "WREGIS Assignment", url: facility.wregisAssignmentUrl, status: facility.wregisAssignmentStatus, type: "wregisAssignment" },
-      { name: "Multiple Owner Declaration", url: facility.multipleOwnerDeclUrl, status: facility.multipleOwnerDeclStatus, type: "multipleOwnerDecl" },
-      { name: "System Operator Data Access", url: facility.sysOpDataAccessUrl, status: facility.sysOpDataAccessStatus, type: "sysOpDataAccess" },
+      { name: "Finance Agreement", url: facility.financeAgreementUrl, status: facility.financeAgreementStatus, type: "financeAgreement", rejectionReason: facility.financeAgreementRejectionReason },
+      { name: "Proof of Address", url: facility.proofOfAddressUrl, status: facility.proofOfAddressStatus, type: "proofOfAddress", rejectionReason: facility.proofOfAddressRejectionReason },
+      { name: "Info Release Authorization", url: facility.infoReleaseAuthUrl, status: facility.infoReleaseAuthStatus, type: "infoReleaseAuth", rejectionReason: facility.infoReleaseAuthRejectionReason },
+      { name: "WREGIS Assignment", url: facility.wregisAssignmentUrl, status: facility.wregisAssignmentStatus, type: "wregisAssignment", rejectionReason: facility.wregisAssignmentRejectionReason },
+      { name: "Multiple Owner Declaration", url: facility.multipleOwnerDeclUrl, status: facility.multipleOwnerDeclStatus, type: "multipleOwnerDecl", rejectionReason: facility.multipleOwnerDeclRejectionReason },
+      { name: "System Operator Data Access", url: facility.sysOpDataAccessUrl, status: facility.sysOpDataAccessStatus, type: "sysOpDataAccess", rejectionReason: facility.sysOpDataAccessRejectionReason },
     ];
 
     const allDocumentsApproved = documents.every(doc => doc.status === "APPROVED" || doc.status === "Not required");
@@ -227,6 +262,7 @@ export default function CommercialDetails({ customer, onBack }) {
           <div>
             <h4 className="text-lg font-semibold text-[#039994]">{facility.facilityName}</h4>
             <p className="text-sm text-gray-600">{facility.address}</p>
+            <p className="text-xs text-gray-500 mt-1">Facility ID: {facility.id}</p>
           </div>
           <StatusBadge status={facility.status} />
         </div>
@@ -290,100 +326,102 @@ export default function CommercialDetails({ customer, onBack }) {
             {documents.map((doc, index) => {
               const docKey = `${facility.id}-${doc.type}`;
               return (
-                <React.Fragment key={index}>
-                  <div className="grid grid-cols-12 p-3 border-b last:border-b-0 items-center text-sm">
-                    <div className="col-span-5">
-                      <p className="font-medium">{doc.name}</p>
-                    </div>
-                    
-                    <div className="col-span-3">
-                      {doc.url ? (
-                        <div className="flex items-center gap-2">
-                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => window.open(doc.url, '_blank')}>
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
-                            const link = document.createElement('a');
-                            link.href = doc.url;
-                            link.download = doc.name;
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
-                          }}>
-                            <Download className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <span className="text-sm text-gray-400">No document uploaded</span>
-                      )}
-                    </div>
-                    
-                    <div className="col-span-2">
-                      <span className={`text-xs font-semibold px-3 py-1 rounded-full ${getStatusColor(doc.status)}`}>
-                        {doc.status || 'Required'}
-                      </span>
-                    </div>
-                    
-                    <div className="col-span-2 flex gap-2">
-                      {doc.url && doc.status !== "APPROVED" && (
-                        <>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="h-8 text-xs" 
-                            onClick={() => handleDocumentStatusChange(facility.id, doc.type, "APPROVED")} 
-                            disabled={approvingDoc === docKey}
-                          >
-                            {approvingDoc === docKey ? <Loader2 className="h-4 w-4 animate-spin" /> : "Approve"}
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="h-8 text-xs bg-red-50 text-red-600 hover:bg-red-100" 
-                            onClick={() => setShowRejectionInput(prev => ({
-                              ...prev,
-                              [docKey]: !prev[docKey]
-                            }))}
-                          >
-                            Reject
-                          </Button>
-                        </>
-                      )}
-                    </div>
+                <div key={index} className="grid grid-cols-12 p-3 border-b last:border-b-0 items-center text-sm">
+                  <div className="col-span-5">
+                    <p className="font-medium">{doc.name}</p>
+                    {doc.status === "REJECTED" && doc.rejectionReason && (
+                      <p className="text-xs text-red-500 mt-1">Reason: {doc.rejectionReason}</p>
+                    )}
                   </div>
                   
-                  {showRejectionInput[docKey] && (
-                    <div className="p-3 border-b bg-gray-50">
-                      <div className="flex gap-2">
-                        <input 
-                          type="text" 
-                          placeholder="Enter rejection reason" 
-                          className="flex-1 border rounded px-2 py-1 text-sm" 
-                          value={rejectionReasons[docKey] || ''} 
-                          onChange={(e) => setRejectionReasons(prev => ({ 
-                            ...prev, 
-                            [docKey]: e.target.value 
-                          }))} 
-                        />
+                  <div className="col-span-3">
+                    {doc.url ? (
+                      <div className="flex items-center gap-2">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-6 w-6" 
+                                onClick={() => openPdfModal(doc.url, doc, facility)}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>View document</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-6 w-6" 
+                                onClick={() => {
+                                  const link = document.createElement('a');
+                                  link.href = doc.url;
+                                  link.download = doc.name;
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                }}
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Download document</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-gray-400">No document uploaded</span>
+                    )}
+                  </div>
+                  
+                  <div className="col-span-2">
+                    <span className={`text-xs font-semibold px-3 py-1 rounded-full ${getStatusColor(doc.status)}`}>
+                      {doc.status || 'Required'}
+                    </span>
+                  </div>
+                  
+                  <div className="col-span-2 flex gap-2">
+                    {doc.url && doc.status !== "APPROVED" && (
+                      <>
                         <Button 
                           variant="outline" 
                           size="sm" 
                           className="h-8 text-xs" 
                           onClick={() => {
-                            if (rejectionReasons[docKey]) {
-                              handleDocumentStatusChange(facility.id, doc.type, "REJECTED");
-                            } else {
-                              toast.error("Please enter a rejection reason");
-                            }
+                            setCurrentDocument(doc);
+                            setCurrentFacility(facility);
+                            openStatusModal("APPROVE");
                           }} 
                           disabled={approvingDoc === docKey}
                         >
-                          {approvingDoc === docKey ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit"}
+                          {approvingDoc === docKey ? <Loader2 className="h-4 w-4 animate-spin" /> : "Approve"}
                         </Button>
-                      </div>
-                    </div>
-                  )}
-                </React.Fragment>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-8 text-xs bg-red-50 text-red-600 hover:bg-red-100" 
+                          onClick={() => {
+                            setCurrentDocument(doc);
+                            setCurrentFacility(facility);
+                            openStatusModal("REJECT");
+                          }}
+                        >
+                          Reject
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
               );
             })}
           </div>
@@ -403,6 +441,94 @@ export default function CommercialDetails({ customer, onBack }) {
 
   return (
     <div className="min-h-screen w-full flex flex-col py-8 px-4 bg-white">
+      {/* PDF Viewer Modal */}
+      <Dialog open={pdfModalOpen} onOpenChange={closePdfModal}>
+        <DialogContent className="max-w-4xl h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="flex justify-between items-center">
+              <span>
+                {currentDocument?.name} - {currentFacility?.facilityName}
+              </span>
+              <Button variant="ghost" size="icon" onClick={closePdfModal}>
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="h-full w-full">
+            {currentPdfUrl && (
+              <iframe 
+                src={currentPdfUrl} 
+                className="w-full h-full border rounded" 
+                frameBorder="0"
+                title={`PDF Viewer - ${currentDocument?.name}`}
+              />
+            )}
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                const link = document.createElement('a');
+                link.href = currentPdfUrl;
+                link.download = currentDocument?.name || "document";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              }}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Download
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Document Status Modal */}
+      <Dialog open={statusModalOpen} onOpenChange={closeStatusModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {actionType === "APPROVE" ? "Approve Document" : "Reject Document"}
+            </DialogTitle>
+            <DialogDescription>
+              {actionType === "APPROVE" 
+                ? "Are you sure you want to approve this document?"
+                : "Please provide a reason for rejecting this document"}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {actionType === "REJECT" && (
+            <div className="py-4">
+              <Input
+                placeholder="Enter rejection reason"
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+              />
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={closeStatusModal}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => handleDocumentStatusChange(actionType === "APPROVE" ? "APPROVED" : "REJECTED")}
+              disabled={approvingDoc === `${currentFacility?.id}-${currentDocument?.type}` || (actionType === "REJECT" && !rejectionReason)}
+              className={actionType === "APPROVE" ? "bg-[#039994] hover:bg-[#02857f]" : "bg-red-500 hover:bg-red-600"}
+            >
+              {approvingDoc === `${currentFacility?.id}-${currentDocument?.type}` ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : actionType === "APPROVE" ? (
+                <CheckCircle className="h-4 w-4 mr-2" />
+              ) : (
+                <AlertTriangle className="h-4 w-4 mr-2" />
+              )}
+              {actionType === "APPROVE" ? "Approve" : "Reject"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex justify-between items-center mb-6">
         <button className="flex items-center text-[#039994] hover:text-[#02857f] pl-0" onClick={onBack}>
           <ChevronLeft className="h-5 w-5 mr-1" />
