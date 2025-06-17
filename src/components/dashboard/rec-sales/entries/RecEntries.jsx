@@ -61,7 +61,7 @@ export default function RecEntries() {
 
   useEffect(() => {
     if (isNewRecModalOpen) {
-      fetchAllBuyers()
+      fetchBuyers()
     }
   }, [isNewRecModalOpen])
 
@@ -90,11 +90,11 @@ export default function RecEntries() {
     }
   }
 
-  const fetchAllBuyers = async () => {
+  const fetchBuyers = async () => {
     try {
       setBuyersLoading(true)
       const token = localStorage.getItem('authToken')
-      const response = await fetch(`${API_URL}/api/rec/buyers/all`, {
+      const response = await fetch(`${API_URL}/api/rec/buyers`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -544,7 +544,7 @@ function NewRecSaleModal({
                   <SelectContent>
                     {buyers.length > 0 ? (
                       buyers.map((buyer) => (
-                        <SelectItem key={buyer.id} value={buyer.id.toString()}>
+                        <SelectItem key={buyer.id} value={buyer.id}>
                           {buyer.companyName}
                         </SelectItem>
                       ))
