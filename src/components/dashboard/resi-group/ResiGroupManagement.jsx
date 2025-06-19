@@ -1,38 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ChevronLeft, ChevronRight, Filter, Upload, X } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import ResidentGroupsFilterByModal from "./modals/ResidentGroupsFilterByModal"
-import CreateNewResidentGroupFilterByModal from "./modals/CreateNewResidentGroupFilterByModal"
-import ResidentGroupDetailsFilterByModal from "./modals/ResidentGroupDetailsFilterByModal"
-import RemoveUsersModal from "./modals/RemoveUsersModal"
-
-// Sample data
-const residentialGroups = Array(10).fill(null).map((_, i) => ({
-  id: `RG-${1000 + i}`,
-  resiGroupId: `RG-${1000 + i}`,
-  wregisId: `WREGIS-${2000 + i}`,
-  dCarbonId: `DCARBON-${3000 + i}`,
-  financeComp: `Finance Co. ${i + 1}`,
-  installer: `Installer ${i + 1}`,
-  utilityProv: `Utility ${i + 1}`,
-  totalRECProd: (200 + i * 10).toString(),
-  totalKW: (250 + i * 5).toString(),
-  residents: Array(3).fill(null).map((_, j) => ({
-    id: `RES-${i}-${j}`,
-    name: `Resident ${i}-${j}`,
-    residentId: `RES-${i}-${j}`,
-    financeComp: `Finance Co. ${i + 1}`,
-    installer: `Installer ${i + 1}`,
-    utilityProv: `Utility ${i + 1}`,
-    address: `${100 + j} Main St, City ${i}`,
-    kwSysSize: (5 + j).toString(),
-    dateOfReg: `0${j+1}-0${i+1}-2023`
-  }))
-}))
+import * as styles from "./styles"
 
 export default function ResiGroupManagement() {
   const [currentPage, setCurrentPage] = useState(1)
@@ -43,15 +13,50 @@ export default function ResiGroupManagement() {
   const [isCreateFilterOpen, setIsCreateFilterOpen] = useState(false)
   const [isDetailsFilterOpen, setIsDetailsFilterOpen] = useState(false)
   const [isRemoveUsersOpen, setIsRemoveUsersOpen] = useState(false)
+  const [residentialGroups, setResidentialGroups] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [filters, setFilters] = useState({})
   
   const totalPages = 4
   const totalKWSelected = 60
   const totalKWCapacity = 250
 
+  // Fetch data from API
+  useEffect(() => {
+    fetchResidentialGroups()
+  }, [])
+
+  const fetchResidentialGroups = async () => {
+    try {
+      setLoading(true)
+      const authToken = localStorage.getItem('authToken')
+      
+      const response = await fetch('https://services.dcarbon.solutions/api/residential-facility/groups', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch residential groups')
+      }
+      
+      const data = await response.json()
+      setResidentialGroups(data.data.groups || [])
+      setError(null)
+    } catch (err) {
+      setError(err.message)
+      console.error('Error fetching residential groups:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleCreateGroup = () => {
-    // In a real app, this would create the group and update state
     setCreateMode(false)
-    // Reset other states
     setSelectedGroup(null)
   }
 
@@ -73,115 +78,149 @@ export default function ResiGroupManagement() {
     )
   }
 
+  // Filter residential groups based on applied filters
+  const filteredGroups = residentialGroups.filter(group => {
+    if (!filters || Object.keys(filters).length === 0) return true
+    
+    return Object.entries(filters).every(([key, value]) => {
+      if (!value) return true
+      
+      switch (key) {
+        case 'name':
+          return group.name?.toLowerCase().includes(value.toLowerCase())
+        case 'wregisId':
+          return group.wregisGroupId?.toLowerCase().includes(value.toLowerCase())
+        case 'utilityProvider':
+          return group.utilityProvider?.toLowerCase().includes(value.toLowerCase())
+        case 'financeCompany':
+          return group.financeCompany?.toLowerCase().includes(value.toLowerCase())
+        case 'status':
+          return group.status?.toLowerCase().includes(value.toLowerCase())
+        default:
+          return true
+      }
+    })
+  })
+
+  if (loading) {
+    return (
+      <div className={styles.spinnerOverlay}>
+        <div className={styles.spinner}></div>
+      </div>
+    )
+  }
+
   return (
     <div className="bg-gray-50 min-h-screen p-6">
       {!createMode && !selectedGroup ? (
         <>
           <div className="flex justify-between mb-6">
             <div>
-              <Select defaultValue="all">
-                <SelectTrigger className="w-[80px] bg-white">
-                  <SelectValue placeholder="All" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
+              <select className="w-20 bg-white border border-gray-300 rounded px-2 py-1 text-sm">
+                <option value="all">All</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
             </div>
             <div className="flex gap-3">
-              <Button 
-                variant="outline" 
-                className="gap-2"
+              <button 
+                className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded bg-white text-sm hover:bg-gray-50"
                 onClick={() => setIsMainFilterOpen(true)}
               >
                 <span>Filter by</span>
                 <Filter className="h-4 w-4" />
-              </Button>
-              <Button 
-                className="gap-2 bg-teal-500 hover:bg-teal-600"
+              </button>
+              <button 
+                className="flex items-center gap-2 px-3 py-2 bg-teal-500 text-white rounded text-sm hover:bg-teal-600"
                 onClick={() => setCreateMode(true)}
               >
                 <Upload className="h-4 w-4" />
                 Create Resident Group
-              </Button>
+              </button>
             </div>
           </div>
 
-          <Card className="border-gray-200">
-            <CardContent className="p-0">
-              <div className="p-4">
-                <h2 className="text-xl font-medium text-teal-500">Residential Groups</h2>
-              </div>
+          <div className="bg-white border border-gray-200 rounded-lg">
+            <div className="p-4">
+              <h2 className="text-xl font-medium text-teal-500">Residential Groups</h2>
+            </div>
 
-              {/* Table */}
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-y text-sm">
-                      <th className="py-3 px-4 text-left font-medium">Resi. Group ID</th>
-                      <th className="py-3 px-4 text-left font-medium">WREGIS ID</th>
-                      <th className="py-3 px-4 text-left font-medium">DCarbon ID</th>
-                      <th className="py-3 px-4 text-left font-medium">Finance Comp.</th>
-                      <th className="py-3 px-4 text-left font-medium">Installer</th>
-                      <th className="py-3 px-4 text-left font-medium">Utility Prov.</th>
-                      <th className="py-3 px-4 text-left font-medium">Total REC Prod.</th>
-                      <th className="py-3 px-4 text-left font-medium">Total kW</th>
+            {error && (
+              <div className="mx-4 mb-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded">
+                Error: {error}
+              </div>
+            )}
+
+            {/* Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-y text-xs">
+                    <th className="py-2 px-3 text-left font-medium">Group Name</th>
+                    <th className="py-2 px-3 text-left font-medium">WREGIS ID</th>
+                    <th className="py-2 px-3 text-left font-medium">Status</th>
+                    <th className="py-2 px-3 text-left font-medium">Finance Comp.</th>
+                    <th className="py-2 px-3 text-left font-medium">Utility Prov.</th>
+                    <th className="py-2 px-3 text-left font-medium">Total Capacity</th>
+                    <th className="py-2 px-3 text-left font-medium">Facilities</th>
+                    <th className="py-2 px-3 text-left font-medium">Created</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredGroups.map((group) => (
+                    <tr 
+                      key={group.id} 
+                      className="border-b text-xs hover:bg-gray-50 cursor-pointer"
+                      onClick={() => handleRowClick(group)}
+                    >
+                      <td className="py-2 px-3 text-teal-500">{group.name}</td>
+                      <td className="py-2 px-3">{group.wregisGroupId || 'N/A'}</td>
+                      <td className="py-2 px-3">
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          group.status === 'FORMATION' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
+                        }`}>
+                          {group.status}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3">{group.financeCompany || 'N/A'}</td>
+                      <td className="py-2 px-3">{group.utilityProvider}</td>
+                      <td className="py-2 px-3">{group.totalCapacity} kW</td>
+                      <td className="py-2 px-3">{group.facilities?.length || 0}</td>
+                      <td className="py-2 px-3">{new Date(group.createdAt).toLocaleDateString()}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {residentialGroups.map((group, index) => (
-                      <tr 
-                        key={index} 
-                        className="border-b text-sm hover:bg-gray-50 cursor-pointer"
-                        onClick={() => handleRowClick(group)}
-                      >
-                        <td className="py-3 px-4 text-teal-500">{group.resiGroupId}</td>
-                        <td className="py-3 px-4">{group.wregisId}</td>
-                        <td className="py-3 px-4">{group.dCarbonId}</td>
-                        <td className="py-3 px-4">{group.financeComp}</td>
-                        <td className="py-3 px-4">{group.installer}</td>
-                        <td className="py-3 px-4">{group.utilityProv}</td>
-                        <td className="py-3 px-4">{group.totalRECProd}</td>
-                        <td className="py-3 px-4">{group.totalKW}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-              {/* Pagination */}
-              <div className="p-4 flex items-center justify-center gap-4">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-sm">
-                  {currentPage} of {totalPages}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  disabled={currentPage === totalPages}
-                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+            {/* Pagination */}
+            <div className="p-4 flex items-center justify-center gap-4">
+              <button
+                className="p-1 text-gray-500 hover:text-gray-700 disabled:text-gray-300"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <span className="text-sm">
+                {currentPage} of {totalPages}
+              </span>
+              <button
+                className="p-1 text-gray-500 hover:text-gray-700 disabled:text-gray-300"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
 
           {/* Filter Modal */}
           {isMainFilterOpen && (
             <ResidentGroupsFilterByModal 
               onClose={() => setIsMainFilterOpen(false)}
-              onApplyFilter={(filters) => {
-                // Apply filters logic
+              onApplyFilter={(newFilters) => {
+                setFilters(newFilters)
                 setIsMainFilterOpen(false)
               }}
             />
@@ -211,7 +250,6 @@ export default function ResiGroupManagement() {
         <CreateNewResidentGroupFilterByModal
           onClose={() => setIsCreateFilterOpen(false)}
           onApplyFilter={(filters) => {
-            // Apply filters logic
             setIsCreateFilterOpen(false)
           }}
         />
@@ -222,7 +260,6 @@ export default function ResiGroupManagement() {
         <ResidentGroupDetailsFilterByModal
           onClose={() => setIsDetailsFilterOpen(false)}
           onApplyFilter={(filters) => {
-            // Apply filters logic
             setIsDetailsFilterOpen(false)
           }}
         />
@@ -233,7 +270,6 @@ export default function ResiGroupManagement() {
         <RemoveUsersModal
           onClose={() => setIsRemoveUsersOpen(false)}
           onConfirm={(usersToRemove) => {
-            // Remove users logic
             setIsRemoveUsersOpen(false)
             setSelectedResidents([])
           }}
@@ -246,126 +282,115 @@ export default function ResiGroupManagement() {
 
 function CreateNewResidentGroup({ onBack, onFilterOpen, onCreate, totalKWSelected, totalKWCapacity }) {
   return (
-    <Card className="border-gray-200">
-      <CardContent className="p-0">
-        <div className="p-4 flex justify-between items-center">
-          <h2 className="text-xl font-medium text-teal-500">Create New Resident Group</h2>
-          <Button variant="ghost" size="icon" onClick={onBack}>
-            <X className="h-5 w-5" />
-          </Button>
-        </div>
+    <div className="bg-white border border-gray-200 rounded-lg">
+      <div className="p-4 flex justify-between items-center">
+        <h2 className="text-xl font-medium text-teal-500">Create New Resident Group</h2>
+        <button className="p-1 text-gray-500 hover:text-gray-700" onClick={onBack}>
+          <X className="h-5 w-5" />
+        </button>
+      </div>
 
-        <div className="px-4 pb-4 grid grid-cols-3 gap-4">
-          <div>
-            <h3 className="text-sm font-medium mb-2 px-2 py-1 bg-[#626060] text-white rounded-t">
-              Resident Group ID
-            </h3>
-            <input 
-              type="text" 
-              placeholder="Auto-generated" 
-              className="w-full p-2 border border-gray-300 rounded-b"
-              readOnly
-            />
-          </div>
-          <div>
-            <h3 className="text-sm font-medium mb-2 px-2 py-1 bg-[#626060] text-white rounded-t">
-              DCarbon Group ID
-            </h3>
-            <input 
-              type="text" 
-              placeholder="Enter DCarbon ID" 
-              className="w-full p-2 border border-gray-300 rounded-b"
-            />
-          </div>
-          <div>
-            <h3 className="text-sm font-medium mb-2 px-2 py-1 bg-[#626060] text-white rounded-t">
-              Assign WREGIS Group ID
-            </h3>
-            <input 
-              type="text" 
-              placeholder="Enter WREGIS ID" 
-              className="w-full p-2 border border-gray-300 rounded-b"
-            />
-          </div>
+      <div className="px-4 pb-4 grid grid-cols-3 gap-4">
+        <div>
+          <h3 className="text-sm font-medium mb-2 px-2 py-1 bg-[#626060] text-white rounded-t">
+            Resident Group ID
+          </h3>
+          <input 
+            type="text" 
+            placeholder="Auto-generated" 
+            className="w-full p-2 border border-gray-300 rounded-b text-sm"
+            readOnly
+          />
         </div>
-
-        <div className="px-4 pb-4 flex justify-end">
-          <Button 
-            variant="outline" 
-            className="gap-2"
-            onClick={onFilterOpen}
-          >
-            <span>Filter by</span>
-            <Filter className="h-4 w-4" />
-          </Button>
+        <div>
+          <h3 className="text-sm font-medium mb-2 px-2 py-1 bg-[#626060] text-white rounded-t">
+            DCarbon Group ID
+          </h3>
+          <input 
+            type="text" 
+            placeholder="Enter DCarbon ID" 
+            className="w-full p-2 border border-gray-300 rounded-b text-sm"
+          />
         </div>
+        <div>
+          <h3 className="text-sm font-medium mb-2 px-2 py-1 bg-[#626060] text-white rounded-t">
+            Assign WREGIS Group ID
+          </h3>
+          <input 
+            type="text" 
+            placeholder="Enter WREGIS ID" 
+            className="w-full p-2 border border-gray-300 rounded-b text-sm"
+          />
+        </div>
+      </div>
 
-        {/* Residents Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-y text-sm">
-                <th className="py-3 px-4 text-left font-medium">Name</th>
-                <th className="py-3 px-4 text-left font-medium">Resident ID</th>
-                <th className="py-3 px-4 text-left font-medium">Finance Comp.</th>
-                <th className="py-3 px-4 text-left font-medium">Installer</th>
-                <th className="py-3 px-4 text-left font-medium">Utility Prov.</th>
-                <th className="py-3 px-4 text-left font-medium">Address</th>
-                <th className="py-3 px-4 text-left font-medium">KW Sys. size</th>
-                <th className="py-3 px-4 text-left font-medium">Date of Reg.</th>
+      <div className="px-4 pb-4 flex justify-end">
+        <button 
+          className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded bg-white text-sm hover:bg-gray-50"
+          onClick={onFilterOpen}
+        >
+          <span>Filter by</span>
+          <Filter className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Residents Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-y text-xs">
+              <th className="py-2 px-3 text-left font-medium">Name</th>
+              <th className="py-2 px-3 text-left font-medium">Resident ID</th>
+              <th className="py-2 px-3 text-left font-medium">Finance Comp.</th>
+              <th className="py-2 px-3 text-left font-medium">Installer</th>
+              <th className="py-2 px-3 text-left font-medium">Utility Prov.</th>
+              <th className="py-2 px-3 text-left font-medium">Address</th>
+              <th className="py-2 px-3 text-left font-medium">KW Sys. size</th>
+              <th className="py-2 px-3 text-left font-medium">Date of Reg.</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Array(5).fill(null).map((_, index) => (
+              <tr key={index} className="border-b text-xs hover:bg-gray-50">
+                <td className="py-2 px-3">Resident {index + 1}</td>
+                <td className="py-2 px-3">RES-{1000 + index}</td>
+                <td className="py-2 px-3">Finance Co. {index + 1}</td>
+                <td className="py-2 px-3">Installer {index + 1}</td>
+                <td className="py-2 px-3">Utility {index + 1}</td>
+                <td className="py-2 px-3">{100 + index} Main St</td>
+                <td className="py-2 px-3">{5 + index}</td>
+                <td className="py-2 px-3">01-0{index + 1}-2023</td>
               </tr>
-            </thead>
-            <tbody>
-              {Array(5).fill(null).map((_, index) => (
-                <tr key={index} className="border-b text-sm hover:bg-gray-50">
-                  <td className="py-3 px-4">Resident {index + 1}</td>
-                  <td className="py-3 px-4">RES-{1000 + index}</td>
-                  <td className="py-3 px-4">Finance Co. {index + 1}</td>
-                  <td className="py-3 px-4">Installer {index + 1}</td>
-                  <td className="py-3 px-4">Utility {index + 1}</td>
-                  <td className="py-3 px-4">{100 + index} Main St</td>
-                  <td className="py-3 px-4">{5 + index}</td>
-                  <td className="py-3 px-4">01-0{index + 1}-2023</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-        {/* Footer */}
-        <div className="p-4 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              disabled={true}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="text-sm">1 of 1</span>
-            <Button
-              variant="ghost"
-              size="icon"
-              disabled={true}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-          <div className="text-sm">
-            Total KW selected: {totalKWSelected}kw/{totalKWCapacity}kw
-          </div>
+      {/* Footer */}
+      <div className="p-4 flex justify-between items-center">
+        <div className="flex items-center gap-4">
+          <button className="p-1 text-gray-300" disabled>
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <span className="text-sm">1 of 1</span>
+          <button className="p-1 text-gray-300" disabled>
+            <ChevronRight className="h-4 w-4" />
+          </button>
         </div>
+        <div className="text-sm">
+          Total KW selected: {totalKWSelected}kw/{totalKWCapacity}kw
+        </div>
+      </div>
 
-        <div className="p-4">
-          <Button 
-            className="bg-[#039994] hover:bg-[#028984]"
-            onClick={onCreate}
-          >
-            Create Group
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+      <div className="p-4">
+        <button 
+          className="px-4 py-2 bg-[#039994] text-white rounded hover:bg-[#028984]"
+          onClick={onCreate}
+        >
+          Create Group
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -374,83 +399,89 @@ function ResidentGroupDetails({ group, onBack, onRemoveUsers, onFilterOpen, sele
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-medium text-[#039994]">Resident Group Details</h2>
-        <Button 
-          variant="outline" 
-          className="text-red-500 border-red-500 hover:bg-red-50"
+        <button 
+          className="px-3 py-2 border border-red-500 text-red-500 rounded hover:bg-red-50 disabled:opacity-50"
           onClick={onRemoveUsers}
           disabled={selectedResidents.length === 0}
         >
           Remove Users
-        </Button>
+        </button>
       </div>
 
       {/* Info Card */}
       <div className="border border-[#039994] rounded-lg p-4 bg-[#069B960D]">
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <p className="text-sm font-medium">Resident Group ID</p>
-            <p className="text-sm font-medium">DCarbon Group ID</p>
+            <p className="text-sm font-medium">Resident Group Name</p>
+            <p className="text-sm font-medium">Total Capacity</p>
             <p className="text-sm font-medium">WREGIS Group ID</p>
-            <p className="text-sm font-medium">Total REC Production</p>
-            <p className="text-sm font-medium">Total kW</p>
+            <p className="text-sm font-medium">Status</p>
+            <p className="text-sm font-medium">Utility Provider</p>
+            <p className="text-sm font-medium">Finance Company</p>
           </div>
           <div className="space-y-2 text-right">
-            <p className="text-sm">{group.resiGroupId}</p>
-            <p className="text-sm">{group.dCarbonId}</p>
-            <p className="text-sm">{group.wregisId}</p>
-            <p className="text-sm">{group.totalRECProd}</p>
-            <p className="text-sm">{group.totalKW}</p>
+            <p className="text-sm">{group.name}</p>
+            <p className="text-sm">{group.totalCapacity} kW</p>
+            <p className="text-sm">{group.wregisGroupId || 'N/A'}</p>
+            <p className="text-sm">{group.status}</p>
+            <p className="text-sm">{group.utilityProvider}</p>
+            <p className="text-sm">{group.financeCompany || 'N/A'}</p>
           </div>
         </div>
       </div>
 
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">Residents</h3>
-        <Button 
-          variant="outline" 
-          className="gap-2"
+        <h3 className="text-lg font-medium">Facilities</h3>
+        <button 
+          className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded bg-white text-sm hover:bg-gray-50"
           onClick={onFilterOpen}
         >
           <span>Filter by</span>
           <Filter className="h-4 w-4" />
-        </Button>
+        </button>
       </div>
 
-      {/* Residents Table */}
+      {/* Facilities Table */}
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-y text-sm">
-              <th className="py-3 px-4 text-left font-medium"></th>
-              <th className="py-3 px-4 text-left font-medium">Name</th>
-              <th className="py-3 px-4 text-left font-medium">Resident ID</th>
-              <th className="py-3 px-4 text-left font-medium">Finance Comp.</th>
-              <th className="py-3 px-4 text-left font-medium">Installer</th>
-              <th className="py-3 px-4 text-left font-medium">Utility Prov.</th>
-              <th className="py-3 px-4 text-left font-medium">Address</th>
-              <th className="py-3 px-4 text-left font-medium">KW Sys. size</th>
-              <th className="py-3 px-4 text-left font-medium">Date of Reg.</th>
+            <tr className="border-y text-xs">
+              <th className="py-2 px-3 text-left font-medium"></th>
+              <th className="py-2 px-3 text-left font-medium">Facility Name</th>
+              <th className="py-2 px-3 text-left font-medium">User ID</th>
+              <th className="py-2 px-3 text-left font-medium">Finance Comp.</th>
+              <th className="py-2 px-3 text-left font-medium">Installer</th>
+              <th className="py-2 px-3 text-left font-medium">Utility Prov.</th>
+              <th className="py-2 px-3 text-left font-medium">Address</th>
+              <th className="py-2 px-3 text-left font-medium">System Cap.</th>
+              <th className="py-2 px-3 text-left font-medium">Status</th>
             </tr>
           </thead>
           <tbody>
-            {group.residents.map((resident) => (
-              <tr key={resident.id} className="border-b text-sm hover:bg-gray-50">
-                <td className="py-3 px-4">
+            {group.facilities?.map((facility) => (
+              <tr key={facility.id} className="border-b text-xs hover:bg-gray-50">
+                <td className="py-2 px-3">
                   <input 
                     type="checkbox" 
-                    checked={selectedResidents.includes(resident.id)}
-                    onChange={() => onSelectResident(resident.id)}
-                    className="h-4 w-4 rounded border-gray-300 text-teal-500 focus:ring-teal-500"
+                    checked={selectedResidents.includes(facility.id)}
+                    onChange={() => onSelectResident(facility.id)}
+                    className="h-3 w-3 rounded border-gray-300 text-teal-500 focus:ring-teal-500"
                   />
                 </td>
-                <td className="py-3 px-4">{resident.name}</td>
-                <td className="py-3 px-4">{resident.residentId}</td>
-                <td className="py-3 px-4">{resident.financeComp}</td>
-                <td className="py-3 px-4">{resident.installer}</td>
-                <td className="py-3 px-4">{resident.utilityProv}</td>
-                <td className="py-3 px-4">{resident.address}</td>
-                <td className="py-3 px-4">{resident.kwSysSize}</td>
-                <td className="py-3 px-4">{resident.dateOfReg}</td>
+                <td className="py-2 px-3">{facility.facilityName}</td>
+                <td className="py-2 px-3">{facility.userId?.substring(0, 8)}...</td>
+                <td className="py-2 px-3">{facility.financeCompany}</td>
+                <td className="py-2 px-3">{facility.installer}</td>
+                <td className="py-2 px-3">{facility.utilityProvider}</td>
+                <td className="py-2 px-3">{facility.address}</td>
+                <td className="py-2 px-3">{facility.systemCapacity} kW</td>
+                <td className="py-2 px-3">
+                  <span className={`px-2 py-1 rounded text-xs ${
+                    facility.status === 'VERIFIED' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {facility.status}
+                  </span>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -460,25 +491,247 @@ function ResidentGroupDetails({ group, onBack, onRemoveUsers, onFilterOpen, sele
       {/* Pagination */}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            disabled={true}
-          >
+          <button className="p-1 text-gray-300" disabled>
             <ChevronLeft className="h-4 w-4" />
-          </Button>
+          </button>
           <span className="text-sm">1 of 1</span>
-          <Button
-            variant="ghost"
-            size="icon"
-            disabled={true}
-          >
+          <button className="p-1 text-gray-300" disabled>
             <ChevronRight className="h-4 w-4" />
-          </Button>
+          </button>
         </div>
-        <Button variant="outline" onClick={onBack}>
+        <button 
+          className="px-3 py-2 border border-gray-300 rounded bg-white text-sm hover:bg-gray-50" 
+          onClick={onBack}
+        >
           Back to List
-        </Button>
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// Filter Modals
+function ResidentGroupsFilterByModal({ onClose, onApplyFilter }) {
+  const [filters, setFilters] = useState({
+    name: "",
+    wregisId: "",
+    utilityProvider: "",
+    financeCompany: "",
+    status: ""
+  })
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target
+    setFilters(prev => ({ ...prev, [name]: value }))
+  }
+
+  const handleApply = () => {
+    onApplyFilter(filters)
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold">Filter Residential Groups</h3>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4 py-4">
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">Group Name</label>
+            <input 
+              type="text"
+              name="name" 
+              value={filters.name} 
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">WREGIS ID</label>
+            <input 
+              type="text"
+              name="wregisId" 
+              value={filters.wregisId} 
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">Utility Provider</label>
+            <input 
+              type="text"
+              name="utilityProvider" 
+              value={filters.utilityProvider} 
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">Finance Company</label>
+            <input 
+              type="text"
+              name="financeCompany" 
+              value={filters.financeCompany} 
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">Status</label>
+            <select 
+              name="status" 
+              value={filters.status} 
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+            >
+              <option value="">All Status</option>
+              <option value="FORMATION">Formation</option>
+              <option value="ACTIVE">Active</option>
+              <option value="INACTIVE">Inactive</option>
+            </select>
+          </div>
+        </div>
+        
+        <div className="flex justify-end gap-3 mt-6">
+          <button 
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={handleApply}
+            className="px-4 py-2 bg-[#039994] text-white rounded hover:bg-[#028984]"
+          >
+            Apply Filters
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CreateNewResidentGroupFilterByModal({ onClose, onApplyFilter }) {
+  const [filters, setFilters] = useState({
+    name: "",
+    installer: "",
+    utilityProvider: "",
+    financeCompany: "",
+    address: "",
+    minCapacity: "",
+    maxCapacity: ""
+  })
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target
+    setFilters(prev => ({ ...prev, [name]: value }))
+  }
+
+  const handleApply = () => {
+    onApplyFilter(filters)
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold">Filter Available Residents</h3>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4 py-4">
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">Name</label>
+            <input 
+              type="text"
+              name="name" 
+              value={filters.name} 
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">Installer</label>
+            <input 
+              type="text"
+              name="installer" 
+              value={filters.installer} 
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">Utility Provider</label>
+            <input 
+              type="text"
+              name="utilityProvider" 
+              value={filters.utilityProvider} 
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">Finance Company</label>
+            <input 
+              type="text"
+              name="financeCompany" 
+              value={filters.financeCompany} 
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">Address</label>
+            <input 
+              type="text"
+              name="address" 
+              value={filters.address} 
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">System Capacity Range (kW)</label>
+            <div className="flex gap-2">
+              <input 
+                type="number"
+                placeholder="Min" 
+                name="minCapacity" 
+                value={filters.minCapacity} 
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+              />
+              <input 
+                type="number"
+                placeholder="Max" 
+                name="maxCapacity" 
+                value={filters.maxCapacity} 
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+              />
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 mt-6">
+          <button 
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={handleApply}
+            className="px-4 py-2 bg-[#039994] text-white rounded hover:bg-[#028984]"
+          >
+            Apply Filters
+          </button>
+        </div>
       </div>
     </div>
   )
