@@ -1,4 +1,6 @@
-import React from "react";
+"use client";
+
+import React, { useEffect, useState } from "react";
 import { FaBars, FaSearch, FaBell, FaHeadset } from "react-icons/fa";
 
 const DashboardNavbar = ({
@@ -7,6 +9,52 @@ const DashboardNavbar = ({
   sectionDisplayMap,
   onSectionChange,
 }) => {
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotificationDot, setShowNotificationDot] = useState(false);
+
+  useEffect(() => {
+    // Check if there are any unread notifications in localStorage
+    const storedNotifications = localStorage.getItem('notifications');
+    if (storedNotifications) {
+      const notifications = JSON.parse(storedNotifications);
+      const unread = notifications.filter(n => !n.isRead).length;
+      setUnreadCount(unread);
+      setShowNotificationDot(unread > 0);
+    }
+
+    // Listen for new notifications from other tabs/windows
+    const handleStorageChange = (e) => {
+      if (e.key === 'notifications') {
+        const notifications = JSON.parse(e.newValue);
+        const unread = notifications.filter(n => !n.isRead).length;
+        setUnreadCount(unread);
+        setShowNotificationDot(unread > 0);
+        
+        // Show visual alert if new notification comes in
+        if (unread > unreadCount) {
+          flashNotificationDot();
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [unreadCount]);
+
+  const flashNotificationDot = () => {
+    // Flash the dot 3 times to draw attention
+    let flashCount = 0;
+    const maxFlashes = 3;
+    const interval = setInterval(() => {
+      setShowNotificationDot(prev => !prev);
+      flashCount++;
+      if (flashCount >= maxFlashes * 2) {
+        clearInterval(interval);
+        setShowNotificationDot(true);
+      }
+    }, 300);
+  };
+
   return (
     <header className="bg-white border-b border-gray-200">
       <div className="max-w-full px-4 py-3 flex items-center justify-between">
@@ -41,10 +89,20 @@ const DashboardNavbar = ({
           <div className="relative">
             <button
               onClick={() => onSectionChange("notifications")}
-              className="focus:outline-none"
+              className="focus:outline-none relative"
             >
               <FaBell className="text-[#039994]" size={20} />
-              <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500" />
+              {showNotificationDot && unreadCount > 0 && (
+                <>
+                  <span className="absolute -top-1 -right-1 block h-2 w-2 rounded-full bg-red-500 animate-ping" />
+                  <span className="absolute -top-1 -right-1 block h-2 w-2 rounded-full bg-red-500" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                      {unreadCount}
+                    </span>
+                  )}
+                </>
+              )}
             </button>
           </div>
 
