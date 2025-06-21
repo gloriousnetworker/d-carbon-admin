@@ -194,9 +194,9 @@ export default function CustomerManagement() {
       <div className="flex-1 overflow-hidden p-10">
         {currentView === "details" && renderCustomerDetails()}
         
-        {currentView === "report" && (
+        {/* {currentView === "report" && (
           <CustomerReport onBack={() => handleViewChange("management")} />
-        )}
+        )} */}
         
         {currentView === "partner-management" && (
           <PartnerManagement onViewChange={handleViewChange} />
@@ -259,9 +259,9 @@ export default function CustomerManagement() {
                 </DropdownMenuTrigger>
 
                 <DropdownMenuContent className="bg-white">
-                  <DropdownMenuItem onClick={() => handleViewChange("report")}>
+                  {/* <DropdownMenuItem onClick={() => handleViewChange("report")}>
                     Customer Report
-                  </DropdownMenuItem>
+                  </DropdownMenuItem> */}
                   <DropdownMenuItem onClick={() => handleViewChange("partner-management")}>
                     Partner Management
                   </DropdownMenuItem>
