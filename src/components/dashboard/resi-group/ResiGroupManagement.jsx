@@ -34,18 +34,15 @@ export default function ResiGroupManagement() {
   const totalPages = Math.ceil(residentialGroups.length / itemsPerPage)
   const totalKWCapacity = 250
 
-  // Calculate total KW selected
   const totalKWSelected = selectedResidents.reduce((total, residentId) => {
     const resident = availableFacilities.find(f => f.id === residentId)
     return total + (resident?.systemCapacity || 0)
   }, 0)
 
-  // Fetch all residential groups
   useEffect(() => {
     fetchResidentialGroups()
   }, [])
 
-  // Fetch available facilities when in create mode
   useEffect(() => {
     if (createMode) {
       fetchAvailableFacilities()
@@ -108,7 +105,6 @@ export default function ResiGroupManagement() {
     }
   }
 
-  // Fetch detailed group information
   const fetchGroupDetails = async (groupId) => {
     try {
       setDetailsLoading(true)
@@ -161,7 +157,6 @@ export default function ResiGroupManagement() {
       }
       
       const data = await response.json()
-      // Refresh the groups list
       await fetchResidentialGroups()
       setCreateMode(false)
       setSelectedResidents([])
@@ -195,7 +190,6 @@ export default function ResiGroupManagement() {
         throw new Error('Failed to delete group')
       }
       
-      // Refresh the groups list and go back to main view
       await fetchResidentialGroups()
       setSelectedGroup(null)
       setIsDeleteGroupOpen(false)
@@ -226,7 +220,6 @@ export default function ResiGroupManagement() {
     )
   }
 
-  // Remove selected users from group
   const handleRemoveUsers = async () => {
     try {
       const authToken = localStorage.getItem('authToken')
@@ -246,7 +239,6 @@ export default function ResiGroupManagement() {
         throw new Error('Failed to remove users from group')
       }
       
-      // Refresh the group data after removal
       await fetchGroupDetails(selectedGroup.id)
       setSelectedResidents([])
       setIsRemoveUsersOpen(false)
@@ -256,7 +248,6 @@ export default function ResiGroupManagement() {
     }
   }
 
-  // Filter residential groups based on applied filters
   const filteredGroups = residentialGroups.filter(group => {
     if (!filters || Object.keys(filters).length === 0) return true
     
@@ -280,13 +271,11 @@ export default function ResiGroupManagement() {
     })
   })
 
-  // Get paginated groups
   const paginatedGroups = filteredGroups.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   )
 
-  // Filter available facilities for create mode
   const filteredFacilities = availableFacilities.filter(facility => {
     if (!filters || Object.keys(filters).length === 0) return true
     
@@ -371,7 +360,6 @@ export default function ResiGroupManagement() {
               </div>
             )}
 
-            {/* Table */}
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -384,36 +372,47 @@ export default function ResiGroupManagement() {
                     <th className="py-2 px-3 text-left font-medium">Total Capacity</th>
                     <th className="py-2 px-3 text-left font-medium">Facilities</th>
                     <th className="py-2 px-3 text-left font-medium">Created</th>
+                    <th className="py-2 px-3 text-left font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {paginatedGroups.map((group) => (
                     <tr 
                       key={group.id} 
-                      className="border-b text-xs hover:bg-gray-50 cursor-pointer"
-                      onClick={() => handleRowClick(group)}
+                      className="border-b text-xs hover:bg-gray-50"
                     >
-                      <td className="py-2 px-3 text-teal-500">{group.name}</td>
-                      <td className="py-2 px-3">{group.wregisGroupId || 'N/A'}</td>
-                      <td className="py-2 px-3">
+                      <td className="py-2 px-3 text-teal-500 cursor-pointer" onClick={() => handleRowClick(group)}>{group.name}</td>
+                      <td className="py-2 px-3 cursor-pointer" onClick={() => handleRowClick(group)}>{group.wregisGroupId || 'N/A'}</td>
+                      <td className="py-2 px-3 cursor-pointer" onClick={() => handleRowClick(group)}>
                         <span className={`px-2 py-1 rounded text-xs ${
                           group.status === 'FORMATION' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
                         }`}>
                           {group.status}
                         </span>
                       </td>
-                      <td className="py-2 px-3">{group.financeCompany || 'N/A'}</td>
-                      <td className="py-2 px-3">{group.utilityProvider}</td>
-                      <td className="py-2 px-3">{group.totalCapacity} kW</td>
-                      <td className="py-2 px-3">{group.facilities?.length || 0}</td>
-                      <td className="py-2 px-3">{new Date(group.createdAt).toLocaleDateString()}</td>
+                      <td className="py-2 px-3 cursor-pointer" onClick={() => handleRowClick(group)}>{group.financeCompany || 'N/A'}</td>
+                      <td className="py-2 px-3 cursor-pointer" onClick={() => handleRowClick(group)}>{group.utilityProvider}</td>
+                      <td className="py-2 px-3 cursor-pointer" onClick={() => handleRowClick(group)}>{group.totalCapacity} kW</td>
+                      <td className="py-2 px-3 cursor-pointer" onClick={() => handleRowClick(group)}>{group.facilities?.length || 0}</td>
+                      <td className="py-2 px-3 cursor-pointer" onClick={() => handleRowClick(group)}>{new Date(group.createdAt).toLocaleDateString()}</td>
+                      <td className="py-2 px-3">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedGroup(group)
+                            setIsDeleteGroupOpen(true)
+                          }}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
 
-            {/* Pagination */}
             <div className="p-4 flex items-center justify-center gap-4">
               <button
                 className="p-1 text-gray-500 hover:text-gray-700 disabled:text-gray-300"
@@ -435,14 +434,13 @@ export default function ResiGroupManagement() {
             </div>
           </div>
 
-          {/* Filter Modal */}
           {isMainFilterOpen && (
             <ResidentGroupsFilterByModal 
               onClose={() => setIsMainFilterOpen(false)}
               onApplyFilter={(newFilters) => {
                 setFilters(newFilters)
                 setIsMainFilterOpen(false)
-                setCurrentPage(1) // Reset to first page when filters change
+                setCurrentPage(1)
               }}
             />
           )}
@@ -476,7 +474,6 @@ export default function ResiGroupManagement() {
         />
       )}
 
-      {/* Create Group Filter Modal */}
       {isCreateFilterOpen && (
         <CreateNewResidentGroupFilterByModal
           onClose={() => setIsCreateFilterOpen(false)}
@@ -487,7 +484,6 @@ export default function ResiGroupManagement() {
         />
       )}
 
-      {/* Details Filter Modal */}
       {isDetailsFilterOpen && (
         <ResidentGroupDetailsFilterByModal
           onClose={() => setIsDetailsFilterOpen(false)}
@@ -497,7 +493,6 @@ export default function ResiGroupManagement() {
         />
       )}
 
-      {/* Remove Users Modal */}
       {isRemoveUsersOpen && (
         <RemoveUsersModal
           onClose={() => setIsRemoveUsersOpen(false)}
@@ -506,7 +501,6 @@ export default function ResiGroupManagement() {
         />
       )}
 
-      {/* Delete Group Modal */}
       {isDeleteGroupOpen && (
         <DeleteGroupModal
           onClose={() => setIsDeleteGroupOpen(false)}
@@ -601,7 +595,6 @@ function CreateNewResidentGroup({
         </div>
       )}
 
-      {/* Residents Table */}
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
@@ -658,7 +651,6 @@ function CreateNewResidentGroup({
         </table>
       </div>
 
-      {/* Footer */}
       <div className="p-4 flex justify-between items-center">
         <div className="flex items-center gap-4">
           <button className="p-1 text-gray-300" disabled>
@@ -689,7 +681,6 @@ function CreateNewResidentGroup({
   )
 }
 
-// Filter Modals
 function ResidentGroupsFilterByModal({ onClose, onApplyFilter }) {
   const [filters, setFilters] = useState({
     name: "",
