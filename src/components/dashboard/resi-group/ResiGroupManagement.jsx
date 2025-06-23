@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ChevronLeft, ChevronRight, Filter, Upload, X } from "lucide-react"
+import { ChevronLeft, ChevronRight, Filter, Upload, X, Trash2 } from "lucide-react"
 import * as styles from "./styles"
 import ResiGroupManagementDetails from "./ResiGroupManagementDetails"
 import ResidentGroupDetailsFilterByModal from "./ResidentGroupDetailsFilterByModal"
@@ -15,6 +15,7 @@ export default function ResiGroupManagement() {
   const [isCreateFilterOpen, setIsCreateFilterOpen] = useState(false)
   const [isDetailsFilterOpen, setIsDetailsFilterOpen] = useState(false)
   const [isRemoveUsersOpen, setIsRemoveUsersOpen] = useState(false)
+  const [isDeleteGroupOpen, setIsDeleteGroupOpen] = useState(false)
   const [residentialGroups, setResidentialGroups] = useState([])
   const [availableFacilities, setAvailableFacilities] = useState([])
   const [loading, setLoading] = useState(true)
@@ -29,7 +30,8 @@ export default function ResiGroupManagement() {
     wregisGroupId: ""
   })
   
-  const totalPages = 4
+  const itemsPerPage = 10
+  const totalPages = Math.ceil(residentialGroups.length / itemsPerPage)
   const totalKWCapacity = 250
 
   // Calculate total KW selected
@@ -176,6 +178,35 @@ export default function ResiGroupManagement() {
     }
   }
 
+  const handleDeleteGroup = async () => {
+    try {
+      setDetailsLoading(true)
+      const authToken = localStorage.getItem('authToken')
+      
+      const response = await fetch(`https://services.dcarbon.solutions/api/residential-facility/groups/${selectedGroup.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete group')
+      }
+      
+      // Refresh the groups list and go back to main view
+      await fetchResidentialGroups()
+      setSelectedGroup(null)
+      setIsDeleteGroupOpen(false)
+    } catch (err) {
+      setError(err.message)
+      console.error('Error deleting group:', err)
+    } finally {
+      setDetailsLoading(false)
+    }
+  }
+
   const handleRowClick = async (group) => {
     await fetchGroupDetails(group.id)
     setCreateMode(false)
@@ -248,6 +279,12 @@ export default function ResiGroupManagement() {
       }
     })
   })
+
+  // Get paginated groups
+  const paginatedGroups = filteredGroups.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
 
   // Filter available facilities for create mode
   const filteredFacilities = availableFacilities.filter(facility => {
@@ -350,7 +387,7 @@ export default function ResiGroupManagement() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredGroups.map((group) => (
+                  {paginatedGroups.map((group) => (
                     <tr 
                       key={group.id} 
                       className="border-b text-xs hover:bg-gray-50 cursor-pointer"
@@ -386,11 +423,11 @@ export default function ResiGroupManagement() {
                 <ChevronLeft className="h-4 w-4" />
               </button>
               <span className="text-sm">
-                {currentPage} of {totalPages}
+                {currentPage} of {totalPages || 1}
               </span>
               <button
                 className="p-1 text-gray-500 hover:text-gray-700 disabled:text-gray-300"
-                disabled={currentPage === totalPages}
+                disabled={currentPage === totalPages || totalPages === 0}
                 onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
               >
                 <ChevronRight className="h-4 w-4" />
@@ -405,6 +442,7 @@ export default function ResiGroupManagement() {
               onApplyFilter={(newFilters) => {
                 setFilters(newFilters)
                 setIsMainFilterOpen(false)
+                setCurrentPage(1) // Reset to first page when filters change
               }}
             />
           )}
@@ -431,6 +469,7 @@ export default function ResiGroupManagement() {
           loading={detailsLoading}
           onBack={handleBackToList}
           onRemoveUsers={() => setIsRemoveUsersOpen(true)}
+          onDeleteGroup={() => setIsDeleteGroupOpen(true)}
           onFilterOpen={() => setIsDetailsFilterOpen(true)}
           selectedResidents={selectedResidents}
           onSelectResident={toggleResidentSelection}
@@ -464,6 +503,15 @@ export default function ResiGroupManagement() {
           onClose={() => setIsRemoveUsersOpen(false)}
           onConfirm={handleRemoveUsers}
           selectedCount={selectedResidents.length}
+        />
+      )}
+
+      {/* Delete Group Modal */}
+      {isDeleteGroupOpen && (
+        <DeleteGroupModal
+          onClose={() => setIsDeleteGroupOpen(false)}
+          onConfirm={handleDeleteGroup}
+          groupName={selectedGroup?.name}
         />
       )}
     </div>
@@ -641,7 +689,7 @@ function CreateNewResidentGroup({
   )
 }
 
-// Filter Modals (keep the same as before)
+// Filter Modals
 function ResidentGroupsFilterByModal({ onClose, onApplyFilter }) {
   const [filters, setFilters] = useState({
     name: "",
@@ -893,6 +941,38 @@ function RemoveUsersModal({ onClose, onConfirm, selectedCount }) {
             className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
           >
             Confirm Remove
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DeleteGroupModal({ onClose, onConfirm, groupName }) {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-md">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold">Delete Group</h3>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        
+        <p className="mb-4">Are you sure you want to delete the group "{groupName}"? This action cannot be undone.</p>
+        
+        <div className="flex justify-end gap-3 mt-6">
+          <button 
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={onConfirm}
+            className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+          >
+            Delete Group
           </button>
         </div>
       </div>
