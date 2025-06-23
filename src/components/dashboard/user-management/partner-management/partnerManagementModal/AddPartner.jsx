@@ -194,6 +194,7 @@ export default function AddPartnerModal({ isOpen, onClose, onSuccess }) {
               <div className="space-y-1">
                 <label className={labelClass}>
                   Partner Name
+                  <span className="text-red-500 ml-1">*</span>
                 </label>
                 <input
                   type="text"
@@ -210,6 +211,7 @@ export default function AddPartnerModal({ isOpen, onClose, onSuccess }) {
               <div className="space-y-1">
                 <label className={labelClass}>
                   Phone number
+                  <span className="text-red-500 ml-1">*</span>
                 </label>
                 <input
                   type="tel"
@@ -226,6 +228,7 @@ export default function AddPartnerModal({ isOpen, onClose, onSuccess }) {
               <div className="space-y-1">
                 <label className={labelClass}>
                   Email address
+                  <span className="text-red-500 ml-1">*</span>
                 </label>
                 <input
                   type="email"
@@ -242,6 +245,7 @@ export default function AddPartnerModal({ isOpen, onClose, onSuccess }) {
               <div className="space-y-1">
                 <label className={labelClass}>
                   Address
+                  <span className="text-red-500 ml-1">*</span>
                 </label>
                 <textarea
                   name="address"
