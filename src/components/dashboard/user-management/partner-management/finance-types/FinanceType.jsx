@@ -30,6 +30,7 @@ import {
   labelClass,
   selectClass
 } from "../../styles";
+import toast from "react-hot-toast";
 
 // Finance Type Modal Component
 const FinanceTypeModal = ({ isOpen, onClose, onSuccess }) => {
@@ -40,7 +41,10 @@ const FinanceTypeModal = ({ isOpen, onClose, onSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async () => {
-    if (!formData.name.trim()) return;
+    if (!formData.name.trim()) {
+      toast.error("Please enter a finance type name");
+      return;
+    }
     
     setIsLoading(true);
 
@@ -57,15 +61,18 @@ const FinanceTypeModal = ({ isOpen, onClose, onSuccess }) => {
         })
       });
 
+      const result = await response.json();
+
       if (response.ok) {
-        const result = await response.json();
+        toast.success("Finance type created successfully");
         setFormData({ name: "", status: "PENDING" });
         onSuccess();
         onClose();
       } else {
-        console.error('Failed to create finance type');
+        toast.error(result.message || 'Failed to create finance type');
       }
     } catch (error) {
+      toast.error('Error creating finance type');
       console.error('Error creating finance type:', error);
     } finally {
       setIsLoading(false);
@@ -125,10 +132,185 @@ const FinanceTypeModal = ({ isOpen, onClose, onSuccess }) => {
   );
 };
 
+// Edit Finance Type Modal Component
+const EditFinanceTypeModal = ({ isOpen, onClose, financeType, onSuccess }) => {
+  const [formData, setFormData] = useState({
+    name: financeType?.name || "",
+  });
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (financeType) {
+      setFormData({
+        name: financeType.name,
+      });
+    }
+  }, [financeType]);
+
+  const handleSubmit = async () => {
+    if (!formData.name.trim()) {
+      toast.error("Please enter a finance type name");
+      return;
+    }
+    
+    setIsLoading(true);
+
+    try {
+      const authToken = localStorage.getItem('authToken');
+      const response = await fetch(`https://services.dcarbon.solutions/api/admin/financial-types/${financeType.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
+          name: formData.name
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        toast.success("Finance type updated successfully");
+        onSuccess();
+        onClose();
+      } else {
+        toast.error(result.message || 'Failed to update finance type');
+      }
+    } catch (error) {
+      toast.error('Error updating finance type');
+      console.error('Error updating finance type:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div className="bg-white rounded-lg shadow-lg w-full max-w-md mx-4 p-6">
+        <h2 className="text-xl font-semibold text-gray-900 mb-6">Edit Finance Type</h2>
+        
+        <div className="space-y-4">
+          <div>
+            <label className={labelClass}>Finance Type Name</label>
+            <input
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              className={inputClass}
+              placeholder="Enter finance type name"
+              required
+            />
+          </div>
+
+          <div className="flex gap-4 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={onClose}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              className={`flex-1 ${buttonPrimary}`}
+              disabled={isLoading}
+              onClick={handleSubmit}
+            >
+              {isLoading ? "Updating..." : "Update Finance Type"}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Rejection Reason Modal
+const RejectionReasonModal = ({ 
+  isOpen, 
+  onClose, 
+  financeTypeId, 
+  onReject 
+}) => {
+  const [reason, setReason] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!reason.trim()) {
+      toast.error("Please enter a rejection reason");
+      return;
+    }
+    
+    setIsLoading(true);
+    await onReject(financeTypeId, reason);
+    setIsLoading(false);
+    onClose();
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div className="bg-white rounded-lg shadow-lg w-full max-w-md mx-4 p-6">
+        <h2 className="text-xl font-semibold text-gray-900 mb-6">Enter Rejection Reason</h2>
+        
+        <div className="space-y-4">
+          <div>
+            <label className={labelClass}>Reason for rejection</label>
+            <textarea
+              name="reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className={`${inputClass} min-h-[100px]`}
+              placeholder="Enter the reason for rejecting this finance type"
+              required
+            />
+          </div>
+
+          <div className="flex gap-4 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={onClose}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+              disabled={isLoading}
+              onClick={handleSubmit}
+            >
+              {isLoading ? "Submitting..." : "Submit Rejection"}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function FinanceTypes({ onBack }) {
   const [financeTypes, setFinanceTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
   const [selectedFinanceType, setSelectedFinanceType] = useState(null);
   const [viewMode, setViewMode] = useState("list");
   const [updatingStatus, setUpdatingStatus] = useState(null);
@@ -150,9 +332,10 @@ export default function FinanceTypes({ onBack }) {
         const result = await response.json();
         setFinanceTypes(result.data.types || []);
       } else {
-        console.error('Failed to fetch finance types');
+        toast.error('Failed to fetch finance types');
       }
     } catch (error) {
+      toast.error('Error fetching finance types');
       console.error('Error fetching finance types:', error);
     } finally {
       setLoading(false);
@@ -163,32 +346,101 @@ export default function FinanceTypes({ onBack }) {
     fetchFinanceTypes();
   }, []);
 
-  // Handle approval/disapproval
-  const handleStatusUpdate = async (id, status, rejectionReason = "") => {
+  // Handle approval
+  const handleApprove = async (id) => {
     try {
       setUpdatingStatus(id);
       const authToken = localStorage.getItem('authToken');
-      const body = { status };
-      if (status === 'DISAPPROVED' && rejectionReason) {
-        body.rejectionReason = rejectionReason;
-      }
-
+      
       const response = await fetch(`https://services.dcarbon.solutions/api/admin/financial-types/${id}/review`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authToken}`
         },
-        body: JSON.stringify(body)
+        body: JSON.stringify({
+          status: "APPROVED"
+        })
       });
 
+      const result = await response.json();
+
       if (response.ok) {
+        toast.success(result.message || 'Finance type approved successfully');
         fetchFinanceTypes(); // Refresh the list
       } else {
-        console.error('Failed to update finance type status');
+        toast.error(result.message || 'Failed to approve finance type');
       }
     } catch (error) {
-      console.error('Error updating finance type status:', error);
+      toast.error('Error approving finance type');
+      console.error('Error approving finance type:', error);
+    } finally {
+      setUpdatingStatus(null);
+    }
+  };
+
+  // Handle rejection
+  const handleReject = async (id, reason) => {
+    try {
+      setUpdatingStatus(id);
+      const authToken = localStorage.getItem('authToken');
+      
+      const response = await fetch(`https://services.dcarbon.solutions/api/admin/financial-types/${id}/review`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
+          status: "DISAPPROVED",
+          rejectionReason: reason
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        toast.success(result.message || 'Finance type rejected successfully');
+        fetchFinanceTypes(); // Refresh the list
+      } else {
+        toast.error(result.message || 'Failed to reject finance type');
+      }
+    } catch (error) {
+      toast.error('Error rejecting finance type');
+      console.error('Error rejecting finance type:', error);
+    } finally {
+      setUpdatingStatus(null);
+    }
+  };
+
+  // Handle delete
+  const handleDelete = async (id) => {
+    try {
+      setUpdatingStatus(id);
+      const authToken = localStorage.getItem('authToken');
+      
+      const response = await fetch(`https://services.dcarbon.solutions/api/admin/financial-types/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${authToken}`
+        }
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        toast.success(result.message || 'Finance type deleted successfully');
+        fetchFinanceTypes(); // Refresh the list
+        if (viewMode === "view" && selectedFinanceType?.id === id) {
+          setViewMode("list");
+          setSelectedFinanceType(null);
+        }
+      } else {
+        toast.error(result.message || 'Failed to delete finance type');
+      }
+    } catch (error) {
+      toast.error('Error deleting finance type');
+      console.error('Error deleting finance type:', error);
     } finally {
       setUpdatingStatus(null);
     }
@@ -240,6 +492,11 @@ export default function FinanceTypes({ onBack }) {
   const handleBackToList = () => {
     setViewMode("list");
     setSelectedFinanceType(null);
+  };
+
+  const handleEdit = (financeType) => {
+    setSelectedFinanceType(financeType);
+    setShowEditModal(true);
   };
 
   if (loading) {
@@ -384,7 +641,7 @@ export default function FinanceTypes({ onBack }) {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleStatusUpdate(financeType.id, 'APPROVED')}
+                            onClick={() => handleApprove(financeType.id)}
                             disabled={updatingStatus === financeType.id}
                             className="text-green-600 hover:text-green-700"
                           >
@@ -393,7 +650,10 @@ export default function FinanceTypes({ onBack }) {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleStatusUpdate(financeType.id, 'DISAPPROVED', 'Not suitable')}
+                            onClick={() => {
+                              setSelectedFinanceType(financeType);
+                              setShowRejectModal(true);
+                            }}
                             disabled={updatingStatus === financeType.id}
                             className="text-red-600 hover:text-red-700"
                           >
@@ -401,6 +661,23 @@ export default function FinanceTypes({ onBack }) {
                           </Button>
                         </>
                       )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(financeType)}
+                        className="text-blue-600 hover:text-blue-700"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(financeType.id)}
+                        disabled={updatingStatus === financeType.id}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -489,36 +766,75 @@ export default function FinanceTypes({ onBack }) {
               >
                 Back to List
               </Button>
-              {selectedFinanceType.status === 'PENDING' && (
-                <div className="flex gap-2">
-                  <Button
-                    className="bg-green-600 hover:bg-green-700 text-white"
-                    onClick={() => handleStatusUpdate(selectedFinanceType.id, 'APPROVED')}
-                    disabled={updatingStatus === selectedFinanceType.id}
-                  >
-                    <CheckCircle className="h-4 w-4 mr-1" />
-                    Approve
-                  </Button>
-                  <Button
-                    className="bg-red-600 hover:bg-red-700 text-white"
-                    onClick={() => handleStatusUpdate(selectedFinanceType.id, 'DISAPPROVED', 'Not suitable')}
-                    disabled={updatingStatus === selectedFinanceType.id}
-                  >
-                    <XCircle className="h-4 w-4 mr-1" />
-                    Disapprove
-                  </Button>
-                </div>
-              )}
+              
+              <div className="flex gap-2 ml-auto">
+                <Button
+                  variant="outline"
+                  onClick={() => handleEdit(selectedFinanceType)}
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  className="text-red-600 border-red-600 hover:bg-red-50"
+                  onClick={() => handleDelete(selectedFinanceType.id)}
+                  disabled={updatingStatus === selectedFinanceType.id}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </Button>
+                
+                {selectedFinanceType.status === 'PENDING' && (
+                  <>
+                    <Button
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                      onClick={() => handleApprove(selectedFinanceType.id)}
+                      disabled={updatingStatus === selectedFinanceType.id}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Approve
+                    </Button>
+                    <Button
+                      className="bg-red-600 hover:bg-red-700 text-white"
+                      onClick={() => {
+                        setShowRejectModal(true);
+                      }}
+                      disabled={updatingStatus === selectedFinanceType.id}
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Reject
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Finance Type Modal */}
+      {/* Finance Type Creation Modal */}
       <FinanceTypeModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         onSuccess={fetchFinanceTypes}
+      />
+
+      {/* Finance Type Edit Modal */}
+      <EditFinanceTypeModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        financeType={selectedFinanceType}
+        onSuccess={fetchFinanceTypes}
+      />
+
+      {/* Rejection Reason Modal */}
+      <RejectionReasonModal
+        isOpen={showRejectModal}
+        onClose={() => setShowRejectModal(false)}
+        financeTypeId={selectedFinanceType?.id}
+        onReject={handleReject}
       />
     </div>
   );

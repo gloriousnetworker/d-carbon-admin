@@ -182,11 +182,11 @@ const CommissionTable = ({ activeCommissionType, onChangeCommissionType, onSetup
       
       if (result.status === 'success' && result.data) {
         const referralData = {
-          headers: ["Tier", "Required Referrals", "Bonus (%)"],
+          headers: ["", "Tier 1", "Tier 2", "Tier 3"],
           rows: [
-            ["Tier 1", result.data.tier1RequiredReferrals || 0, `${result.data.tier1Bonus || 0}%`],
-            ["Tier 2", result.data.tier2RequiredReferrals || 0, `${result.data.tier2Bonus || 0}%`],
-            ["Tier 3", result.data.tier3RequiredReferrals || 0, `${result.data.tier3Bonus || 0}%`],
+            ["Tier status", "Bronze", "Silver", "Gold"],
+            ["Residential Referral Bonus", `${result.data.tier1Bonus || 0}%`, `${result.data.tier2Bonus || 0}%`, `${result.data.tier3Bonus || 0}%`],
+            ["*Number of referrals required", result.data.tier1RequiredReferrals || 0, result.data.tier2RequiredReferrals || 0, result.data.tier3RequiredReferrals || 0],
           ],
         };
         setTableData(referralData);
@@ -413,7 +413,9 @@ const CommissionTable = ({ activeCommissionType, onChangeCommissionType, onSetup
               {headers.map((header, index) => (
                 <th
                   key={index}
-                  className="text-left py-3 px-4 font-medium text-sm text-black border-b border-gray-200"
+                  className={`text-left py-3 px-4 font-medium text-sm text-black border-b border-gray-200 ${
+                    activeCommissionType === "Residential Referral" && index > 0 ? "font-bold" : ""
+                  }`}
                 >
                   {header}
                 </th>
