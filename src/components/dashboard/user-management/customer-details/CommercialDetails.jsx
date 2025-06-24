@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { ChevronLeft, Trash2, Eye, Download, ChevronDown, AlertTriangle, CheckCircle, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
@@ -21,7 +21,8 @@ export default function CommercialDetails({ customer, onBack }) {
   const [currentFacility, setCurrentFacility] = useState(null);
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
-  const [actionType, setActionType] = useState(""); // "APPROVE" or "REJECT"
+  const [actionType, setActionType] = useState("");
+  const scrollPositionRef = useRef(0);
 
   useEffect(() => {
     if (customer?.id) fetchFacilities();
@@ -60,6 +61,21 @@ export default function CommercialDetails({ customer, onBack }) {
     } finally {
       setFacilitiesLoading(false);
     }
+  };
+
+  const updateFacilityDocumentStatus = (facilityId, docType, newStatus, rejectionReason = null) => {
+    setFacilities(prev => prev.map(facility => {
+      if (facility.id !== facilityId) return facility;
+      
+      const docField = `${docType}Status`;
+      const reasonField = `${docType}RejectionReason`;
+      
+      return {
+        ...facility,
+        [docField]: newStatus,
+        ...(rejectionReason && { [reasonField]: rejectionReason })
+      };
+    }));
   };
 
   const formatDate = (dateString) => {
@@ -145,8 +161,10 @@ export default function CommercialDetails({ customer, onBack }) {
     setCurrentFacility(null);
   };
 
-  const openStatusModal = (type) => {
+  const openStatusModal = (type, document, facility) => {
     setActionType(type);
+    setCurrentDocument(document);
+    setCurrentFacility(facility);
     setStatusModalOpen(true);
   };
 
@@ -156,11 +174,20 @@ export default function CommercialDetails({ customer, onBack }) {
     setActionType("");
   };
 
-  const handleDocumentStatusChange = async (status) => {
+  const handleDocumentStatusChange = async () => {
     if (!currentFacility || !currentDocument) return;
     
     const docKey = `${currentFacility.id}-${currentDocument.type}`;
     setApprovingDoc(docKey);
+    scrollPositionRef.current = window.scrollY;
+    
+    const newStatus = actionType === "APPROVE" ? "APPROVED" : "REJECTED";
+    updateFacilityDocumentStatus(
+      currentFacility.id,
+      currentDocument.type,
+      newStatus,
+      actionType === "REJECT" ? rejectionReason || "No reason provided" : null
+    );
     
     try {
       const authToken = localStorage.getItem('authToken');
@@ -169,8 +196,8 @@ export default function CommercialDetails({ customer, onBack }) {
       const endpoint = `https://services.dcarbon.solutions/api/admin/commercial-facility/${currentFacility.id}/document/${currentDocument.type}/status`;
       
       const body = {
-        status,
-        ...(status === "REJECTED" && { 
+        status: newStatus,
+        ...(actionType === "REJECT" && { 
           rejectionReason: rejectionReason || "No reason provided" 
         })
       };
@@ -192,17 +219,22 @@ export default function CommercialDetails({ customer, onBack }) {
       const data = await response.json();
       if (data.status === 'success') {
         toast.success(data.message);
-        fetchFacilities();
-        closeStatusModal();
-        closePdfModal();
+        requestAnimationFrame(() => {
+          window.scrollTo(0, scrollPositionRef.current);
+        });
       } else {
         throw new Error(data.message || 'Failed to update document status');
       }
     } catch (err) {
       console.error('Error updating document status:', err);
       toast.error(err.message || 'Failed to update document status');
+      fetchFacilities();
     } finally {
       setApprovingDoc(null);
+      if (!err) {
+        closeStatusModal();
+        closePdfModal();
+      }
     }
   };
 
@@ -257,7 +289,7 @@ export default function CommercialDetails({ customer, onBack }) {
     const canVerifyFacility = allDocumentsApproved && facility.status !== "VERIFIED";
 
     return (
-      <div className="border border-gray-200 rounded-lg p-6 mb-6 bg-white">
+      <div className="border border-gray-200 rounded-lg p-6 mb-6 bg-white" id={`facility-${facility.id}`}>
         <div className="flex justify-between items-start mb-4">
           <div>
             <h4 className="text-lg font-semibold text-[#039994]">{facility.facilityName}</h4>
@@ -325,6 +357,8 @@ export default function CommercialDetails({ customer, onBack }) {
             
             {documents.map((doc, index) => {
               const docKey = `${facility.id}-${doc.type}`;
+              const isApproving = approvingDoc === docKey;
+              
               return (
                 <div key={index} className="grid grid-cols-12 p-3 border-b last:border-b-0 items-center text-sm">
                   <div className="col-span-5">
@@ -345,6 +379,7 @@ export default function CommercialDetails({ customer, onBack }) {
                                 size="icon" 
                                 className="h-6 w-6" 
                                 onClick={() => openPdfModal(doc.url, doc, facility)}
+                                disabled={isApproving}
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
@@ -369,6 +404,7 @@ export default function CommercialDetails({ customer, onBack }) {
                                   link.click();
                                   document.body.removeChild(link);
                                 }}
+                                disabled={isApproving}
                               >
                                 <Download className="h-4 w-4" />
                               </Button>
@@ -386,7 +422,14 @@ export default function CommercialDetails({ customer, onBack }) {
                   
                   <div className="col-span-2">
                     <span className={`text-xs font-semibold px-3 py-1 rounded-full ${getStatusColor(doc.status)}`}>
-                      {doc.status || 'Required'}
+                      {isApproving ? (
+                        <span className="flex items-center gap-1">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Processing...
+                        </span>
+                      ) : (
+                        doc.status || 'Required'
+                      )}
                     </span>
                   </div>
                   
@@ -397,24 +440,17 @@ export default function CommercialDetails({ customer, onBack }) {
                           variant="outline" 
                           size="sm" 
                           className="h-8 text-xs" 
-                          onClick={() => {
-                            setCurrentDocument(doc);
-                            setCurrentFacility(facility);
-                            openStatusModal("APPROVE");
-                          }} 
-                          disabled={approvingDoc === docKey}
+                          onClick={() => openStatusModal("APPROVE", doc, facility)} 
+                          disabled={isApproving}
                         >
-                          {approvingDoc === docKey ? <Loader2 className="h-4 w-4 animate-spin" /> : "Approve"}
+                          Approve
                         </Button>
                         <Button 
                           variant="outline" 
                           size="sm" 
                           className="h-8 text-xs bg-red-50 text-red-600 hover:bg-red-100" 
-                          onClick={() => {
-                            setCurrentDocument(doc);
-                            setCurrentFacility(facility);
-                            openStatusModal("REJECT");
-                          }}
+                          onClick={() => openStatusModal("REJECT", doc, facility)}
+                          disabled={isApproving}
                         >
                           Reject
                         </Button>
@@ -441,7 +477,6 @@ export default function CommercialDetails({ customer, onBack }) {
 
   return (
     <div className="min-h-screen w-full flex flex-col py-8 px-4 bg-white">
-      {/* PDF Viewer Modal */}
       <Dialog open={pdfModalOpen} onOpenChange={closePdfModal}>
         <DialogContent className="max-w-4xl h-[90vh]">
           <DialogHeader>
@@ -483,7 +518,6 @@ export default function CommercialDetails({ customer, onBack }) {
         </DialogContent>
       </Dialog>
 
-      {/* Document Status Modal */}
       <Dialog open={statusModalOpen} onOpenChange={closeStatusModal}>
         <DialogContent>
           <DialogHeader>
@@ -512,7 +546,7 @@ export default function CommercialDetails({ customer, onBack }) {
               Cancel
             </Button>
             <Button 
-              onClick={() => handleDocumentStatusChange(actionType === "APPROVE" ? "APPROVED" : "REJECTED")}
+              onClick={handleDocumentStatusChange}
               disabled={approvingDoc === `${currentFacility?.id}-${currentDocument?.type}` || (actionType === "REJECT" && !rejectionReason)}
               className={actionType === "APPROVE" ? "bg-[#039994] hover:bg-[#02857f]" : "bg-red-500 hover:bg-red-600"}
             >

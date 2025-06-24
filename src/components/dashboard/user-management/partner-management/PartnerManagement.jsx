@@ -26,7 +26,7 @@ export default function PartnerManagement({ onViewChange }) {
   const [selectedPartner, setSelectedPartner] = useState(null);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [showAddPartnerModal, setShowAddPartnerModal] = useState(false);
-  const [currentView, setCurrentView] = useState("table"); // "table", "details", "installers", "finance"
+  const [currentView, setCurrentView] = useState("table");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -46,7 +46,6 @@ export default function PartnerManagement({ onViewChange }) {
       setLoading(true);
       setError(null);
       
-      // Get auth token from local storage
       const authToken = localStorage.getItem('authToken');
       
       if (!authToken) {
@@ -60,7 +59,12 @@ export default function PartnerManagement({ onViewChange }) {
       });
 
       if (response.data && response.data.status === "success") {
-        setPartners(response.data.data.partners || []);
+        // Process partners to include the correct email (user.email if available)
+        const processedPartners = response.data.data.partners.map(partner => ({
+          ...partner,
+          displayEmail: partner.user?.email || partner.email
+        }));
+        setPartners(processedPartners || []);
       } else {
         throw new Error(response.data.message || 'Failed to fetch partners');
       }
@@ -73,17 +77,25 @@ export default function PartnerManagement({ onViewChange }) {
   };
 
   const handlePartnerClick = (partner) => {
-    setSelectedPartner(partner);
+    // Create an enhanced partner object with all needed data
+    const enhancedPartner = {
+      ...partner,
+      // Use user email if available, fallback to partner email
+      email: partner.displayEmail,
+      // Include user details if available
+      userDetails: partner.user
+    };
+    setSelectedPartner(enhancedPartner);
     setCurrentView("details");
   };
 
   const handleBackToList = () => {
     setSelectedPartner(null);
     setCurrentView("table");
+    fetchPartners(); // Refresh the list when returning
   };
 
   const handleBackToManagement = () => {
-    // Call the parent component's function to change view
     if (onViewChange) {
       onViewChange("management");
     }
@@ -107,13 +119,12 @@ export default function PartnerManagement({ onViewChange }) {
   };
 
   const handleAddPartnerSuccess = () => {
-    // Refresh the partners list after successful addition
     fetchPartners();
     setShowAddPartnerModal(false);
   };
 
-  // Helper function to format date
   const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
     const date = new Date(dateString);
     return date.toLocaleDateString('en-GB', {
       day: '2-digit',
@@ -122,9 +133,8 @@ export default function PartnerManagement({ onViewChange }) {
     }).replace(/\//g, '-');
   };
 
-  // Helper function to format partner type
   const formatPartnerType = (type) => {
-    if (!type) return "";
+    if (!type) return "N/A";
     return type
       .split('_')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
@@ -135,7 +145,6 @@ export default function PartnerManagement({ onViewChange }) {
     <div className="flex flex-col min-h-screen bg-white">
       <div className="flex-1 overflow-hidden p-10">
         {currentView === "details" && selectedPartner && (
-          // Show Partner Details when a partner is selected
           <PartnerDetails 
             partner={selectedPartner} 
             onBack={handleBackToList} 
@@ -143,19 +152,15 @@ export default function PartnerManagement({ onViewChange }) {
         )}
 
         {currentView === "installers" && (
-          // Show Partner Installers
           <GetAllInstallers onBack={handleBackToList} />
         )}
 
         {currentView === "finance" && (
-          // Show Finance Types
           <FinanceTypes onBack={handleBackToList} />
         )}
         
         {currentView === "table" && (
-          // Show Partner Management Table
           <>
-            {/* ===== Header Row ===== */}
             <div className="flex justify-between items-center mb-6">
               <div className="flex gap-3 items-center">
                 <Button 
@@ -167,7 +172,6 @@ export default function PartnerManagement({ onViewChange }) {
                   Filter by
                 </Button>
                 
-                {/* Management Type Dropdown */}
                 <div className="relative">
                   <Button
                     variant="outline"
@@ -204,7 +208,6 @@ export default function PartnerManagement({ onViewChange }) {
                   )}
                 </div>
 
-                {/* View Partner Installers Button */}
                 <Button
                   variant="outline"
                   className="gap-2 border-teal-500 text-teal-600 hover:bg-teal-50"
@@ -215,7 +218,6 @@ export default function PartnerManagement({ onViewChange }) {
                 </Button>
               </div>
 
-              {/* New Partner Button */}
               <Button
                 className="gap-2 text-white"
                 style={{ backgroundColor: '#039994' }}
@@ -226,15 +228,13 @@ export default function PartnerManagement({ onViewChange }) {
               </Button>
             </div>
 
-            {/* ===== Title ===== */}
             <div className="mb-6 p-4 border-b flex items-center justify-between bg-white">
               <div className="flex items-center gap-1 text-xl font-medium text-teal-500">
                 Partner Management
               </div>
-              <InfoIcon />
+              <Info className="h-4 w-4 text-teal-500" />
             </div>
 
-            {/* ===== Loading and Error States ===== */}
             {loading ? (
               <div className="flex justify-center items-center h-64">
                 <Loader className="h-8 w-8 text-teal-500 animate-spin" />
@@ -257,10 +257,16 @@ export default function PartnerManagement({ onViewChange }) {
               <div className="flex justify-center items-center h-64">
                 <div className="text-gray-500 text-center">
                   <p className="font-medium">No partners found</p>
+                  <Button 
+                    className="mt-4"
+                    style={{ backgroundColor: '#039994' }}
+                    onClick={() => setShowAddPartnerModal(true)}
+                  >
+                    Add New Partner
+                  </Button>
                 </div>
               </div>
             ) : (
-              /* ===== Partner Table ===== */
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -284,9 +290,9 @@ export default function PartnerManagement({ onViewChange }) {
                         <td className="py-3 px-4">{indexOfFirst + index + 1}</td>
                         <td className="py-3 px-4">{partner.name}</td>
                         <td className="py-3 px-4">{formatPartnerType(partner.partnerType)}</td>
-                        <td className="py-3 px-4">{partner.phoneNumber}</td>
-                        <td className="py-3 px-4">{partner.email}</td>
-                        <td className="py-3 px-4">{partner.address}</td>
+                        <td className="py-3 px-4">{partner.phoneNumber || "N/A"}</td>
+                        <td className="py-3 px-4">{partner.displayEmail || "N/A"}</td>
+                        <td className="py-3 px-4">{partner.address || "N/A"}</td>
                         <td className="py-3 px-4">{formatDate(partner.createdAt)}</td>
                       </tr>
                     ))}
@@ -295,7 +301,6 @@ export default function PartnerManagement({ onViewChange }) {
               </div>
             )}
 
-            {/* ===== Pagination (only show if we have partners and not loading) ===== */}
             {!loading && !error && partners.length > 0 && (
               <div className="p-4 flex items-center justify-center gap-4">
                 <Button
@@ -323,7 +328,6 @@ export default function PartnerManagement({ onViewChange }) {
         )}
       </div>
 
-      {/* Modals */}
       <FilterByModal 
         isOpen={showFilterModal} 
         onClose={() => setShowFilterModal(false)} 
@@ -335,7 +339,6 @@ export default function PartnerManagement({ onViewChange }) {
         onSuccess={handleAddPartnerSuccess}
       />
 
-      {/* Dropdown overlay */}
       {showDropdown && (
         <div 
           className="fixed inset-0 z-40" 
@@ -343,25 +346,5 @@ export default function PartnerManagement({ onViewChange }) {
         />
       )}
     </div>
-  );
-}
-
-// Helper component
-function InfoIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="w-4 h-4 text-teal-500"
-    >
-      <circle cx="12" cy="12" r="10" />
-      <line x1="12" y1="16" x2="12" y2="12" />
-      <line x1="12" y1="8" x2="12.01" y2="8" />
-    </svg>
   );
 }

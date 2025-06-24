@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, Pencil, Trash2, Eye, Loader2 } from "lucide-react";
+import { ChevronLeft, Pencil, Trash2, Eye, Loader2, Mail, Phone, MapPin, Calendar, User } from "lucide-react";
 import EditPartnerModal from "./partnerManagementModal/EditPartnerModal";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -10,6 +10,7 @@ export default function PartnerDetails({ partner, onBack }) {
   const [showEditModal, setShowEditModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [partnerDetails, setPartnerDetails] = useState(null);
+  const [userDetails, setUserDetails] = useState(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -22,7 +23,6 @@ export default function PartnerDetails({ partner, onBack }) {
           throw new Error("No authentication token found");
         }
 
-        // Verify the partner object and email
         if (!partner || !partner.email) {
           throw new Error("Partner data is incomplete");
         }
@@ -32,12 +32,8 @@ export default function PartnerDetails({ partner, onBack }) {
           throw new Error("Invalid email format");
         }
 
-        console.log("Attempting to fetch details for:", partnerEmail);
         const encodedEmail = encodeURIComponent(partnerEmail);
-        console.log("Encoded email for URL:", encodedEmail);
-
         const apiUrl = `https://services.dcarbon.solutions/api/admin/customer/${encodedEmail}`;
-        console.log("Final API URL:", apiUrl);
 
         const response = await fetch(apiUrl, {
           headers: {
@@ -45,11 +41,8 @@ export default function PartnerDetails({ partner, onBack }) {
             "Content-Type": "application/json",
           },
         });
-
-        console.log("Response status:", response.status);
         
         if (!response.ok) {
-          // Try to get error details from response
           let errorDetails = {};
           try {
             errorDetails = await response.json();
@@ -64,19 +57,23 @@ export default function PartnerDetails({ partner, onBack }) {
         }
 
         const data = await response.json();
-        console.log("API Response:", data);
 
         if (!data || data.status !== "success") {
           throw new Error(data?.message || "Invalid response format");
         }
 
-        setPartnerDetails(data.data);
-      } catch (error) {
-        console.error("Fetch error details:", {
-          error: error.message,
-          partner: partner,
-          time: new Date().toISOString()
+        // Combine partner data with user details
+        setPartnerDetails({
+          ...partner,
+          ...data.data,
+          // Preserve the original partner type
+          partnerType: partner.partnerType,
+          // Preserve the address from partner if not in user details
+          address: partner.address || data.data.address
         });
+        setUserDetails(data.data);
+      } catch (error) {
+        console.error("Fetch error details:", error);
         
         toast({
           variant: "destructive",
@@ -91,51 +88,28 @@ export default function PartnerDetails({ partner, onBack }) {
     fetchPartnerDetails();
   }, [partner, toast]);
 
-  // Test function using hardcoded email
-  const testWithHardcodedEmail = async () => {
-    try {
-      setLoading(true);
-      const authToken = localStorage.getItem("authToken");
-      const testEmail = "mocimoy187@neuraxo.com"; // Your working test email
-      
-      console.log("Testing with hardcoded email:", testEmail);
-      
-      const response = await fetch(
-        `https://services.dcarbon.solutions/api/admin/customer/${encodeURIComponent(testEmail)}`,
-        {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
-        }
-      );
+  const formatPartnerType = (type) => {
+    if (!type) return "N/A";
+    return type
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
 
-      const data = await response.json();
-      console.log("Hardcoded test response:", data);
-      
-      if (response.ok && data.status === "success") {
-        setPartnerDetails(data.data);
-        toast({
-          title: "Test Successful",
-          description: "Loaded data using hardcoded email",
-        });
-      } else {
-        throw new Error(data.message || "Failed with hardcoded email");
-      }
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Hardcoded Test Failed",
-        description: error.message,
-      });
-    } finally {
-      setLoading(false);
-    }
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    }).replace(/\//g, '-');
   };
 
   if (loading) {
     return (
       <div className="w-full flex justify-center items-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <Loader2 className="h-8 w-8 animate-spin text-teal-500" />
       </div>
     );
   }
@@ -144,7 +118,7 @@ export default function PartnerDetails({ partner, onBack }) {
     return (
       <div className="w-full text-center py-10">
         <div className="space-y-4">
-          <p>Failed to load partner details</p>
+          <p className="font-medium">Failed to load partner details</p>
           <p className="text-sm text-gray-500">
             Email used: {partner?.email || "No email provided"}
           </p>
@@ -152,12 +126,6 @@ export default function PartnerDetails({ partner, onBack }) {
           <div className="flex justify-center gap-4 mt-6">
             <Button variant="outline" onClick={onBack}>
               Go Back
-            </Button>
-            <Button 
-              variant="secondary" 
-              onClick={testWithHardcodedEmail}
-            >
-              Test With Working Email
             </Button>
           </div>
         </div>
@@ -167,15 +135,13 @@ export default function PartnerDetails({ partner, onBack }) {
 
   return (
     <div className="w-full">
-      {/* Back Button and Header Row */}
       <div className="flex items-center mb-6">
         <Button variant="ghost" onClick={onBack} className="flex items-center gap-1">
           <ChevronLeft className="h-4 w-4" />
-          Partner Details
+          Back to Partners
         </Button>
       </div>
 
-      {/* Action Buttons */}
       <div className="flex justify-end gap-3 mb-6">
         <Button 
           variant="outline"
@@ -198,7 +164,6 @@ export default function PartnerDetails({ partner, onBack }) {
         </div>
       </div>
 
-      {/* Progress Bar */}
       <div className="mb-4">
         <div className="font-medium mb-1">Program Progress</div>
         <div className="w-full h-2 bg-black rounded-full mb-1"></div>
@@ -212,38 +177,63 @@ export default function PartnerDetails({ partner, onBack }) {
         </div>
       </div>
 
-      {/* Partner Details Card */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <div className="border border-[#039994] rounded-md p-6 bg-[#069B960D]">
           <div className="grid grid-cols-2 gap-y-4">
             <div>
               <div className="text-sm font-medium">Name</div>
-              <div>{partnerDetails.name}</div>
+              <div className="flex items-center gap-1">
+                <User className="h-4 w-4 text-gray-500" />
+                {partnerDetails.name || "N/A"}
+              </div>
             </div>
             <div>
               <div className="text-sm font-medium">Partner Type</div>
-              <div>{partnerDetails.partnerType}</div>
+              <div>{formatPartnerType(partnerDetails.partnerType)}</div>
             </div>
             <div>
               <div className="text-sm font-medium">Email Address</div>
-              <div>{partnerDetails.email}</div>
+              <div className="flex items-center gap-1">
+                <Mail className="h-4 w-4 text-gray-500" />
+                {partnerDetails.email || "N/A"}
+              </div>
             </div>
             <div>
               <div className="text-sm font-medium">Phone number</div>
-              <div>{partnerDetails.phoneNumber}</div>
+              <div className="flex items-center gap-1">
+                <Phone className="h-4 w-4 text-gray-500" />
+                {partnerDetails.phoneNumber || "N/A"}
+              </div>
             </div>
             <div>
               <div className="text-sm font-medium">Address</div>
-              <div>{partnerDetails.address}</div>
+              <div className="flex items-center gap-1">
+                <MapPin className="h-4 w-4 text-gray-500" />
+                {partnerDetails.address || "N/A"}
+              </div>
             </div>
             <div>
               <div className="text-sm font-medium">Date Registered</div>
-              <div>{new Date(partnerDetails.createdAt).toLocaleDateString()}</div>
+              <div className="flex items-center gap-1">
+                <Calendar className="h-4 w-4 text-gray-500" />
+                {formatDate(partnerDetails.createdAt)}
+              </div>
             </div>
+            {userDetails?.firstName && (
+              <div>
+                <div className="text-sm font-medium">First Name</div>
+                <div>{userDetails.firstName}</div>
+              </div>
+            )}
+            {userDetails?.lastName && (
+              <div>
+                <div className="text-sm font-medium">Last Name</div>
+                <div>{userDetails.lastName}</div>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* E-signature Section */}
         <div>
           <h3 className="text-[#039994] font-medium mb-4">User Agreement e-signature</h3>
           
@@ -273,7 +263,6 @@ export default function PartnerDetails({ partner, onBack }) {
             )}
           </div>
 
-          {/* Referrals Section */}
           {partnerDetails.referrals?.length > 0 && (
             <div className="mt-6">
               <h3 className="text-[#039994] font-medium mb-4">Referrals</h3>
@@ -294,7 +283,6 @@ export default function PartnerDetails({ partner, onBack }) {
         </div>
       </div>
 
-      {/* Modals */}
       <EditPartnerModal 
         isOpen={showEditModal} 
         onClose={() => setShowEditModal(false)} 

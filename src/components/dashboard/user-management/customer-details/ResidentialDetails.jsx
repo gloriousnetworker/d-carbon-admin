@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { ChevronLeft, Trash2, Eye, Download, ChevronDown, AlertTriangle, CheckCircle, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
@@ -24,6 +24,9 @@ export default function ResidentialDetails({ customer, onBack }) {
   const [actionType, setActionType] = useState(""); // "APPROVE" or "REJECT"
   const [verifyModalOpen, setVerifyModalOpen] = useState(false);
   const [verifyActionType, setVerifyActionType] = useState(""); // "VERIFY" or "REJECT"
+  
+  // Store scroll position before updates
+  const scrollPositionRef = useRef(0);
 
   useEffect(() => {
     if (customer?.id) {
@@ -99,6 +102,20 @@ export default function ResidentialDetails({ customer, onBack }) {
       console.error(`Error fetching documents for facility ${facilityId}:`, err);
       toast.error(`Failed to load documents for facility ${facilityId}`);
     }
+  };
+
+  const updateDocumentStatusOptimistically = (facilityId, docType, newStatus, rejectionReason = null) => {
+    setFacilityDocuments(prev => {
+      const currentDocs = prev[facilityId] || {};
+      return {
+        ...prev,
+        [facilityId]: {
+          ...currentDocs,
+          [`${docType}Status`]: newStatus,
+          ...(rejectionReason && { [`${docType}RejectionReason`]: rejectionReason })
+        }
+      };
+    });
   };
 
   const formatDate = (dateString) => {
@@ -196,6 +213,18 @@ export default function ResidentialDetails({ customer, onBack }) {
     const docKey = `${currentFacility.id}-${currentDocument.type}`;
     setApprovingDoc(docKey);
     
+    // Save scroll position before making changes
+    scrollPositionRef.current = window.scrollY;
+    
+    // Optimistically update the UI
+    const newStatus = actionType === "APPROVE" ? "APPROVED" : "REJECTED";
+    updateDocumentStatusOptimistically(
+      currentFacility.id,
+      currentDocument.type,
+      newStatus,
+      actionType === "REJECT" ? rejectionReason || "No reason provided" : null
+    );
+    
     try {
       const authToken = localStorage.getItem('authToken');
       if (!authToken) throw new Error('No authentication token found');
@@ -203,7 +232,7 @@ export default function ResidentialDetails({ customer, onBack }) {
       const endpoint = `https://services.dcarbon.solutions/api/admin/residential-facility/${currentFacility.id}/document/${currentDocument.type}/status`;
       
       const requestBody = {
-        status: actionType === "APPROVE" ? "APPROVED" : "REJECTED",
+        status: newStatus,
         ...(actionType === "REJECT" && { 
           rejectionReason: rejectionReason || "No reason provided" 
         })
@@ -226,17 +255,28 @@ export default function ResidentialDetails({ customer, onBack }) {
       const data = await response.json();
       if (data.status === 'success') {
         toast.success(data.message);
-        fetchFacilityDocuments(currentFacility.id);
-        closeStatusModal();
-        closePdfModal();
+        // Instead of refetching all documents, just update the one we changed
+        fetchFacilityDocuments(currentFacility.id).then(() => {
+          // After update, restore scroll position
+          requestAnimationFrame(() => {
+            window.scrollTo(0, scrollPositionRef.current);
+          });
+        });
       } else {
         throw new Error(data.message || 'Failed to update document status');
       }
     } catch (err) {
       console.error('Error updating document status:', err);
       toast.error(err.message || 'Failed to update document status');
+      // Revert optimistic update on error
+      fetchFacilityDocuments(currentFacility.id);
     } finally {
       setApprovingDoc(null);
+      // Keep the modal open if there was an error
+      if (!err) {
+        closeStatusModal();
+        closePdfModal();
+      }
     }
   };
 
@@ -309,7 +349,7 @@ export default function ResidentialDetails({ customer, onBack }) {
     const canVerifyFacility = allDocumentsApproved && facility.status !== "VERIFIED";
 
     return (
-      <div className="border border-gray-200 rounded-lg p-6 mb-6 bg-white">
+      <div className="border border-gray-200 rounded-lg p-6 mb-6 bg-white" id={`facility-${facility.id}`}>
         <div className="flex justify-between items-start mb-4">
           <div>
             <h4 className="text-lg font-semibold text-[#039994]">{facility.facilityName}</h4>
@@ -371,6 +411,8 @@ export default function ResidentialDetails({ customer, onBack }) {
             
             {docTypes.map((doc, index) => {
               const docKey = `${facility.id}-${doc.type}`;
+              const isApproving = approvingDoc === docKey;
+              
               return (
                 <div key={index} className="grid grid-cols-12 p-3 border-b last:border-b-0 items-center text-sm">
                   <div className="col-span-5">
@@ -391,6 +433,7 @@ export default function ResidentialDetails({ customer, onBack }) {
                                 size="icon" 
                                 className="h-6 w-6" 
                                 onClick={() => openPdfModal(doc.url, doc, facility)}
+                                disabled={isApproving}
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
@@ -415,6 +458,7 @@ export default function ResidentialDetails({ customer, onBack }) {
                                   link.click();
                                   document.body.removeChild(link);
                                 }}
+                                disabled={isApproving}
                               >
                                 <Download className="h-4 w-4" />
                               </Button>
@@ -432,7 +476,14 @@ export default function ResidentialDetails({ customer, onBack }) {
                   
                   <div className="col-span-2">
                     <span className={`text-xs font-semibold px-3 py-1 rounded-full ${getStatusColor(doc.status)}`}>
-                      {doc.status || 'Required'}
+                      {isApproving ? (
+                        <span className="flex items-center gap-1">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Processing...
+                        </span>
+                      ) : (
+                        doc.status || 'Required'
+                      )}
                     </span>
                   </div>
                   
@@ -444,16 +495,16 @@ export default function ResidentialDetails({ customer, onBack }) {
                           size="sm" 
                           className="h-8 text-xs" 
                           onClick={() => openStatusModal("APPROVE", doc, facility)} 
-                          disabled={approvingDoc === docKey}
+                          disabled={isApproving}
                         >
-                          {approvingDoc === docKey ? <Loader2 className="h-4 w-4 animate-spin" /> : "Approve"}
+                          Approve
                         </Button>
                         <Button 
                           variant="outline" 
                           size="sm" 
                           className="h-8 text-xs bg-red-50 text-red-600 hover:bg-red-100" 
                           onClick={() => openStatusModal("REJECT", doc, facility)}
-                          disabled={approvingDoc === docKey}
+                          disabled={isApproving}
                         >
                           Reject
                         </Button>
