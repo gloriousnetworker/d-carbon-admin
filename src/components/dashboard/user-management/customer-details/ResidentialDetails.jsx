@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { ChevronLeft, Trash2, Eye, Download, ChevronDown, AlertTriangle, CheckCircle, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
@@ -21,12 +21,10 @@ export default function ResidentialDetails({ customer, onBack }) {
   const [currentFacility, setCurrentFacility] = useState(null);
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
-  const [actionType, setActionType] = useState(""); // "APPROVE" or "REJECT"
+  const [actionType, setActionType] = useState("");
   const [verifyModalOpen, setVerifyModalOpen] = useState(false);
-  const [verifyActionType, setVerifyActionType] = useState(""); // "VERIFY" or "REJECT"
-  
-  // Store scroll position before updates
-  const scrollPositionRef = useRef(0);
+  const [verifyActionType, setVerifyActionType] = useState("");
+  const [facilityModalOpen, setFacilityModalOpen] = useState(false);
 
   useEffect(() => {
     if (customer?.id) {
@@ -58,8 +56,6 @@ export default function ResidentialDetails({ customer, onBack }) {
       const data = await response.json();
       if (data.status === 'success' && data.data?.facilities) {
         setFacilities(data.data.facilities);
-        // Fetch documents for each facility
-        await Promise.all(data.data.facilities.map(facility => fetchFacilityDocuments(facility.id)));
       } else {
         throw new Error(data.message || 'Failed to fetch facilities');
       }
@@ -204,6 +200,18 @@ export default function ResidentialDetails({ customer, onBack }) {
     setVerifyModalOpen(false);
     setRejectionReason("");
     setVerifyActionType("");
+  };
+
+  const openFacilityModal = (facility) => {
+    setCurrentFacility(facility);
+    if (!facilityDocuments[facility.id]) {
+      fetchFacilityDocuments(facility.id);
+    }
+    setFacilityModalOpen(true);
+  };
+
+  const closeFacilityModal = () => {
+    setFacilityModalOpen(false);
     setCurrentFacility(null);
   };
 
@@ -213,10 +221,6 @@ export default function ResidentialDetails({ customer, onBack }) {
     const docKey = `${currentFacility.id}-${currentDocument.type}`;
     setApprovingDoc(docKey);
     
-    // Save scroll position before making changes
-    scrollPositionRef.current = window.scrollY;
-    
-    // Optimistically update the UI
     const newStatus = actionType === "APPROVE" ? "APPROVED" : "REJECTED";
     updateDocumentStatusOptimistically(
       currentFacility.id,
@@ -255,24 +259,16 @@ export default function ResidentialDetails({ customer, onBack }) {
       const data = await response.json();
       if (data.status === 'success') {
         toast.success(data.message);
-        // Instead of refetching all documents, just update the one we changed
-        fetchFacilityDocuments(currentFacility.id).then(() => {
-          // After update, restore scroll position
-          requestAnimationFrame(() => {
-            window.scrollTo(0, scrollPositionRef.current);
-          });
-        });
+        fetchFacilityDocuments(currentFacility.id);
       } else {
         throw new Error(data.message || 'Failed to update document status');
       }
     } catch (err) {
       console.error('Error updating document status:', err);
       toast.error(err.message || 'Failed to update document status');
-      // Revert optimistic update on error
       fetchFacilityDocuments(currentFacility.id);
     } finally {
       setApprovingDoc(null);
-      // Keep the modal open if there was an error
       if (!err) {
         closeStatusModal();
         closePdfModal();
@@ -317,6 +313,7 @@ export default function ResidentialDetails({ customer, onBack }) {
         toast.success(data.message);
         fetchFacilities();
         closeVerifyModal();
+        closeFacilityModal();
       } else {
         throw new Error(data.message || 'Failed to verify facility');
       }
@@ -329,6 +326,35 @@ export default function ResidentialDetails({ customer, onBack }) {
   };
 
   const FacilityCard = ({ facility }) => {
+    return (
+      <div 
+        className="border border-gray-200 rounded-lg p-6 mb-4 bg-white hover:bg-gray-50 cursor-pointer transition-colors"
+        onClick={() => openFacilityModal(facility)}
+      >
+        <div className="flex justify-between items-start">
+          <div>
+            <h4 className="text-lg font-semibold text-[#039994]">{facility.facilityName}</h4>
+            <p className="text-sm text-gray-600">{facility.address}</p>
+            <p className="text-xs text-gray-500 mt-1">Facility ID: {facility.id}</p>
+          </div>
+          <StatusBadge status={facility.status} />
+        </div>
+        
+        <div className="mt-4 grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-sm text-gray-500">Utility Provider</p>
+            <p className="font-medium">{facility.utilityProvider}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500">Meter ID</p>
+            <p className="font-medium">{facility.meterId || 'Not specified'}</p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const FacilityModalContent = ({ facility }) => {
     const documents = facilityDocuments[facility.id] || {};
     const docTypes = [
       { name: "REC Agreement", url: documents.recAgreementUrl, status: documents.recAgreementStatus, type: "recAgreement", rejectionReason: documents.recAgreementRejectionReason },
@@ -349,8 +375,8 @@ export default function ResidentialDetails({ customer, onBack }) {
     const canVerifyFacility = allDocumentsApproved && facility.status !== "VERIFIED";
 
     return (
-      <div className="border border-gray-200 rounded-lg p-6 mb-6 bg-white" id={`facility-${facility.id}`}>
-        <div className="flex justify-between items-start mb-4">
+      <div className="space-y-6">
+        <div className="flex justify-between items-start">
           <div>
             <h4 className="text-lg font-semibold text-[#039994]">{facility.facilityName}</h4>
             <p className="text-sm text-gray-600">{facility.address}</p>
@@ -359,7 +385,7 @@ export default function ResidentialDetails({ customer, onBack }) {
           <StatusBadge status={facility.status} />
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-3">
             <div>
               <p className="text-sm text-gray-500">Utility Provider</p>
@@ -543,7 +569,6 @@ export default function ResidentialDetails({ customer, onBack }) {
 
   return (
     <div className="min-h-screen w-full flex flex-col py-8 px-4 bg-white">
-      {/* PDF Viewer Modal */}
       <Dialog open={pdfModalOpen} onOpenChange={closePdfModal}>
         <DialogContent className="max-w-4xl h-[90vh]">
           <DialogHeader>
@@ -585,7 +610,6 @@ export default function ResidentialDetails({ customer, onBack }) {
         </DialogContent>
       </Dialog>
 
-      {/* Document Status Modal */}
       <Dialog open={statusModalOpen} onOpenChange={closeStatusModal}>
         <DialogContent>
           <DialogHeader>
@@ -635,7 +659,6 @@ export default function ResidentialDetails({ customer, onBack }) {
         </DialogContent>
       </Dialog>
 
-      {/* Facility Verification Modal */}
       <Dialog open={verifyModalOpen} onOpenChange={closeVerifyModal}>
         <DialogContent>
           <DialogHeader>
@@ -682,6 +705,20 @@ export default function ResidentialDetails({ customer, onBack }) {
               {verifyActionType === "VERIFY" ? "Verify Facility" : "Reject Facility"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={facilityModalOpen} onOpenChange={closeFacilityModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex justify-between items-center">
+              <span>Facility Details</span>
+              <Button variant="ghost" size="icon" onClick={closeFacilityModal}>
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+          {currentFacility && <FacilityModalContent facility={currentFacility} />}
         </DialogContent>
       </Dialog>
 
