@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { ChevronLeft, Trash2, Eye, Download, ChevronDown, AlertTriangle, CheckCircle, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
@@ -22,7 +22,7 @@ export default function CommercialDetails({ customer, onBack }) {
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [actionType, setActionType] = useState("");
-  const scrollPositionRef = useRef(0);
+  const [facilityModalOpen, setFacilityModalOpen] = useState(false);
 
   useEffect(() => {
     if (customer?.id) fetchFacilities();
@@ -174,12 +174,21 @@ export default function CommercialDetails({ customer, onBack }) {
     setActionType("");
   };
 
+  const openFacilityModal = (facility) => {
+    setCurrentFacility(facility);
+    setFacilityModalOpen(true);
+  };
+
+  const closeFacilityModal = () => {
+    setFacilityModalOpen(false);
+    setCurrentFacility(null);
+  };
+
   const handleDocumentStatusChange = async () => {
     if (!currentFacility || !currentDocument) return;
     
     const docKey = `${currentFacility.id}-${currentDocument.type}`;
     setApprovingDoc(docKey);
-    scrollPositionRef.current = window.scrollY;
     
     const newStatus = actionType === "APPROVE" ? "APPROVED" : "REJECTED";
     updateFacilityDocumentStatus(
@@ -219,9 +228,6 @@ export default function CommercialDetails({ customer, onBack }) {
       const data = await response.json();
       if (data.status === 'success') {
         toast.success(data.message);
-        requestAnimationFrame(() => {
-          window.scrollTo(0, scrollPositionRef.current);
-        });
       } else {
         throw new Error(data.message || 'Failed to update document status');
       }
@@ -264,6 +270,7 @@ export default function CommercialDetails({ customer, onBack }) {
       if (data.status === 'success') {
         toast.success(data.message);
         fetchFacilities();
+        closeFacilityModal();
       } else {
         throw new Error(data.message || 'Failed to verify facility');
       }
@@ -276,6 +283,35 @@ export default function CommercialDetails({ customer, onBack }) {
   };
 
   const FacilityCard = ({ facility }) => {
+    return (
+      <div 
+        className="border border-gray-200 rounded-lg p-6 mb-4 bg-white hover:bg-gray-50 cursor-pointer transition-colors"
+        onClick={() => openFacilityModal(facility)}
+      >
+        <div className="flex justify-between items-start">
+          <div>
+            <h4 className="text-lg font-semibold text-[#039994]">{facility.facilityName}</h4>
+            <p className="text-sm text-gray-600">{facility.address}</p>
+            <p className="text-xs text-gray-500 mt-1">Facility ID: {facility.id}</p>
+          </div>
+          <StatusBadge status={facility.status} />
+        </div>
+        
+        <div className="mt-4 grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-sm text-gray-500">Utility Provider</p>
+            <p className="font-medium">{facility.utilityProvider}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500">Meter IDs</p>
+            <p className="font-medium">{facility.meterIds?.join(', ') || 'Not specified'}</p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const FacilityModalContent = ({ facility }) => {
     const documents = [
       { name: "Finance Agreement", url: facility.financeAgreementUrl, status: facility.financeAgreementStatus, type: "financeAgreement", rejectionReason: facility.financeAgreementRejectionReason },
       { name: "Proof of Address", url: facility.proofOfAddressUrl, status: facility.proofOfAddressStatus, type: "proofOfAddress", rejectionReason: facility.proofOfAddressRejectionReason },
@@ -289,8 +325,8 @@ export default function CommercialDetails({ customer, onBack }) {
     const canVerifyFacility = allDocumentsApproved && facility.status !== "VERIFIED";
 
     return (
-      <div className="border border-gray-200 rounded-lg p-6 mb-6 bg-white" id={`facility-${facility.id}`}>
-        <div className="flex justify-between items-start mb-4">
+      <div className="space-y-6">
+        <div className="flex justify-between items-start">
           <div>
             <h4 className="text-lg font-semibold text-[#039994]">{facility.facilityName}</h4>
             <p className="text-sm text-gray-600">{facility.address}</p>
@@ -299,7 +335,7 @@ export default function CommercialDetails({ customer, onBack }) {
           <StatusBadge status={facility.status} />
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-3">
             <div>
               <p className="text-sm text-gray-500">Utility Provider</p>
@@ -560,6 +596,20 @@ export default function CommercialDetails({ customer, onBack }) {
               {actionType === "APPROVE" ? "Approve" : "Reject"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={facilityModalOpen} onOpenChange={closeFacilityModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex justify-between items-center">
+              <span>Facility Details</span>
+              <Button variant="ghost" size="icon" onClick={closeFacilityModal}>
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+          {currentFacility && <FacilityModalContent facility={currentFacility} />}
         </DialogContent>
       </Dialog>
 
