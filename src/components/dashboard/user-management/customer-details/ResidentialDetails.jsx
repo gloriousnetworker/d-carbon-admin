@@ -260,6 +260,7 @@ export default function ResidentialDetails({ customer, onBack }) {
       if (data.status === 'success') {
         toast.success(data.message);
         fetchFacilityDocuments(currentFacility.id);
+        closeStatusModal();
       } else {
         throw new Error(data.message || 'Failed to update document status');
       }
@@ -269,10 +270,6 @@ export default function ResidentialDetails({ customer, onBack }) {
       fetchFacilityDocuments(currentFacility.id);
     } finally {
       setApprovingDoc(null);
-      if (!err) {
-        closeStatusModal();
-        closePdfModal();
-      }
     }
   };
 

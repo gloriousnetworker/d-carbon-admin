@@ -228,6 +228,7 @@ export default function CommercialDetails({ customer, onBack }) {
       const data = await response.json();
       if (data.status === 'success') {
         toast.success(data.message);
+        closeStatusModal();
       } else {
         throw new Error(data.message || 'Failed to update document status');
       }
@@ -237,10 +238,6 @@ export default function CommercialDetails({ customer, onBack }) {
       fetchFacilities();
     } finally {
       setApprovingDoc(null);
-      if (!err) {
-        closeStatusModal();
-        closePdfModal();
-      }
     }
   };
 
