@@ -17,6 +17,7 @@ import MyAccount from '@/components/dashboard/account/MyAccount';
 import AgreementManagement from '@/components/dashboard/agreement/AgreementManagement';
 import UserSupport from '@/components/dashboard/user-support/UserSupport';
 import UserManagement from '@/components/dashboard/user-management/UserManagement';
+import Faq from '@/components/dashboard/faq/Faq';
 
 export default function UserDashboard() {
   const [activeSection, setActiveSection] = useState('overview');
@@ -43,6 +44,7 @@ export default function UserDashboard() {
     notifications: 'Notification',
     helpCenter: 'Help Centre (FAQs)',
     contactSupport: 'Contact Support',
+    faq: 'FAQs',
     logout: 'Log Out',
   };
 
@@ -61,6 +63,7 @@ export default function UserDashboard() {
     case 'notifications': SectionComponent = DashboardNotifications; break;
     case 'helpCenter': SectionComponent = DashboardHelpCentre; break;
     case 'contactSupport': SectionComponent = DashboardContactSupport; break;
+    case 'faq': SectionComponent = Faq; break;
     case 'logout': SectionComponent = DashboardLogout; break;
     default: SectionComponent = DashboardOverview;
   }

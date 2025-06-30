@@ -172,6 +172,13 @@ const DashboardSidebar = ({
           <FiHeadphones className={iconBase} color={isActive('userSupport') ? '#FFFFFF' : '#039994'} />
           <span>User Support</span>
         </button>
+        <button
+          onClick={() => onSectionChange('faq')}
+          className={`${menuItemBase} ${isActive('faq') ? menuItemActive : menuItemInactive}`}
+        >
+          <FiHeadphones className={iconBase} color={isActive('faq') ? '#FFFFFF' : '#039994'} />
+          <span>FAQ</span>
+        </button>
       </nav>
 
       <div className={userInfoContainer}>
