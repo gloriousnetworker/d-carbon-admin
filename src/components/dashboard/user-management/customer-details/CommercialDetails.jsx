@@ -76,6 +76,14 @@ export default function CommercialDetails({ customer, onBack }) {
         ...(rejectionReason && { [reasonField]: rejectionReason })
       };
     }));
+
+    if (currentFacility?.id === facilityId) {
+      setCurrentFacility(prev => ({
+        ...prev,
+        [docField]: newStatus,
+        ...(rejectionReason && { [reasonField]: rejectionReason })
+      }));
+    }
   };
 
   const formatDate = (dateString) => {
