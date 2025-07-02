@@ -103,13 +103,22 @@ export default function ResidentialDetails({ customer, onBack }) {
   const updateDocumentStatusOptimistically = (facilityId, docType, newStatus, rejectionReason = null) => {
     setFacilityDocuments(prev => {
       const currentDocs = prev[facilityId] || {};
+      const updatedDocs = {
+        ...currentDocs,
+        [`${docType}Status`]: newStatus,
+        ...(rejectionReason && { [`${docType}RejectionReason`]: rejectionReason })
+      };
+
+      if (currentFacility?.id === facilityId) {
+        setCurrentFacility(prevFacility => ({
+          ...prevFacility,
+          documents: updatedDocs
+        }));
+      }
+
       return {
         ...prev,
-        [facilityId]: {
-          ...currentDocs,
-          [`${docType}Status`]: newStatus,
-          ...(rejectionReason && { [`${docType}RejectionReason`]: rejectionReason })
-        }
+        [facilityId]: updatedDocs
       };
     });
   };
@@ -259,7 +268,6 @@ export default function ResidentialDetails({ customer, onBack }) {
       const data = await response.json();
       if (data.status === 'success') {
         toast.success(data.message);
-        fetchFacilityDocuments(currentFacility.id);
         closeStatusModal();
       } else {
         throw new Error(data.message || 'Failed to update document status');

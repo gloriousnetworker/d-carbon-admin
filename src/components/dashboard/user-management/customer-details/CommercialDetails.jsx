@@ -70,20 +70,18 @@ export default function CommercialDetails({ customer, onBack }) {
       const docField = `${docType}Status`;
       const reasonField = `${docType}RejectionReason`;
       
-      return {
+      const updatedFacility = {
         ...facility,
         [docField]: newStatus,
         ...(rejectionReason && { [reasonField]: rejectionReason })
       };
-    }));
 
-    if (currentFacility?.id === facilityId) {
-      setCurrentFacility(prev => ({
-        ...prev,
-        [docField]: newStatus,
-        ...(rejectionReason && { [reasonField]: rejectionReason })
-      }));
-    }
+      if (currentFacility?.id === facilityId) {
+        setCurrentFacility(updatedFacility);
+      }
+
+      return updatedFacility;
+    }));
   };
 
   const formatDate = (dateString) => {
