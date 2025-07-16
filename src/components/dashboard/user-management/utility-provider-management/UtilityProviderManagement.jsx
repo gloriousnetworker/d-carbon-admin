@@ -2,14 +2,13 @@
 
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Filter, PenLine, ChevronLeft, ChevronRight, ChevronDown, Plus, Trash2, Loader2, Mail, Check, X } from "lucide-react";
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import toast from "react-hot-toast";
+import { Filter, ChevronLeft, ChevronRight, ChevronDown, Plus, Loader2, Mail, Check, Info } from "lucide-react";
 import UtilityProviderDetails from "./UtilityProviderDetails";
 import UtilityAuthManagement from "./UtilityAuthManagement";
 import UtilityProviderRequests from "./UtilityProviderRequests";
 import FilterByUtilityModal from "./modals/FilterByUtilityModal";
 import AddUtilityProviderModal from "./modals/AddUtilityProviderModal";
+import * as styles from "./styles";
 
 export default function UtilityProviderManagement({ onViewChange }) {
   const [currentPage, setCurrentPage] = useState(1);
@@ -29,8 +28,7 @@ export default function UtilityProviderManagement({ onViewChange }) {
     website: "",
     createdAt: "",
   });
-
-  // Notification states
+  const [showMainDropdown, setShowMainDropdown] = useState(false);
   const [requestsCount, setRequestsCount] = useState(0);
   const [authsCount, setAuthsCount] = useState(0);
   const [previousRequestsCount, setPreviousRequestsCount] = useState(0);
@@ -44,12 +42,10 @@ export default function UtilityProviderManagement({ onViewChange }) {
   const currentProviders = filteredProviders.slice(indexOfFirst, indexOfLast);
   const totalPages = Math.ceil(filteredProviders.length / providersPerPage);
 
-  // Function to fetch requests count
   const fetchRequestsCount = async () => {
     try {
       const authToken = localStorage.getItem("authToken");
       if (!authToken) return;
-      
       const response = await fetch("https://services.dcarbon.solutions/api/admin/utility-provider-requests", {
         method: "GET",
         headers: {
@@ -57,17 +53,13 @@ export default function UtilityProviderManagement({ onViewChange }) {
           "Content-Type": "application/json"
         }
       });
-      
       if (response.ok) {
         const result = await response.json();
         if (result.status === "success") {
           const newCount = result.data?.requests?.length || 0;
-          
-          // Check if there's an increase in requests
           if (newCount > previousRequestsCount && previousRequestsCount > 0) {
             setShowRequestsNotification(true);
           }
-          
           setRequestsCount(newCount);
           setPreviousRequestsCount(newCount);
         }
@@ -77,12 +69,10 @@ export default function UtilityProviderManagement({ onViewChange }) {
     }
   };
 
-  // Function to fetch auths count
   const fetchAuthsCount = async () => {
     try {
       const authToken = localStorage.getItem("authToken");
       if (!authToken) return;
-      
       const response = await fetch("https://services.dcarbon.solutions/api/auth/utility-auth", {
         method: "GET",
         headers: { 
@@ -90,17 +80,13 @@ export default function UtilityProviderManagement({ onViewChange }) {
           "Content-Type": "application/json" 
         }
       });
-      
       if (response.ok) {
         const result = await response.json();
         if (result.status === "success") {
           const newCount = result.data?.length || 0;
-          
-          // Check if there's an increase in auths
           if (newCount > previousAuthsCount && previousAuthsCount > 0) {
             setShowAuthsNotification(true);
           }
-          
           setAuthsCount(newCount);
           setPreviousAuthsCount(newCount);
         }
@@ -110,21 +96,16 @@ export default function UtilityProviderManagement({ onViewChange }) {
     }
   };
 
-  // Initialize counts on component mount
   useEffect(() => {
     const initializeCounts = async () => {
       await fetchRequestsCount();
       await fetchAuthsCount();
     };
-    
     initializeCounts();
-    
-    // Set up polling for new data every 30 seconds
     const interval = setInterval(() => {
       fetchRequestsCount();
       fetchAuthsCount();
     }, 30000);
-    
     return () => clearInterval(interval);
   }, [previousRequestsCount, previousAuthsCount]);
 
@@ -135,7 +116,6 @@ export default function UtilityProviderManagement({ onViewChange }) {
       try {
         const authToken = localStorage.getItem("authToken");
         if (!authToken) throw new Error("Authentication token not found");
-        
         const response = await fetch("https://services.dcarbon.solutions/api/admin/utility-providers", {
           method: "GET",
           headers: {
@@ -143,9 +123,7 @@ export default function UtilityProviderManagement({ onViewChange }) {
             "Content-Type": "application/json"
           }
         });
-        
         if (!response.ok) throw new Error(`Error fetching utility providers: ${response.statusText}`);
-        
         const result = await response.json();
         if (result.status === "success") {
           setUtilityProviders(result.data.utilityProviders || []);
@@ -160,7 +138,6 @@ export default function UtilityProviderManagement({ onViewChange }) {
         setIsLoading(false);
       }
     };
-    
     fetchUtilityProviders();
   }, []);
 
@@ -227,7 +204,6 @@ export default function UtilityProviderManagement({ onViewChange }) {
     try {
       const authToken = localStorage.getItem("authToken");
       if (!authToken) throw new Error("Authentication token not found");
-      
       const response = await fetch("https://services.dcarbon.solutions/api/admin/utility-providers", {
         method: "POST",
         headers: {
@@ -240,12 +216,9 @@ export default function UtilityProviderManagement({ onViewChange }) {
           documentation: formData.documentation
         })
       });
-      
       if (!response.ok) throw new Error(`Error creating utility provider: ${response.statusText}`);
-      
       const result = await response.json();
       if (result.status === "success") {
-        toast.success("Utility provider created successfully");
         const fetchResponse = await fetch("https://services.dcarbon.solutions/api/admin/utility-providers", {
           method: "GET",
           headers: {
@@ -262,39 +235,34 @@ export default function UtilityProviderManagement({ onViewChange }) {
         throw new Error(result.message || "Failed to create utility provider");
       }
     } catch (err) {
-      toast.error(err.message);
       console.error("Error creating utility provider:", err);
     }
   };
 
   const handleViewRequests = () => {
     setShowRequests(true);
-    setShowRequestsNotification(false); // Clear notification when viewed
+    setShowRequestsNotification(false);
   };
 
   const handleBackFromRequests = () => {
     setShowRequests(false);
-    // Refresh counts when coming back
     fetchRequestsCount();
     fetchAuthsCount();
   };
 
   const handleViewAuthManagement = () => {
     setShowAuthManagement(true);
-    setShowAuthsNotification(false); // Clear notification when viewed
+    setShowAuthsNotification(false);
   };
 
   const handleBackFromAuthManagement = () => {
     setShowAuthManagement(false);
-    // Refresh counts when coming back
     fetchRequestsCount();
     fetchAuthsCount();
   };
 
-  // Notification Badge Component
   const NotificationBadge = ({ count, show }) => {
     if (!show || count === 0) return null;
-    
     return (
       <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
         {count > 99 ? '99+' : count}
@@ -305,10 +273,7 @@ export default function UtilityProviderManagement({ onViewChange }) {
   return (
     <div className="flex flex-col min-h-screen bg-white">
       {currentView === "details" && selectedProvider && (
-        <UtilityProviderDetails 
-          provider={selectedProvider} 
-          onBack={handleBackToList} 
-        />
+        <UtilityProviderDetails provider={selectedProvider} onBack={handleBackToList} />
       )}
       
       {showAuthManagement ? (
@@ -318,7 +283,7 @@ export default function UtilityProviderManagement({ onViewChange }) {
       ) : currentView === "list" && (
         <>
           <div className="flex justify-between mb-6">
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               <Button 
                 variant="outline" 
                 className="gap-2"
@@ -336,8 +301,8 @@ export default function UtilityProviderManagement({ onViewChange }) {
                 >
                   <Mail className="h-4 w-4" />
                   View Requests
+                  <NotificationBadge count={requestsCount} show={showRequestsNotification} />
                 </Button>
-                <NotificationBadge count={requestsCount} show={showRequestsNotification} />
               </div>
 
               <div className="relative">
@@ -348,13 +313,13 @@ export default function UtilityProviderManagement({ onViewChange }) {
                 >
                   <Check className="h-4 w-4" />
                   Manage Authorizations
+                  <NotificationBadge count={authsCount} show={showAuthsNotification} />
                 </Button>
-                <NotificationBadge count={authsCount} show={showAuthsNotification} />
               </div>
             </div>
 
             <Button
-              className="gap-2 bg-[#039994] hover:bg-[#02857f] text-white"
+              className="gap-2 bg-[#039994] text-white hover:bg-[#02857f]"
               onClick={() => setShowAddUtilityModal(true)}
             >
               <Plus className="h-4 w-4" />
@@ -363,42 +328,61 @@ export default function UtilityProviderManagement({ onViewChange }) {
           </div>
 
           <div className="mb-6 p-4 border-b flex items-center justify-between bg-white">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-1 text-xl font-medium text-[#039994]">
-                  Utility Provider Management
-                  <ChevronDown className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
+            <div className="relative">
+              <button
+                className={`flex items-center gap-1 text-xl font-medium text-[#039994] ${styles.pageTitle.replace('mb-4', '').replace('text-center', '')}`}
+                onClick={() => setShowMainDropdown(!showMainDropdown)}
+              >
+                Utility Provider Management
+                <ChevronDown className="h-5 w-5" />
+              </button>
 
-              <DropdownMenuContent className="bg-white">
-                <DropdownMenuItem onClick={() => onViewChange("management")}>
-                  Customer Management
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onViewChange("report")}>
-                  Customer Report
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onViewChange("partner-management")}>
-                  Partner Management
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              {showMainDropdown && (
+                <div className="absolute top-full left-0 mt-1 w-60 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                  <div className="py-1">
+                    <button
+                      className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 ${styles.labelClass}`}
+                      onClick={() => onViewChange("management")}
+                    >
+                      Customer Management
+                    </button>
+                    <button
+                      className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 font-medium text-[#039994]`}
+                    >
+                      Utility Provider Management
+                    </button>
+                    <button
+                      className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 ${styles.labelClass}`}
+                      onClick={() => onViewChange("partner-management")}
+                    >
+                      Partner Management
+                    </button>
+                    <button
+                      className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 ${styles.labelClass}`}
+                      onClick={() => onViewChange("finance-types")}
+                    >
+                      Finance Types
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
 
-            <InfoIcon />
+            <Info className="h-4 w-4 text-teal-500" />
           </div>
 
           {isLoading && (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-[#039994]" />
-              <span className="ml-3 text-lg text-gray-600">Loading utility providers...</span>
+              <div className={styles.spinner}></div>
+              <span className={`ml-3 text-lg text-gray-600 ${styles.labelClass}`}>Loading utility providers...</span>
             </div>
           )}
 
           {error && (
             <div className="py-8 px-4 bg-red-50 border border-red-200 rounded-md text-center">
-              <p className="text-red-600">{error}</p>
+              <p className={`text-red-600 ${styles.labelClass}`}>{error}</p>
               <Button 
-                className="mt-4 bg-red-600 hover:bg-red-700 text-white"
+                className={`mt-4 bg-red-600 hover:bg-red-700 text-white ${styles.buttonPrimary}`}
                 onClick={() => window.location.reload()}
               >
                 Retry
@@ -408,7 +392,7 @@ export default function UtilityProviderManagement({ onViewChange }) {
 
           {!isLoading && !error && filteredProviders.length === 0 && (
             <div className="py-12 text-center">
-              <p className="text-gray-500 text-lg mb-4">No utility providers found</p>
+              <p className={`text-gray-500 text-lg mb-4 ${styles.labelClass}`}>No utility providers found</p>
               {Object.values(filterValues).some(v => v !== "") && (
                 <Button 
                   variant="outline" 
@@ -423,9 +407,9 @@ export default function UtilityProviderManagement({ onViewChange }) {
 
           {!isLoading && !error && filteredProviders.length > 0 && (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm table-auto">
                 <thead>
-                  <tr className="border-y">
+                  <tr className="border-b">
                     <th className="py-3 px-4 text-left font-medium">S/N</th>
                     <th className="py-3 px-4 text-left font-medium">Utility Provider</th>
                     <th className="py-3 px-4 text-left font-medium">Utility ID</th>
@@ -447,9 +431,9 @@ export default function UtilityProviderManagement({ onViewChange }) {
                       <td className="py-3 px-4">{provider.id || "N/A"}</td>
                       <td className="py-3 px-4">
                         {provider.website ? (
-                          <a 
-                            href={provider.website} 
-                            target="_blank" 
+                          <a
+                            href={provider.website}
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="text-blue-600 hover:underline"
                             onClick={(e) => e.stopPropagation()}
@@ -460,9 +444,9 @@ export default function UtilityProviderManagement({ onViewChange }) {
                       </td>
                       <td className="py-3 px-4">
                         {provider.documentation ? (
-                          <a 
-                            href={provider.documentation} 
-                            target="_blank" 
+                          <a
+                            href={provider.documentation}
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="text-blue-600 hover:underline"
                             onClick={(e) => e.stopPropagation()}
@@ -494,7 +478,7 @@ export default function UtilityProviderManagement({ onViewChange }) {
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <span className="text-sm">
+              <span className={`text-sm ${styles.labelClass}`}>
                 {currentPage} of {totalPages}
               </span>
               <Button
@@ -528,27 +512,13 @@ export default function UtilityProviderManagement({ onViewChange }) {
           onCreate={handleCreateProvider}
         />
       )}
+
+      {showMainDropdown && (
+        <div 
+          className="fixed inset-0 z-40" 
+          onClick={() => setShowMainDropdown(false)}
+        />
+      )}
     </div>
   );
 }
-
-function InfoIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="w-4 h-4 text-[#039994]"
-    >
-      <circle cx="12" cy="12" r="10" />
-      <line x1="12" y1="16" x2="12" y2="12" />
-      <line x1="12" y1="8" x2="12.01" y2="8" />
-    </svg>
-  );
-}
-
-//needs updated

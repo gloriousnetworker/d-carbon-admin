@@ -8,40 +8,41 @@ import {
   ChevronLeft,
   ChevronRight,
   Info,
-  ArrowLeft,
-  Loader,
-  ChevronDown,
   Plus,
-  Users
+  Users,
+  ChevronDown,
+  X
 } from "lucide-react";
 import PartnerDetails from "./PartnerDetails";
 import FilterByModal from "./partnerManagementModal/FilterBy";
 import AddPartnerModal from "./partnerManagementModal/AddPartner";
 import GetAllInstallers from "./GetAllInstallers";
+import UtilityProviderManagement from "../utility-provider-management/UtilityProviderManagement";
 import FinanceTypes from "./finance-types/FinanceType";
+import * as styles from "../styles";
 
 export default function PartnerManagement({ onViewChange }) {
   const [partners, setPartners] = useState([]);
+  const [filteredPartners, setFilteredPartners] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedPartner, setSelectedPartner] = useState(null);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [showAddPartnerModal, setShowAddPartnerModal] = useState(false);
-  const [currentView, setCurrentView] = useState("table");
+  const [currentView, setCurrentView] = useState("management");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showDropdown, setShowDropdown] = useState(false);
-  
-  const partnersPerPage = 10;
-  const indexOfLast = currentPage * partnersPerPage;
-  const indexOfFirst = indexOfLast - partnersPerPage;
-  const currentPartners = partners.slice(indexOfFirst, indexOfLast);
-  const totalPages = Math.ceil(partners.length / partnersPerPage);
+  const [showMainDropdown, setShowMainDropdown] = useState(false);
+  const [activeFilters, setActiveFilters] = useState({});
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
   useEffect(() => {
-    fetchPartners();
-  }, []);
+    if (currentView === "management") {
+      fetchPartners(currentPage, 50);
+    }
+  }, [currentView, currentPage]);
 
-  const fetchPartners = async () => {
+  const fetchPartners = async (page = 1, limit = 50) => {
     try {
       setLoading(true);
       setError(null);
@@ -52,19 +53,21 @@ export default function PartnerManagement({ onViewChange }) {
         throw new Error('Authentication token not found');
       }
 
-      const response = await axios.get('https://services.dcarbon.solutions/api/admin/partners', {
+      const response = await axios.get(`https://services.dcarbon.solutions/api/admin/partners?page=${page}&limit=${limit}`, {
         headers: {
           Authorization: `Bearer ${authToken}`
         }
       });
 
       if (response.data && response.data.status === "success") {
-        // Process partners to include the correct email (user.email if available)
         const processedPartners = response.data.data.partners.map(partner => ({
           ...partner,
           displayEmail: partner.user?.email || partner.email
         }));
         setPartners(processedPartners || []);
+        setFilteredPartners(processedPartners || []);
+        setTotalPages(response.data.data.metadata?.totalPages || 1);
+        setTotalCount(response.data.data.metadata?.total || 0);
       } else {
         throw new Error(response.data.message || 'Failed to fetch partners');
       }
@@ -76,13 +79,40 @@ export default function PartnerManagement({ onViewChange }) {
     }
   };
 
+  const applyFilters = (filters) => {
+    setActiveFilters(filters);
+    let results = [...partners];
+    
+    if (filters.partnerType) {
+      results = results.filter(partner => 
+        partner.partnerType.toLowerCase() === filters.partnerType.toLowerCase()
+      );
+    }
+    
+    if (filters.status) {
+      results = results.filter(partner => 
+        partner.status.toLowerCase() === filters.status.toLowerCase()
+      );
+    }
+    
+    if (filters.startDate && filters.endDate) {
+      results = results.filter(partner => {
+        const partnerDate = new Date(partner.createdAt);
+        const startDate = new Date(filters.startDate);
+        const endDate = new Date(filters.endDate);
+        return partnerDate >= startDate && partnerDate <= endDate;
+      });
+    }
+    
+    setFilteredPartners(results);
+    setCurrentPage(1);
+    setShowFilterModal(false);
+  };
+
   const handlePartnerClick = (partner) => {
-    // Create an enhanced partner object with all needed data
     const enhancedPartner = {
       ...partner,
-      // Use user email if available, fallback to partner email
       email: partner.displayEmail,
-      // Include user details if available
       userDetails: partner.user
     };
     setSelectedPartner(enhancedPartner);
@@ -91,31 +121,24 @@ export default function PartnerManagement({ onViewChange }) {
 
   const handleBackToList = () => {
     setSelectedPartner(null);
-    setCurrentView("table");
-    fetchPartners(); // Refresh the list when returning
+    setCurrentView("management");
+    fetchPartners();
   };
 
-  const handleBackToManagement = () => {
-    if (onViewChange) {
-      onViewChange("management");
+  const handleViewChange = (view) => {
+    if (view === "customer-management") {
+      if (onViewChange) {
+        onViewChange("management");
+      }
+    } else {
+      setCurrentView(view);
     }
+    setSelectedPartner(null);
+    setShowMainDropdown(false);
   };
 
   const handleViewInstallers = () => {
     setCurrentView("installers");
-  };
-
-  const handleViewFinanceTypes = () => {
-    setCurrentView("finance");
-  };
-
-  const handleDropdownSelect = (option) => {
-    if (option === "customer") {
-      handleBackToManagement();
-    } else if (option === "finance") {
-      handleViewFinanceTypes();
-    }
-    setShowDropdown(false);
   };
 
   const handleAddPartnerSuccess = () => {
@@ -137,13 +160,41 @@ export default function PartnerManagement({ onViewChange }) {
     if (!type) return "N/A";
     return type
       .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
       .join(' ');
+  };
+
+  const StatusBadge = ({ status }) => {
+    let classes = "";
+    switch (status) {
+      case "Active":
+        classes = "bg-teal-500 text-white";
+        break;
+      case "Invited":
+        classes = "bg-amber-400 text-white";
+        break;
+      case "Registered":
+        classes = "bg-black text-white";
+        break;
+      case "Terminated":
+        classes = "bg-red-500 text-white";
+        break;
+      case "Inactive":
+        classes = "bg-gray-400 text-white";
+        break;
+      default:
+        classes = "bg-gray-300 text-black";
+    }
+    return (
+      <span className={`inline-block px-2 py-1 rounded-full text-[11px] ${classes}`}>
+        {status}
+      </span>
+    );
   };
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
-      <div className="flex-1 overflow-hidden p-10">
+      <div className="flex-1 overflow-hidden p-8">
         {currentView === "details" && selectedPartner && (
           <PartnerDetails 
             partner={selectedPartner} 
@@ -155,110 +206,103 @@ export default function PartnerManagement({ onViewChange }) {
           <GetAllInstallers onBack={handleBackToList} />
         )}
 
+        {currentView === "utility-management" && (
+          <UtilityProviderManagement onViewChange={handleViewChange} />
+        )}
+
         {currentView === "finance" && (
           <FinanceTypes onBack={handleBackToList} />
         )}
         
-        {currentView === "table" && (
-          <>
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex gap-3 items-center">
-                <Button 
-                  variant="outline" 
-                  className="gap-2 border-black bg-transparent hover:bg-gray-50"
-                  onClick={() => setShowFilterModal(true)}
-                >
-                  <Filter className="h-4 w-4" />
-                  Filter by
-                </Button>
-                
-                <div className="relative">
-                  <Button
-                    variant="outline"
-                    className="gap-2 border-gray-300"
-                    onClick={() => setShowDropdown(!showDropdown)}
-                  >
-                    Partner Management
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                  
-                  {showDropdown && (
-                    <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
-                      <div className="py-1">
-                        <button
-                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 text-teal-600 font-medium"
-                          onClick={() => handleDropdownSelect("partner")}
-                        >
-                          Partner Management
-                        </button>
-                        <button
-                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
-                          onClick={() => handleDropdownSelect("customer")}
-                        >
-                          Customer Management
-                        </button>
-                        <button
-                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
-                          onClick={() => handleDropdownSelect("finance")}
-                        >
-                          Finance Types
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
+        {currentView === "management" && (
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex justify-between mb-4">
+              <Button 
+                variant="outline" 
+                className="gap-2 text-xs"
+                onClick={() => setShowFilterModal(true)}
+              >
+                <Filter className="h-3 w-3" />
+                Filter by
+              </Button>
 
+              <div className="flex gap-2">
                 <Button
                   variant="outline"
-                  className="gap-2 border-teal-500 text-teal-600 hover:bg-teal-50"
+                  className="gap-2 text-xs border-teal-500 text-teal-600 hover:bg-teal-50"
                   onClick={handleViewInstallers}
                 >
-                  <Users className="h-4 w-4" />
-                  View Partner Installers
+                  <Users className="h-3 w-3" />
+                  View Installers
+                </Button>
+
+                <Button
+                  className="gap-2 text-xs text-white bg-[#039994] hover:bg-[#027f7f]"
+                  onClick={() => setShowAddPartnerModal(true)}
+                >
+                  <Plus className="h-3 w-3" />
+                  New Partner
                 </Button>
               </div>
-
-              <Button
-                className="gap-2 text-white"
-                style={{ backgroundColor: '#039994' }}
-                onClick={() => setShowAddPartnerModal(true)}
-              >
-                <Plus className="h-4 w-4" />
-                New Partner
-              </Button>
             </div>
 
-            <div className="mb-6 p-4 border-b flex items-center justify-between bg-white">
-              <div className="flex items-center gap-1 text-xl font-medium text-teal-500">
-                Partner Management
+            <div className="mb-4 p-3 border-b flex items-center justify-between">
+              <div className="relative">
+                <button
+                  className="flex items-center gap-1 text-sm font-medium text-[#039994]"
+                  onClick={() => setShowMainDropdown(!showMainDropdown)}
+                >
+                  Partner Management
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+
+                {showMainDropdown && (
+                  <div className="absolute top-full left-0 mt-1 w-60 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                    <div className="py-1">
+                      <button
+                        className="w-full px-3 py-2 text-left text-xs hover:bg-gray-50"
+                        onClick={() => handleViewChange("customer-management")}
+                      >
+                        Customer Management
+                      </button>
+                      <button
+                        className="w-full px-3 py-2 text-left text-xs hover:bg-gray-50 font-medium text-[#039994]"
+                        onClick={() => handleViewChange("management")}
+                      >
+                        Partner Management
+                      </button>
+                      <button
+                        className="w-full px-3 py-2 text-left text-xs hover:bg-gray-50"
+                        onClick={() => handleViewChange("utility-management")}
+                      >
+                        Utility Provider Management
+                      </button>
+                      <button
+                        className="w-full px-3 py-2 text-left text-xs hover:bg-gray-50"
+                        onClick={() => handleViewChange("finance")}
+                      >
+                        Finance Types
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-              <Info className="h-4 w-4 text-teal-500" />
+
+              <Info className="h-3 w-3 text-teal-500" />
             </div>
 
             {loading ? (
-              <div className="flex justify-center items-center h-64">
-                <Loader className="h-8 w-8 text-teal-500 animate-spin" />
+              <div className="flex justify-center items-center h-48">
+                <div className={styles.spinner}></div>
               </div>
             ) : error ? (
-              <div className="flex justify-center items-center h-64">
-                <div className="text-red-500 text-center">
-                  <p className="font-medium">Error loading partners</p>
-                  <p className="text-sm">{error}</p>
-                  <Button 
-                    variant="outline" 
-                    className="mt-4"
-                    onClick={fetchPartners}
-                  >
-                    Try Again
-                  </Button>
-                </div>
-              </div>
-            ) : partners.length === 0 ? (
-              <div className="flex justify-center items-center h-64">
-                <div className="text-gray-500 text-center">
+              <div className="text-center py-8 text-red-500 text-xs">{error}</div>
+            ) : filteredPartners.length === 0 ? (
+              <div className="flex justify-center items-center h-48">
+                <div className="text-gray-500 text-center text-xs">
                   <p className="font-medium">No partners found</p>
                   <Button 
-                    className="mt-4"
+                    className="mt-3 text-xs"
                     style={{ backgroundColor: '#039994' }}
                     onClick={() => setShowAddPartnerModal(true)}
                   >
@@ -268,32 +312,36 @@ export default function PartnerManagement({ onViewChange }) {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-xs">
                   <thead>
-                    <tr className="border-y">
-                      <th className="py-3 px-4 text-left font-medium">S/N</th>
-                      <th className="py-3 px-4 text-left font-medium">Name</th>
-                      <th className="py-3 px-4 text-left font-medium">Partner Type</th>
-                      <th className="py-3 px-4 text-left font-medium">Contact no.</th>
-                      <th className="py-3 px-4 text-left font-medium">Email address</th>
-                      <th className="py-3 px-4 text-left font-medium">Address</th>
-                      <th className="py-3 px-4 text-left font-medium">Date Reg.</th>
+                    <tr className="border-b">
+                      <th className="py-2 px-3 text-left font-medium">S/N</th>
+                      <th className="py-2 px-3 text-left font-medium">NAME</th>
+                      <th className="py-2 px-3 text-left font-medium">PARTNER TYPE</th>
+                      <th className="py-2 px-3 text-left font-medium">CONTACT NO.</th>
+                      <th className="py-2 px-3 text-left font-medium">EMAIL</th>
+                      <th className="py-2 px-3 text-left font-medium">ADDRESS</th>
+                      <th className="py-2 px-3 text-left font-medium">DATE REG.</th>
+                      <th className="py-2 px-3 text-left font-medium">STATUS</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {currentPartners.map((partner, index) => (
+                    {filteredPartners.map((partner, index) => (
                       <tr
                         key={partner.id}
-                        className="border-b cursor-pointer hover:bg-gray-50"
+                        className="border-b hover:bg-gray-50 cursor-pointer"
                         onClick={() => handlePartnerClick(partner)}
                       >
-                        <td className="py-3 px-4">{indexOfFirst + index + 1}</td>
-                        <td className="py-3 px-4">{partner.name}</td>
-                        <td className="py-3 px-4">{formatPartnerType(partner.partnerType)}</td>
-                        <td className="py-3 px-4">{partner.phoneNumber || "N/A"}</td>
-                        <td className="py-3 px-4">{partner.displayEmail || "N/A"}</td>
-                        <td className="py-3 px-4">{partner.address || "N/A"}</td>
-                        <td className="py-3 px-4">{formatDate(partner.createdAt)}</td>
+                        <td className="py-2 px-3">{index + 1}</td>
+                        <td className="py-2 px-3">{partner.name}</td>
+                        <td className="py-2 px-3">{formatPartnerType(partner.partnerType)}</td>
+                        <td className="py-2 px-3">{partner.phoneNumber || "N/A"}</td>
+                        <td className="py-2 px-3">{partner.displayEmail || "N/A"}</td>
+                        <td className="py-2 px-3">{partner.address || "N/A"}</td>
+                        <td className="py-2 px-3">{formatDate(partner.createdAt)}</td>
+                        <td className="py-2 px-3">
+                          <StatusBadge status={partner.status || "Active"} />
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -301,36 +349,46 @@ export default function PartnerManagement({ onViewChange }) {
               </div>
             )}
 
-            {!loading && !error && partners.length > 0 && (
-              <div className="p-4 flex items-center justify-center gap-4">
+            {!loading && !error && totalCount > 0 && (
+              <div className="p-3 flex items-center justify-center gap-3">
                 <Button
                   variant="ghost"
                   size="icon"
+                  className="h-6 w-6"
                   disabled={currentPage === 1}
-                  onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                  onClick={() => {
+                    setCurrentPage((p) => Math.max(p - 1, 1));
+                    fetchPartners(currentPage - 1, 50);
+                  }}
                 >
-                  <ChevronLeft className="h-4 w-4" />
+                  <ChevronLeft className="h-3 w-3" />
                 </Button>
-                <span className="text-sm">
+                <span className="text-xs">
                   {currentPage} of {totalPages}
                 </span>
                 <Button
                   variant="ghost"
                   size="icon"
+                  className="h-6 w-6"
                   disabled={currentPage === totalPages}
-                  onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                  onClick={() => {
+                    setCurrentPage((p) => Math.min(p + 1, totalPages));
+                    fetchPartners(currentPage + 1, 50);
+                  }}
                 >
-                  <ChevronRight className="h-4 w-4" />
+                  <ChevronRight className="h-3 w-3" />
                 </Button>
               </div>
             )}
-          </>
+          </div>
         )}
       </div>
 
       <FilterByModal 
         isOpen={showFilterModal} 
-        onClose={() => setShowFilterModal(false)} 
+        onClose={() => setShowFilterModal(false)}
+        onApplyFilters={applyFilters}
+        currentFilters={activeFilters}
       />
       
       <AddPartnerModal 
@@ -339,10 +397,10 @@ export default function PartnerManagement({ onViewChange }) {
         onSuccess={handleAddPartnerSuccess}
       />
 
-      {showDropdown && (
+      {showMainDropdown && (
         <div 
           className="fixed inset-0 z-40" 
-          onClick={() => setShowDropdown(false)}
+          onClick={() => setShowMainDropdown(false)}
         />
       )}
     </div>

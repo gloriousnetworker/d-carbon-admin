@@ -8,8 +8,35 @@ import { toast } from "react-hot-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
+export const mainContainer = 'min-h-screen w-full flex flex-col items-center justify-center py-8 px-4 bg-white';
+export const headingContainer = 'relative w-full flex flex-col items-center mb-2';
+export const backArrow = 'absolute left-4 top-0 text-[#039994] cursor-pointer z-10';
+export const pageTitle = 'mb-4 font-[600] text-[36px] leading-[100%] tracking-[-0.05em] text-[#039994] font-sfpro text-center';
+export const progressContainer = 'w-full max-w-md flex items-center justify-between mb-6';
+export const progressBarWrapper = 'flex-1 h-1 bg-gray-200 rounded-full mr-4';
+export const progressBarActive = 'h-1 bg-[#039994] w-2/3 rounded-full';
+export const progressStepText = 'text-sm font-medium text-gray-500 font-sfpro';
+export const formWrapper = 'w-full max-w-md space-y-6';
+export const labelClass = 'block mb-2 font-sfpro text-[14px] leading-[100%] tracking-[-0.05em] font-[400] text-[#1E1E1E]';
+export const selectClass = 'w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro text-[14px] leading-[100%] tracking-[-0.05em] font-[400] text-[#626060]';
+export const inputClass = 'w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro text-[14px] leading-[100%] tracking-[-0.05em] font-[400] text-[#1E1E1E]';
+export const fileInputWrapper = 'relative flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-500 bg-gray-50 focus-within:outline-none focus-within:ring-2 focus-within:ring-[#039994] cursor-pointer font-sfpro';
+export const noteText = 'mt-2 font-sfpro text-[12px] leading-[100%] tracking-[-0.05em] font-[300] italic text-[#1E1E1E]';
+export const rowWrapper = 'flex space-x-4';
+export const halfWidth = 'w-1/2';
+export const grayPlaceholder = 'bg-[#E8E8E8]';
+export const buttonPrimary = 'w-full rounded-md bg-[#039994] text-white font-semibold py-2 hover:bg-[#02857f] focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro';
+export const spinnerOverlay = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-20';
+export const spinner = 'h-12 w-12 border-4 border-t-4 border-gray-300 border-t-[#039994] rounded-full animate-spin';
+export const termsTextContainer = 'mt-6 text-center font-sfpro text-[10px] font-[800] leading-[100%] tracking-[-0.05em] underline text-[#1E1E1E]';
+export const uploadHeading = 'block mb-2 font-sfpro text-[14px] leading-[100%] tracking-[-0.05em] font-[400] text-[#1E1E1E]';
+export const uploadFieldWrapper = 'flex items-center space-x-3';
+export const uploadInputLabel = 'relative flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-500 bg-gray-50 focus-within:outline-none focus-within:ring-2 focus-within:ring-[#039994] cursor-pointer font-sfpro';
+export const uploadIconContainer = 'absolute right-3 top-1/2 -translate-y-1/2 text-gray-400';
+export const uploadButtonStyle = 'px-4 py-2 bg-[#039994] text-white rounded-md hover:bg-[#02857f] focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro';
+export const uploadNoteStyle = 'mt-2 font-sfpro text-[12px] leading-[100%] tracking-[-0.05em] font-[300] italic text-[#1E1E1E]';
+
 export default function CommercialDetails({ customer, onBack }) {
-  const [systemActive, setSystemActive] = useState(false);
   const [facilities, setFacilities] = useState([]);
   const [facilitiesLoading, setFacilitiesLoading] = useState(false);
   const [facilitiesError, setFacilitiesError] = useState(null);
@@ -515,7 +542,7 @@ export default function CommercialDetails({ customer, onBack }) {
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col py-8 px-4 bg-white">
+    <div className={mainContainer}>
       <Dialog open={pdfModalOpen} onOpenChange={closePdfModal}>
         <DialogContent className="max-w-4xl h-[90vh]">
           <DialogHeader>
@@ -523,9 +550,6 @@ export default function CommercialDetails({ customer, onBack }) {
               <span>
                 {currentDocument?.name} - {currentFacility?.facilityName}
               </span>
-              <Button variant="ghost" size="icon" onClick={closePdfModal}>
-                <X className="h-4 w-4" />
-              </Button>
             </DialogTitle>
           </DialogHeader>
           <div className="h-full w-full">
@@ -607,44 +631,20 @@ export default function CommercialDetails({ customer, onBack }) {
           <DialogHeader>
             <DialogTitle className="flex justify-between items-center">
               <span>Facility Details</span>
-              <Button variant="ghost" size="icon" onClick={closeFacilityModal}>
-                <X className="h-4 w-4" />
-              </Button>
             </DialogTitle>
           </DialogHeader>
           {currentFacility && <FacilityModalContent facility={currentFacility} />}
         </DialogContent>
       </Dialog>
 
-      <div className="flex justify-between items-center mb-6">
-        <button className="flex items-center text-[#039994] hover:text-[#02857f] pl-0" onClick={onBack}>
-          <ChevronLeft className="h-5 w-5 mr-1" />
-          <span>Customer Details</span>
+      <div className="flex justify-between items-center mb-6 w-full max-w-7xl">
+        <button className={backArrow} onClick={onBack}>
+           <span>Customer Details</span>
         </button>
-
-        <div className="flex items-center space-x-4">
-          <div className="relative">
-            <Button variant="outline" className="flex items-center gap-2">
-              Choose action
-              <ChevronDown className="h-4 w-4" />
-            </Button>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <span className="text-sm font-normal">Activate System</span>
-            <button className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${systemActive ? "bg-[#039994]" : "bg-gray-200"}`} onClick={() => setSystemActive(!systemActive)}>
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${systemActive ? "translate-x-6" : "translate-x-1"}`} />
-            </button>
-          </div>
-
-          <button className="text-[#FF0000] hover:text-red-600 p-1">
-            <Trash2 className="h-5 w-5" />
-          </button>
-        </div>
       </div>
 
-      <div className="mb-6">
-        <p className="text-sm font-medium mb-2">Program Progress</p>
+      <div className="mb-6 w-full max-w-7xl">
+        <p className={labelClass}>Program Progress</p>
         <div className="h-1 w-full bg-gray-200 mb-3 rounded-full">
           <div className="h-full bg-black rounded-full" style={{ width: `${(progressStatus / 5) * 100}%` }} />
         </div>
@@ -676,40 +676,40 @@ export default function CommercialDetails({ customer, onBack }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 w-full max-w-7xl">
         <div className="border border-gray-200 rounded-lg bg-[#069B960D] p-6">
           <h3 className="text-lg font-semibold text-[#039994] mb-4">Customer Information</h3>
           <div className="grid grid-cols-2 gap-y-4 gap-x-6">
             <div className="space-y-1">
-              <p className="text-sm text-gray-500">User ID</p>
+              <p className={labelClass}>User ID</p>
               <p className="font-medium">{customer?.id || "Not specified"}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-sm text-gray-500">Name</p>
+              <p className={labelClass}>Name</p>
               <p className="font-medium">{customer?.name || "Not specified"}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-sm text-gray-500">Customer Type</p>
+              <p className={labelClass}>Customer Type</p>
               <p className="font-medium">{customer?.userType || "Not specified"}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-sm text-gray-500">Utility Provider</p>
+              <p className={labelClass}>Utility Provider</p>
               <p className="font-medium">{customer?.utility || "Not specified"}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-sm text-gray-500">Finance Company</p>
+              <p className={labelClass}>Finance Company</p>
               <p className="font-medium">{customer?.financeCompany || "Not specified"}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-sm text-gray-500">Address</p>
+              <p className={labelClass}>Address</p>
               <p className="font-medium">{customer?.address || "Not specified"}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-sm text-gray-500">Date Registered</p>
+              <p className={labelClass}>Date Registered</p>
               <p className="font-medium">{formatDate(customer?.date)}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-sm text-gray-500">Status</p>
+              <p className={labelClass}>Status</p>
               <p className="font-medium">
                 <StatusBadge status={customer?.status || "Not specified"} />
               </p>
@@ -721,46 +721,18 @@ export default function CommercialDetails({ customer, onBack }) {
           <h3 className="text-lg font-semibold text-[#039994] mb-4">System Information</h3>
           <div className="grid grid-cols-2 gap-y-4 gap-x-6">
             <div className="space-y-1">
-              <p className="text-sm text-gray-500">Total Facilities</p>
+              <p className={labelClass}>Total Facilities</p>
               <p className="font-medium">{facilities.length}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-sm text-gray-500">Active Facilities</p>
+              <p className={labelClass}>Active Facilities</p>
               <p className="font-medium">{facilities.filter(f => f.status === 'VERIFIED' || f.status === 'ACTIVE').length}</p>
-            </div>
-            <div className="space-y-1 col-span-2">
-              <p className="text-sm text-gray-500">System Status</p>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{systemActive ? "Active" : "Inactive"}</span>
-                <button className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${systemActive ? "bg-[#039994]" : "bg-gray-200"}`} onClick={() => setSystemActive(!systemActive)}>
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${systemActive ? "translate-x-6" : "translate-x-1"}`} />
-                </button>
-              </div>
-            </div>
-          </div>
-          
-          <div className="mt-6">
-            <h3 className="text-lg font-semibold text-[#039994] mb-4">User Agreement</h3>
-            <div className="space-y-3">
-              <Button variant="outline" className="w-full flex justify-between items-center">
-                View User Agreement
-                <Eye className="h-4 w-4" />
-              </Button>
-              <div className="flex space-x-3">
-                <Button variant="outline" className="flex-1 flex justify-between items-center">
-                  View E-Signature
-                  <Eye className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="icon">
-                  <Download className="h-4 w-4" />
-                </Button>
-              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="mb-8">
+      <div className="mb-8 w-full max-w-7xl">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-[#039994]">Facilities</h3>
           {facilitiesLoading && (

@@ -5,21 +5,20 @@ import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
   DollarSign,
-  TrendingUp,
-  CreditCard,
-  Banknote,
-  PiggyBank,
   Wallet,
-  Building,
-  Calculator,
   Plus,
   Edit,
   Trash2,
   Eye,
   CheckCircle,
   XCircle,
-  Clock
+  Clock,
+  ChevronDown,
+  Info
 } from "lucide-react";
+import CustomerManagement from "../../UserManagement";
+import PartnerManagement from "../PartnerManagement";
+import UtilityProviderManagement from "../../utility-provider-management/UtilityProviderManagement";
 import {
   mainContainer,
   headingContainer,
@@ -27,12 +26,10 @@ import {
   pageTitle,
   buttonPrimary,
   inputClass,
-  labelClass,
-  selectClass
+  labelClass
 } from "../../styles";
 import toast from "react-hot-toast";
 
-// Finance Type Modal Component
 const FinanceTypeModal = ({ isOpen, onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
     name: "",
@@ -132,7 +129,6 @@ const FinanceTypeModal = ({ isOpen, onClose, onSuccess }) => {
   );
 };
 
-// Edit Finance Type Modal Component
 const EditFinanceTypeModal = ({ isOpen, onClose, financeType, onSuccess }) => {
   const [formData, setFormData] = useState({
     name: financeType?.name || "",
@@ -238,7 +234,6 @@ const EditFinanceTypeModal = ({ isOpen, onClose, financeType, onSuccess }) => {
   );
 };
 
-// Rejection Reason Modal
 const RejectionReasonModal = ({ 
   isOpen, 
   onClose, 
@@ -305,7 +300,7 @@ const RejectionReasonModal = ({
   );
 };
 
-export default function FinanceTypes({ onBack }) {
+export default function FinanceTypes({ onBack, onViewChange }) {
   const [financeTypes, setFinanceTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -314,8 +309,9 @@ export default function FinanceTypes({ onBack }) {
   const [selectedFinanceType, setSelectedFinanceType] = useState(null);
   const [viewMode, setViewMode] = useState("list");
   const [updatingStatus, setUpdatingStatus] = useState(null);
+  const [showMainDropdown, setShowMainDropdown] = useState(false);
+  const [currentView, setCurrentView] = useState("finance-types");
 
-  // Fetch finance types
   const fetchFinanceTypes = async () => {
     try {
       setLoading(true);
@@ -346,7 +342,6 @@ export default function FinanceTypes({ onBack }) {
     fetchFinanceTypes();
   }, []);
 
-  // Handle approval
   const handleApprove = async (id) => {
     try {
       setUpdatingStatus(id);
@@ -367,7 +362,7 @@ export default function FinanceTypes({ onBack }) {
 
       if (response.ok) {
         toast.success(result.message || 'Finance type approved successfully');
-        fetchFinanceTypes(); // Refresh the list
+        fetchFinanceTypes();
       } else {
         toast.error(result.message || 'Failed to approve finance type');
       }
@@ -379,7 +374,6 @@ export default function FinanceTypes({ onBack }) {
     }
   };
 
-  // Handle rejection
   const handleReject = async (id, reason) => {
     try {
       setUpdatingStatus(id);
@@ -401,7 +395,7 @@ export default function FinanceTypes({ onBack }) {
 
       if (response.ok) {
         toast.success(result.message || 'Finance type rejected successfully');
-        fetchFinanceTypes(); // Refresh the list
+        fetchFinanceTypes();
       } else {
         toast.error(result.message || 'Failed to reject finance type');
       }
@@ -413,7 +407,6 @@ export default function FinanceTypes({ onBack }) {
     }
   };
 
-  // Handle delete
   const handleDelete = async (id) => {
     try {
       setUpdatingStatus(id);
@@ -430,7 +423,7 @@ export default function FinanceTypes({ onBack }) {
 
       if (response.ok) {
         toast.success(result.message || 'Finance type deleted successfully');
-        fetchFinanceTypes(); // Refresh the list
+        fetchFinanceTypes();
         if (viewMode === "view" && selectedFinanceType?.id === id) {
           setViewMode("list");
           setSelectedFinanceType(null);
@@ -446,7 +439,6 @@ export default function FinanceTypes({ onBack }) {
     }
   };
 
-  // Helper function to format date
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-GB', {
@@ -456,7 +448,6 @@ export default function FinanceTypes({ onBack }) {
     }).replace(/\//g, '-');
   };
 
-  // Get status color
   const getStatusColor = (status) => {
     switch (status) {
       case 'APPROVED':
@@ -470,7 +461,6 @@ export default function FinanceTypes({ onBack }) {
     }
   };
 
-  // Get status icon
   const getStatusIcon = (status) => {
     switch (status) {
       case 'APPROVED':
@@ -499,6 +489,15 @@ export default function FinanceTypes({ onBack }) {
     setShowEditModal(true);
   };
 
+  const handleViewChange = (view) => {
+    if (onViewChange) {
+      onViewChange(view);
+    } else {
+      setCurrentView(view);
+    }
+    setShowMainDropdown(false);
+  };
+
   if (loading) {
     return (
       <div className={mainContainer}>
@@ -511,317 +510,371 @@ export default function FinanceTypes({ onBack }) {
 
   return (
     <div className={mainContainer}>
-      <div className={headingContainer}>
-        <ArrowLeft 
-          className={backArrow} 
-          size={24} 
-          onClick={viewMode === "list" ? onBack : handleBackToList}
-        />
-        <h1 className={pageTitle}>
-          {viewMode === "list" ? "Finance Types" : "Finance Type Details"}
-        </h1>
-      </div>
-
-      <div className="w-full max-w-7xl">
-        {viewMode === "list" && (
-          <>
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Total Types</p>
-                    <p className="text-2xl font-bold text-[#039994]">{financeTypes.length}</p>
-                  </div>
-                  <DollarSign className="h-8 w-8 text-[#039994]" />
-                </div>
-              </div>
-              
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Approved</p>
-                    <p className="text-2xl font-bold text-green-600">
-                      {financeTypes.filter(ft => ft.status === 'APPROVED').length}
-                    </p>
-                  </div>
-                  <CheckCircle className="h-8 w-8 text-green-600" />
-                </div>
-              </div>
-              
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Pending</p>
-                    <p className="text-2xl font-bold text-yellow-600">
-                      {financeTypes.filter(ft => ft.status === 'PENDING').length}
-                    </p>
-                  </div>
-                  <Clock className="h-8 w-8 text-yellow-600" />
-                </div>
-              </div>
-              
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Disapproved</p>
-                    <p className="text-2xl font-bold text-red-600">
-                      {financeTypes.filter(ft => ft.status === 'DISAPPROVED').length}
-                    </p>
-                  </div>
-                  <XCircle className="h-8 w-8 text-red-600" />
-                </div>
+      {currentView === "finance-types" ? (
+        <>
+          <div className={headingContainer}>
+            <ArrowLeft 
+              className={backArrow} 
+              size={24} 
+              onClick={viewMode === "list" ? onBack : handleBackToList}
+            />
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-4">
+                <h1 className={pageTitle}>
+                  {viewMode === "list" ? "Finance Types" : "Finance Type Details"}
+                </h1>
               </div>
             </div>
+          </div>
 
-            {/* Header with Add Button */}
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold text-gray-900">Finance Type Listings</h2>
-              <Button
-                className="gap-2 text-white"
-                style={{ backgroundColor: '#039994' }}
-                onClick={() => setShowModal(true)}
-              >
-                <Plus className="h-4 w-4" />
-                Add Finance Type
-              </Button>
-            </div>
+          <div className="w-full max-w-7xl mx-auto">
+            {viewMode === "list" && (
+              <>
+                <div className="mb-6 p-4 border-b flex items-center justify-between bg-white">
+                  <div className="relative">
+                    <button
+                      className="flex items-center gap-1 text-xl font-medium text-[#039994]"
+                      onClick={() => setShowMainDropdown(!showMainDropdown)}
+                    >
+                      Finance Type Listings
+                      <ChevronDown className="h-5 w-5" />
+                    </button>
 
-            {/* Finance Types Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {financeTypes.map((financeType) => (
-                <div key={financeType.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-[#039994] bg-opacity-10 rounded-lg flex items-center justify-center text-[#039994]">
-                        <Wallet className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-gray-900 text-sm">{financeType.name}</h3>
-                        <p className="text-xs text-gray-500">Code: {financeType.namingCode}</p>
-                      </div>
-                    </div>
-                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(financeType.status)}`}>
-                      {getStatusIcon(financeType.status)}
-                      {financeType.status}
-                    </span>
-                  </div>
-
-                  <div className="space-y-2 mb-4">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Created:</span>
-                      <span className="font-medium text-gray-900">{formatDate(financeType.createdAt)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Updated:</span>
-                      <span className="font-medium text-gray-900">{formatDate(financeType.updatedAt)}</span>
-                    </div>
-                    {financeType.rejectionReason && (
-                      <div className="text-sm">
-                        <span className="text-gray-600">Rejection Reason:</span>
-                        <p className="text-red-600 text-xs mt-1">{financeType.rejectionReason}</p>
+                    {showMainDropdown && (
+                      <div className="absolute top-full left-0 mt-1 w-60 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                        <div className="py-1">
+                          <button
+                            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+                            onClick={() => handleViewChange("management")}
+                          >
+                            Customer Management
+                          </button>
+                          <button
+                            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+                            onClick={() => handleViewChange("partner-management")}
+                          >
+                            Partner Management
+                          </button>
+                          <button
+                            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+                            onClick={() => handleViewChange("utility-management")}
+                          >
+                            Utility Provider Management
+                          </button>
+                          <button
+                            className="w-full px-4 py-2 text-left text-sm font-medium text-[#039994] hover:bg-gray-50"
+                            onClick={() => handleViewChange("finance-types")}
+                          >
+                            Finance Types
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleView(financeType)}
-                      className="text-[#039994] hover:text-[#02857f]"
-                    >
-                      <Eye className="h-4 w-4 mr-1" />
-                      View
-                    </Button>
-                    
-                    <div className="flex items-center gap-1">
-                      {financeType.status === 'PENDING' && (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleApprove(financeType.id)}
-                            disabled={updatingStatus === financeType.id}
-                            className="text-green-600 hover:text-green-700"
-                          >
-                            <CheckCircle className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedFinanceType(financeType);
-                              setShowRejectModal(true);
-                            }}
-                            disabled={updatingStatus === financeType.id}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <XCircle className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEdit(financeType)}
-                        className="text-blue-600 hover:text-blue-700"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(financeType.id)}
-                        disabled={updatingStatus === financeType.id}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                  <Button
+                    className="gap-2 bg-[#039994] hover:bg-[#02857f] text-white"
+                    onClick={() => setShowModal(true)}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Finance Type
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Total Types</p>
+                        <p className="text-2xl font-bold text-[#039994]">{financeTypes.length}</p>
+                      </div>
+                      <DollarSign className="h-8 w-8 text-[#039994]" />
+                    </div>
+                  </div>
+                  
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Approved</p>
+                        <p className="text-2xl font-bold text-green-600">
+                          {financeTypes.filter(ft => ft.status === 'APPROVED').length}
+                        </p>
+                      </div>
+                      <CheckCircle className="h-8 w-8 text-green-600" />
+                    </div>
+                  </div>
+                  
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Pending</p>
+                        <p className="text-2xl font-bold text-yellow-600">
+                          {financeTypes.filter(ft => ft.status === 'PENDING').length}
+                        </p>
+                      </div>
+                      <Clock className="h-8 w-8 text-yellow-600" />
+                    </div>
+                  </div>
+                  
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Disapproved</p>
+                        <p className="text-2xl font-bold text-red-600">
+                          {financeTypes.filter(ft => ft.status === 'DISAPPROVED').length}
+                        </p>
+                      </div>
+                      <XCircle className="h-8 w-8 text-red-600" />
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
 
-            {financeTypes.length === 0 && (
-              <div className="text-center py-12">
-                <Wallet className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">No finance types found. Create your first finance type to get started.</p>
-              </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {financeTypes.map((financeType) => (
+                    <div key={financeType.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-[#039994] bg-opacity-10 rounded-lg flex items-center justify-center text-[#039994]">
+                            <Wallet className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-gray-900 text-sm">{financeType.name}</h3>
+                            <p className="text-xs text-gray-500">Code: {financeType.namingCode}</p>
+                          </div>
+                        </div>
+                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(financeType.status)}`}>
+                          {getStatusIcon(financeType.status)}
+                          {financeType.status}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2 mb-4">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Created:</span>
+                          <span className="font-medium text-gray-900">{formatDate(financeType.createdAt)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Updated:</span>
+                          <span className="font-medium text-gray-900">{formatDate(financeType.updatedAt)}</span>
+                        </div>
+                        {financeType.rejectionReason && (
+                          <div className="text-sm">
+                            <span className="text-gray-600">Rejection Reason:</span>
+                            <p className="text-red-600 text-xs mt-1">{financeType.rejectionReason}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleView(financeType)}
+                          className="text-[#039994] hover:text-[#02857f]"
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          View
+                        </Button>
+                        
+                        <div className="flex items-center gap-1">
+                          {financeType.status === 'PENDING' && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleApprove(financeType.id)}
+                                disabled={updatingStatus === financeType.id}
+                                className="text-green-600 hover:text-green-700"
+                              >
+                                <CheckCircle className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedFinanceType(financeType);
+                                  setShowRejectModal(true);
+                                }}
+                                disabled={updatingStatus === financeType.id}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                <XCircle className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(financeType)}
+                            className="text-blue-600 hover:text-blue-700"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(financeType.id)}
+                            disabled={updatingStatus === financeType.id}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {financeTypes.length === 0 && (
+                  <div className="text-center py-12">
+                    <Wallet className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500">No finance types found. Create your first finance type to get started.</p>
+                  </div>
+                )}
+              </>
             )}
-          </>
-        )}
 
-        {viewMode === "view" && selectedFinanceType && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 max-w-4xl mx-auto">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-16 h-16 bg-[#039994] bg-opacity-10 rounded-lg flex items-center justify-center text-[#039994]">
-                <Wallet className="h-8 w-8" />
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">{selectedFinanceType.name}</h2>
-                <p className="text-gray-600">Finance Type Code: {selectedFinanceType.namingCode}</p>
-              </div>
-              <div className="ml-auto">
-                <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedFinanceType.status)}`}>
-                  {getStatusIcon(selectedFinanceType.status)}
-                  {selectedFinanceType.status}
-                </span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">ID:</span>
-                    <span className="font-medium text-sm">{selectedFinanceType.id}</span>
+            {viewMode === "view" && selectedFinanceType && (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 max-w-4xl mx-auto">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-16 h-16 bg-[#039994] bg-opacity-10 rounded-lg flex items-center justify-center text-[#039994]">
+                    <Wallet className="h-8 w-8" />
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Name:</span>
-                    <span className="font-medium">{selectedFinanceType.name}</span>
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">{selectedFinanceType.name}</h2>
+                    <p className="text-gray-600">Finance Type Code: {selectedFinanceType.namingCode}</p>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Naming Code:</span>
-                    <span className="font-medium">{selectedFinanceType.namingCode}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Status:</span>
-                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedFinanceType.status)}`}>
+                  <div className="ml-auto">
+                    <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedFinanceType.status)}`}>
                       {getStatusIcon(selectedFinanceType.status)}
                       {selectedFinanceType.status}
                     </span>
                   </div>
                 </div>
-              </div>
 
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Timeline</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Created:</span>
-                    <span className="font-medium">{formatDate(selectedFinanceType.createdAt)}</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">ID:</span>
+                        <span className="font-medium text-sm">{selectedFinanceType.id}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Name:</span>
+                        <span className="font-medium">{selectedFinanceType.name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Naming Code:</span>
+                        <span className="font-medium">{selectedFinanceType.namingCode}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Status:</span>
+                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedFinanceType.status)}`}>
+                          {getStatusIcon(selectedFinanceType.status)}
+                          {selectedFinanceType.status}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Last Updated:</span>
-                    <span className="font-medium">{formatDate(selectedFinanceType.updatedAt)}</span>
+
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Timeline</h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Created:</span>
+                        <span className="font-medium">{formatDate(selectedFinanceType.createdAt)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Last Updated:</span>
+                        <span className="font-medium">{formatDate(selectedFinanceType.updatedAt)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {selectedFinanceType.rejectionReason && (
+                  <div className="mt-8 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <h3 className="text-lg font-semibold text-red-800 mb-2">Rejection Reason</h3>
+                    <p className="text-red-700">{selectedFinanceType.rejectionReason}</p>
+                  </div>
+                )}
+
+                <div className="flex gap-4 pt-8">
+                  <Button
+                    variant="outline"
+                    onClick={handleBackToList}
+                  >
+                    Back to List
+                  </Button>
+                  
+                  <div className="flex gap-2 ml-auto">
+                    <Button
+                      variant="outline"
+                      onClick={() => handleEdit(selectedFinanceType)}
+                    >
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit
+                    </Button>
+                    
+                    <Button
+                      variant="outline"
+                      className="text-red-600 border-red-600 hover:bg-red-50"
+                      onClick={() => handleDelete(selectedFinanceType.id)}
+                      disabled={updatingStatus === selectedFinanceType.id}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </Button>
+                    
+                    {selectedFinanceType.status === 'PENDING' && (
+                      <>
+                        <Button
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                          onClick={() => handleApprove(selectedFinanceType.id)}
+                          disabled={updatingStatus === selectedFinanceType.id}
+                        >
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Approve
+                        </Button>
+                        <Button
+                          className="bg-red-600 hover:bg-red-700 text-white"
+                          onClick={() => {
+                            setShowRejectModal(true);
+                          }}
+                          disabled={updatingStatus === selectedFinanceType.id}
+                        >
+                          <XCircle className="h-4 w-4 mr-2" />
+                          Reject
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
-            </div>
-
-            {selectedFinanceType.rejectionReason && (
-              <div className="mt-8 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <h3 className="text-lg font-semibold text-red-800 mb-2">Rejection Reason</h3>
-                <p className="text-red-700">{selectedFinanceType.rejectionReason}</p>
-              </div>
             )}
-
-            <div className="flex gap-4 pt-8">
-              <Button
-                variant="outline"
-                onClick={handleBackToList}
-              >
-                Back to List
-              </Button>
-              
-              <div className="flex gap-2 ml-auto">
-                <Button
-                  variant="outline"
-                  onClick={() => handleEdit(selectedFinanceType)}
-                >
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  className="text-red-600 border-red-600 hover:bg-red-50"
-                  onClick={() => handleDelete(selectedFinanceType.id)}
-                  disabled={updatingStatus === selectedFinanceType.id}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
-                </Button>
-                
-                {selectedFinanceType.status === 'PENDING' && (
-                  <>
-                    <Button
-                      className="bg-green-600 hover:bg-green-700 text-white"
-                      onClick={() => handleApprove(selectedFinanceType.id)}
-                      disabled={updatingStatus === selectedFinanceType.id}
-                    >
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Approve
-                    </Button>
-                    <Button
-                      className="bg-red-600 hover:bg-red-700 text-white"
-                      onClick={() => {
-                        setShowRejectModal(true);
-                      }}
-                      disabled={updatingStatus === selectedFinanceType.id}
-                    >
-                      <XCircle className="h-4 w-4 mr-2" />
-                      Reject
-                    </Button>
-                  </>
-                )}
-              </div>
-            </div>
           </div>
-        )}
-      </div>
+        </>
+      ) : currentView === "management" ? (
+        <div className="w-full">
+          <CustomerManagement onViewChange={handleViewChange} />
+        </div>
+      ) : currentView === "partner-management" ? (
+        <div className="w-full">
+          <PartnerManagement onViewChange={handleViewChange} />
+        </div>
+      ) : currentView === "utility-management" ? (
+        <div className="w-full">
+          <UtilityProviderManagement onViewChange={handleViewChange} />
+        </div>
+      ) : null}
 
-      {/* Finance Type Creation Modal */}
       <FinanceTypeModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         onSuccess={fetchFinanceTypes}
       />
 
-      {/* Finance Type Edit Modal */}
       <EditFinanceTypeModal
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
@@ -829,13 +882,19 @@ export default function FinanceTypes({ onBack }) {
         onSuccess={fetchFinanceTypes}
       />
 
-      {/* Rejection Reason Modal */}
       <RejectionReasonModal
         isOpen={showRejectModal}
         onClose={() => setShowRejectModal(false)}
         financeTypeId={selectedFinanceType?.id}
         onReject={handleReject}
       />
+
+      {showMainDropdown && (
+        <div 
+          className="fixed inset-0 z-40" 
+          onClick={() => setShowMainDropdown(false)}
+        />
+      )}
     </div>
   );
 }
