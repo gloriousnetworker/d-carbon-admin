@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useState, useEffect } from "react";
 import { ChevronLeft, Trash2, Eye, Download, ChevronDown, AlertTriangle, CheckCircle, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,6 +5,81 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/comp
 import { toast } from "react-hot-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+
+const DOCUMENT_TYPES = {
+  wregisAssignment: { 
+    name: "WREGIS Assignment of Registration Rights", 
+    type: "wregisAssignment",
+    urlField: "wregisAssignmentUrl",
+    statusField: "wregisAssignmentStatus",
+    rejectionField: "wregisAssignmentRejectionReason",
+    mandatory: true
+  },
+  financeAgreement: { 
+    name: "Finance Agreement/PPA", 
+    type: "financeAgreement",
+    urlField: "financeAgreementUrl",
+    statusField: "financeAgreementStatus",
+    rejectionField: "financeAgreementRejectionReason",
+    mandatory: false
+  },
+  solarInstallationContract: { 
+    name: "Solar Installation Contract", 
+    type: "solarInstallationContract",
+    urlField: "solarInstallationContractUrl",
+    statusField: "solarInstallationStatus",
+    rejectionField: "solarInstallationRejectionReason",
+    mandatory: true
+  },
+  nemAgreement: { 
+    name: "NEM Agreement", 
+    type: "nemAgreement",
+    urlField: "nemAgreementUrl",
+    statusField: "nemAgreementStatus",
+    rejectionField: "nemAgreementRejectionReason",
+    mandatory: true
+  },
+  utilityPtoLetter: { 
+    name: "Utility PTO Email/Letter", 
+    type: "ptoLetter",
+    urlField: "ptoLetterUrl",
+    statusField: "ptoLetterStatus",
+    rejectionField: "ptoLetterRejectionReason",
+    mandatory: true
+  },
+  installationSitePlan: { 
+    name: "Installation Site Plan", 
+    type: "sitePlan",
+    urlField: "sitePlanUrl",
+    statusField: "sitePlanStatus",
+    rejectionField: "sitePlanRejectionReason",
+    mandatory: true
+  },
+  panelInverterDataSheet: { 
+    name: "Panel/Inverter Data Sheet", 
+    type: "panelInverterDatasheet",
+    urlField: "panelInverterDatasheetUrl",
+    statusField: "panelInverterDatasheetStatus",
+    rejectionField: "panelInverterDatasheetRejectionReason",
+    mandatory: false
+  },
+  revenueMeterDataSheet: { 
+    name: "Revenue Meter Data Sheet", 
+    type: "revenueMeterData",
+    urlField: "revenueMeterDataUrl",
+    statusField: "revenueMeterDataStatus",
+    rejectionField: "revenueMeterDataRejectionReason",
+    mandatory: false
+  },
+  utilityMeterPhoto: { 
+    name: "Utility/Revenue Meter Photo w/Serial ID", 
+    type: "utilityMeterPhoto",
+    urlField: "utilityMeterPhotoUrl",
+    statusField: "utilityMeterPhotoStatus",
+    rejectionField: "utilityMeterPhotoRejectionReason",
+    mandatory: true
+  }
+};
 
 export default function ResidentialDetails({ customer, onBack }) {
   const [facilities, setFacilities] = useState([]);
@@ -25,6 +98,7 @@ export default function ResidentialDetails({ customer, onBack }) {
   const [verifyModalOpen, setVerifyModalOpen] = useState(false);
   const [verifyActionType, setVerifyActionType] = useState("");
   const [facilityModalOpen, setFacilityModalOpen] = useState(false);
+  const [financeType, setFinanceType] = useState("Cash");
 
   useEffect(() => {
     if (customer?.id) {
@@ -97,6 +171,30 @@ export default function ResidentialDetails({ customer, onBack }) {
     } catch (err) {
       console.error(`Error fetching documents for facility ${facilityId}:`, err);
       toast.error(`Failed to load documents for facility ${facilityId}`);
+    }
+  };
+
+  const fetchFinanceType = async () => {
+    const userId = localStorage.getItem("userId");
+    const authToken = localStorage.getItem("authToken");
+    
+    if (!userId || !authToken) return;
+
+    try {
+      const response = await axios.get(
+        `https://services.dcarbon.solutions/api/user/financial-info/${userId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${authToken}`
+          }
+        }
+      );
+
+      if (response.data.status === "success" && response.data.data.financialInfo) {
+        setFinanceType(response.data.data.financialInfo.financialType);
+      }
+    } catch (error) {
+      console.error("Error fetching finance type:", error);
     }
   };
 
@@ -361,23 +459,23 @@ export default function ResidentialDetails({ customer, onBack }) {
 
   const FacilityModalContent = ({ facility }) => {
     const documents = facilityDocuments[facility.id] || {};
-    const docTypes = [
-      { name: "REC Agreement", url: documents.recAgreementUrl, status: documents.recAgreementStatus, type: "recAgreement", rejectionReason: documents.recAgreementRejectionReason },
-      { name: "Info Release Authorization", url: documents.infoReleaseAuthUrl, status: documents.infoReleaseAuthStatus, type: "infoReleaseAuth", rejectionReason: documents.infoReleaseAuthRejectionReason },
-      { name: "Solar Installation Contract", url: documents.solarInstallationContractUrl, status: documents.solarInstallationStatus, type: "solarInstallationContract", rejectionReason: documents.solarInstallationRejectionReason },
-      { name: "Interconnection Agreement", url: documents.interconnectionAgreementUrl, status: documents.interconnectionStatus, type: "interconnection", rejectionReason: documents.interconnectionRejectionReason },
-      { name: "Single Line Diagram", url: documents.singleLineDiagramUrl, status: documents.singleLineDiagramStatus, type: "singleLineDiagram", rejectionReason: documents.singleLineDiagramRejectionReason },
-      { name: "System Specs", url: documents.systemSpecsUrl, status: documents.systemSpecsStatus, type: "systemSpecs", rejectionReason: documents.systemSpecsRejectionReason },
-      { name: "PTO Letter", url: documents.ptoLetterUrl, status: documents.ptoLetterStatus, type: "ptoLetter", rejectionReason: documents.ptoLetterRejectionReason },
-      { name: "Utility Meter Photo", url: documents.utilityMeterPhotoUrl, status: documents.utilityMeterPhotoStatus, type: "utilityMeterPhoto", rejectionReason: documents.utilityMeterPhotoRejectionReason },
-      { name: "Utility Access Auth", url: documents.utilityAccessAuthUrl, status: documents.utilityAccessAuthStatus, type: "utilityAccessAuth", rejectionReason: documents.utilityAccessAuthRejectionReason },
-      { name: "Utility Account Info", url: documents.utilityAccountInfoUrl, status: documents.utilityAccountInfoStatus, type: "utilityAccountInfo", rejectionReason: documents.utilityAccountInfoRejectionReason },
-      { name: "Ownership Declaration", url: documents.ownershipDeclarationUrl, status: documents.ownershipDeclarationStatus, type: "ownershipDeclaration", rejectionReason: documents.ownershipDeclarationRejectionReason },
-      { name: "Alternate Location", url: documents.alternateLocationUrl, status: documents.alternateLocationStatus, type: "alternateLocation", rejectionReason: documents.alternateLocationRejectionReason },
-    ];
+    const docList = Object.keys(DOCUMENT_TYPES).map(key => {
+      const docType = DOCUMENT_TYPES[key];
+      return {
+        name: docType.name,
+        type: docType.type,
+        url: documents[docType.urlField],
+        status: documents[docType.statusField] || "REQUIRED",
+        rejectionReason: documents[docType.rejectionField],
+        mandatory: docType.mandatory
+      };
+    });
 
-    const allDocumentsApproved = docTypes.every(doc => doc.status === "APPROVED" || doc.status === "Not required");
-    const canVerifyFacility = allDocumentsApproved && facility.status !== "VERIFIED";
+    const mandatoryDocsApproved = docList
+      .filter(doc => doc.mandatory)
+      .every(doc => doc.status === "APPROVED");
+
+    const canVerifyFacility = mandatoryDocsApproved && facility.status !== "VERIFIED";
 
     return (
       <div className="space-y-6">
@@ -440,7 +538,7 @@ export default function ResidentialDetails({ customer, onBack }) {
               <div className="col-span-2 font-medium">Actions</div>
             </div>
             
-            {docTypes.map((doc, index) => {
+            {docList.map((doc, index) => {
               const docKey = `${facility.id}-${doc.type}`;
               const isApproving = approvingDoc === docKey;
               
@@ -577,13 +675,8 @@ export default function ResidentialDetails({ customer, onBack }) {
       <Dialog open={pdfModalOpen} onOpenChange={closePdfModal}>
         <DialogContent className="max-w-4xl h-[90vh]">
           <DialogHeader>
-            <DialogTitle className="flex justify-between items-center">
-              <span>
-                {currentDocument?.name} - {currentFacility?.facilityName}
-              </span>
-              <Button variant="ghost" size="icon" onClick={closePdfModal}>
-                <X className="h-4 w-4" />
-              </Button>
+            <DialogTitle>
+              {currentDocument?.name} - {currentFacility?.facilityName}
             </DialogTitle>
           </DialogHeader>
           <div className="h-full w-full">
@@ -716,12 +809,7 @@ export default function ResidentialDetails({ customer, onBack }) {
       <Dialog open={facilityModalOpen} onOpenChange={closeFacilityModal}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex justify-between items-center">
-              <span>Facility Details</span>
-              <Button variant="ghost" size="icon" onClick={closeFacilityModal}>
-                <X className="h-4 w-4" />
-              </Button>
-            </DialogTitle>
+            <DialogTitle>Facility Details</DialogTitle>
           </DialogHeader>
           {currentFacility && <FacilityModalContent facility={currentFacility} />}
         </DialogContent>
@@ -788,25 +876,6 @@ export default function ResidentialDetails({ customer, onBack }) {
             <div className="space-y-1">
               <p className="text-sm text-gray-500">Active Facilities</p>
               <p className="font-medium">{facilities.filter(f => f.status === 'VERIFIED' || f.status === 'ACTIVE').length}</p>
-            </div>
-          </div>
-          
-          <div className="mt-6">
-            <h3 className="text-lg font-semibold text-[#039994] mb-4">User Agreement</h3>
-            <div className="space-y-3">
-              <Button variant="outline" className="w-full flex justify-between items-center">
-                View User Agreement
-                <Eye className="h-4 w-4" />
-              </Button>
-              <div className="flex space-x-3">
-                <Button variant="outline" className="flex-1 flex justify-between items-center">
-                  View E-Signature
-                  <Eye className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="icon">
-                  <Download className="h-4 w-4" />
-                </Button>
-              </div>
             </div>
           </div>
         </div>
