@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useState, useEffect } from "react";
 import { ChevronLeft, Trash2, Eye, Download, ChevronDown, AlertTriangle, CheckCircle, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -343,15 +341,19 @@ export default function CommercialDetails({ customer, onBack }) {
 
   const FacilityModalContent = ({ facility }) => {
     const documents = [
-      { name: "Finance Agreement", url: facility.financeAgreementUrl, status: facility.financeAgreementStatus, type: "financeAgreement", rejectionReason: facility.financeAgreementRejectionReason },
-      { name: "Proof of Address", url: facility.proofOfAddressUrl, status: facility.proofOfAddressStatus, type: "proofOfAddress", rejectionReason: facility.proofOfAddressRejectionReason },
-      { name: "Info Release Authorization", url: facility.infoReleaseAuthUrl, status: facility.infoReleaseAuthStatus, type: "infoReleaseAuth", rejectionReason: facility.infoReleaseAuthRejectionReason },
       { name: "WREGIS Assignment", url: facility.wregisAssignmentUrl, status: facility.wregisAssignmentStatus, type: "wregisAssignment", rejectionReason: facility.wregisAssignmentRejectionReason },
-      { name: "Multiple Owner Declaration", url: facility.multipleOwnerDeclUrl, status: facility.multipleOwnerDeclStatus, type: "multipleOwnerDecl", rejectionReason: facility.multipleOwnerDeclRejectionReason },
-      { name: "System Operator Data Access", url: facility.sysOpDataAccessUrl, status: facility.sysOpDataAccessStatus, type: "sysOpDataAccess", rejectionReason: facility.sysOpDataAccessRejectionReason },
+      { name: "Finance Agreement", url: facility.financeAgreementUrl, status: facility.financeAgreementStatus, type: "financeAgreement", rejectionReason: facility.financeAgreementRejectionReason },
+      { name: "Solar Installation Contract", url: facility.solarInstallationContractUrl, status: facility.solarInstallationContractStatus, type: "solarInstallationContract", rejectionReason: facility.solarInstallationContractRejectionReason },
+      { name: "Utility Interconnection Agreement", url: facility.interconnectionAgreementUrl, status: facility.interconnectionAgreementStatus, type: "interconnectionAgreement", rejectionReason: facility.interconnectionAgreementRejectionReason },
+      { name: "Utility PTO Letter", url: facility.ptoLetterUrl, status: facility.ptoLetterStatus, type: "ptoLetter", rejectionReason: facility.ptoLetterRejectionReason },
+      { name: "Single Line Diagram", url: facility.singleLineDiagramUrl, status: facility.singleLineDiagramStatus, type: "singleLineDiagram", rejectionReason: facility.singleLineDiagramRejectionReason },
+      { name: "Installation Site Plan", url: facility.sitePlanUrl, status: facility.sitePlanStatus, type: "sitePlan", rejectionReason: facility.sitePlanRejectionReason },
+      { name: "Panel/Inverter Datasheet", url: facility.inverterDatasheetUrl, status: facility.inverterDatasheetStatus, type: "inverterDatasheet", rejectionReason: facility.inverterDatasheetRejectionReason },
+      { name: "Revenue Meter Datasheet", url: facility.revenueMeterDataUrl, status: facility.revenueMeterDataStatus, type: "revenueMeterData", rejectionReason: facility.revenueMeterDataRejectionReason },
+      { name: "Utility Meter Photo", url: facility.utilityMeterPhotoUrl, status: facility.utilityMeterPhotoStatus, type: "utilityMeterPhoto", rejectionReason: facility.utilityMeterPhotoRejectionReason }
     ];
 
-    const allDocumentsApproved = documents.every(doc => doc.status === "APPROVED" || doc.status === "Not required");
+    const allDocumentsApproved = documents.every(doc => doc.status === "APPROVED");
     const canVerifyFacility = allDocumentsApproved && facility.status !== "VERIFIED";
 
     return (
@@ -639,7 +641,8 @@ export default function CommercialDetails({ customer, onBack }) {
 
       <div className="flex justify-between items-center mb-6 w-full max-w-7xl">
         <button className={backArrow} onClick={onBack}>
-           <span>Customer Details</span>
+          <ChevronLeft className="h-5 w-5" />
+          <span>Customer Details</span>
         </button>
       </div>
 

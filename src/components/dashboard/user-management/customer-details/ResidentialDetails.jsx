@@ -27,8 +27,8 @@ const DOCUMENT_TYPES = {
     name: "Solar Installation Contract", 
     type: "solarInstallationContract",
     urlField: "solarInstallationContractUrl",
-    statusField: "solarInstallationStatus",
-    rejectionField: "solarInstallationRejectionReason",
+    statusField: "solarInstallationContractStatus",
+    rejectionField: "solarInstallationContractRejectionReason",
     mandatory: true
   },
   nemAgreement: { 
@@ -77,6 +77,14 @@ const DOCUMENT_TYPES = {
     urlField: "utilityMeterPhotoUrl",
     statusField: "utilityMeterPhotoStatus",
     rejectionField: "utilityMeterPhotoRejectionReason",
+    mandatory: true
+  },
+  singleLineDiagram: {
+    name: "Single Line Diagram",
+    type: "singleLineDiagram",
+    urlField: "singleLineDiagramUrl",
+    statusField: "singleLineDiagramStatus",
+    rejectionField: "singleLineDiagramRejectionReason",
     mandatory: true
   }
 };
@@ -163,7 +171,10 @@ export default function ResidentialDetails({ customer, onBack }) {
       if (data.status === 'success' && data.data) {
         setFacilityDocuments(prev => ({
           ...prev,
-          [facilityId]: data.data
+          [facilityId]: {
+            ...data.data,
+            solarInstallationContractStatus: data.data.solarInstallationContractStatus || (data.data.solarInstallationContractUrl ? "SUBMITTED" : "REQUIRED")
+          }
         }));
       } else {
         throw new Error(data.message || 'Failed to fetch facility documents');
@@ -171,30 +182,6 @@ export default function ResidentialDetails({ customer, onBack }) {
     } catch (err) {
       console.error(`Error fetching documents for facility ${facilityId}:`, err);
       toast.error(`Failed to load documents for facility ${facilityId}`);
-    }
-  };
-
-  const fetchFinanceType = async () => {
-    const userId = localStorage.getItem("userId");
-    const authToken = localStorage.getItem("authToken");
-    
-    if (!userId || !authToken) return;
-
-    try {
-      const response = await axios.get(
-        `https://services.dcarbon.solutions/api/user/financial-info/${userId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${authToken}`
-          }
-        }
-      );
-
-      if (response.data.status === "success" && response.data.data.financialInfo) {
-        setFinanceType(response.data.data.financialInfo.financialType);
-      }
-    } catch (error) {
-      console.error("Error fetching finance type:", error);
     }
   };
 
@@ -461,11 +448,12 @@ export default function ResidentialDetails({ customer, onBack }) {
     const documents = facilityDocuments[facility.id] || {};
     const docList = Object.keys(DOCUMENT_TYPES).map(key => {
       const docType = DOCUMENT_TYPES[key];
+      const status = documents[docType.statusField] || (documents[docType.urlField] ? "SUBMITTED" : "REQUIRED");
       return {
         name: docType.name,
         type: docType.type,
         url: documents[docType.urlField],
-        status: documents[docType.statusField] || "REQUIRED",
+        status: status,
         rejectionReason: documents[docType.rejectionField],
         mandatory: docType.mandatory
       };
@@ -611,13 +599,13 @@ export default function ResidentialDetails({ customer, onBack }) {
                           Processing...
                         </span>
                       ) : (
-                        doc.status || 'Required'
+                        doc.status
                       )}
                     </span>
                   </div>
                   
                   <div className="col-span-2 flex gap-2">
-                    {doc.url && doc.status !== "APPROVED" && (
+                    {doc.url && (doc.status === "SUBMITTED" || doc.status === "REJECTED") && (
                       <>
                         <Button 
                           variant="outline" 
