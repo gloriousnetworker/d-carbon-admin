@@ -284,8 +284,8 @@ export default function ResidentialDetails({ customer, onBack }) {
     setActionType("");
   };
 
-  const openVerifyModal = (type, facility) => {
-    setVerifyActionType(type);
+  const openVerifyModal = (facility) => {
+    setVerifyActionType("VERIFY");
     setCurrentFacility(facility);
     setVerifyModalOpen(true);
   };
@@ -378,10 +378,7 @@ export default function ResidentialDetails({ customer, onBack }) {
       const endpoint = `https://services.dcarbon.solutions/api/admin/residential-facility/${currentFacility.id}/verify`;
 
       const requestBody = {
-        status: verifyActionType === "VERIFY" ? "VERIFIED" : "REJECTED",
-        ...(verifyActionType === "REJECT" && { 
-          rejectionReason: rejectionReason || "No reason provided" 
-        })
+        status: "VERIFIED"
       };
 
       const response = await fetch(endpoint, {
@@ -635,17 +632,9 @@ export default function ResidentialDetails({ customer, onBack }) {
         </div>
 
         {canVerifyFacility && (
-          <div className="mt-4 flex justify-end gap-2">
+          <div className="mt-4 flex justify-end">
             <Button 
-              variant="outline" 
-              className="bg-red-50 text-red-600 hover:bg-red-100" 
-              onClick={() => openVerifyModal("REJECT", facility)}
-              disabled={verifyingFacility === facility.id}
-            >
-              Reject Facility
-            </Button>
-            <Button 
-              onClick={() => openVerifyModal("VERIFY", facility)} 
+              onClick={() => openVerifyModal(facility)} 
               disabled={verifyingFacility === facility.id} 
               className="bg-[#039994] hover:bg-[#02857f]"
             >
@@ -748,26 +737,11 @@ export default function ResidentialDetails({ customer, onBack }) {
       <Dialog open={verifyModalOpen} onOpenChange={closeVerifyModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              {verifyActionType === "VERIFY" ? "Verify Facility" : "Reject Facility"}
-            </DialogTitle>
+            <DialogTitle>Verify Facility</DialogTitle>
             <DialogDescription>
-              {verifyActionType === "VERIFY" 
-                ? "Are you sure you want to verify this facility?"
-                : "Please provide a reason for rejecting this facility"}
+              Are you sure you want to verify this facility?
             </DialogDescription>
           </DialogHeader>
-          
-          {verifyActionType === "REJECT" && (
-            <div className="py-4">
-              <Input
-                placeholder="Enter rejection reason (required)"
-                value={rejectionReason}
-                onChange={(e) => setRejectionReason(e.target.value)}
-                required
-              />
-            </div>
-          )}
           
           <DialogFooter>
             <Button variant="outline" onClick={closeVerifyModal}>
@@ -775,20 +749,15 @@ export default function ResidentialDetails({ customer, onBack }) {
             </Button>
             <Button 
               onClick={handleVerifyFacility}
-              disabled={
-                verifyingFacility === currentFacility?.id || 
-                (verifyActionType === "REJECT" && !rejectionReason.trim())
-              }
-              className={verifyActionType === "VERIFY" ? "bg-[#039994] hover:bg-[#02857f]" : "bg-red-500 hover:bg-red-600"}
+              disabled={verifyingFacility === currentFacility?.id}
+              className="bg-[#039994] hover:bg-[#02857f]"
             >
               {verifyingFacility === currentFacility?.id ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : verifyActionType === "VERIFY" ? (
-                <CheckCircle className="h-4 w-4 mr-2" />
               ) : (
-                <AlertTriangle className="h-4 w-4 mr-2" />
+                <CheckCircle className="h-4 w-4 mr-2" />
               )}
-              {verifyActionType === "VERIFY" ? "Verify Facility" : "Reject Facility"}
+              Verify Facility
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -808,19 +777,6 @@ export default function ResidentialDetails({ customer, onBack }) {
           <ChevronLeft className="h-5 w-5 mr-1" />
           <span>Customer Details</span>
         </button>
-
-        <div className="flex items-center space-x-4">
-          <div className="relative">
-            <Button variant="outline" className="flex items-center gap-2">
-              Choose action
-              <ChevronDown className="h-4 w-4" />
-            </Button>
-          </div>
-
-          <button className="text-[#FF0000] hover:text-red-600 p-1">
-            <Trash2 className="h-5 w-5" />
-          </button>
-        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
