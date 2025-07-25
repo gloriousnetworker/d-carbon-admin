@@ -56,7 +56,7 @@ export default function CommercialDetails({ customer, onBack }) {
   const fetchFacilities = async () => {
     setFacilitiesLoading(true);
     setFacilitiesError(null);
-    
+
     try {
       const authToken = localStorage.getItem('authToken');
       if (!authToken) throw new Error('No authentication token found');
@@ -88,25 +88,15 @@ export default function CommercialDetails({ customer, onBack }) {
     }
   };
 
-  const updateFacilityDocumentStatus = (facilityId, docType, newStatus, rejectionReason = null) => {
+  const updateFacilityFromResponse = (responseData) => {
     setFacilities(prev => prev.map(facility => {
-      if (facility.id !== facilityId) return facility;
-      
-      const docField = `${docType}Status`;
-      const reasonField = `${docType}RejectionReason`;
-      
-      const updatedFacility = {
-        ...facility,
-        [docField]: newStatus,
-        ...(rejectionReason && { [reasonField]: rejectionReason })
-      };
-
-      if (currentFacility?.id === facilityId) {
-        setCurrentFacility(updatedFacility);
-      }
-
-      return updatedFacility;
+      if (facility.id !== responseData.id) return facility;
+      return { ...facility, ...responseData };
     }));
+
+    if (currentFacility?.id === responseData.id) {
+      setCurrentFacility(prev => ({ ...prev, ...responseData }));
+    }
   };
 
   const formatDate = (dateString) => {
@@ -137,8 +127,9 @@ export default function CommercialDetails({ customer, onBack }) {
       case "APPROVED": return "bg-[#DEF5F4] text-[#039994]";
       case "PENDING": return "bg-[#FFF8E6] text-[#FFB200]";
       case "REJECTED": return "bg-[#FFEBEB] text-[#FF0000]";
-      case "Required": 
-      case "REQUIRED": 
+      case "SUBMITTED": return "bg-[#E6F7FF] text-[#1890FF]";
+      case "Required":
+      case "REQUIRED":
         return "bg-[#F2F2F2] text-gray-500";
       default: return "bg-gray-100 text-gray-500";
     }
@@ -167,6 +158,9 @@ export default function CommercialDetails({ customer, onBack }) {
         break;
       case "PENDING":
         classes = "bg-amber-400 text-white";
+        break;
+      case "SUBMITTED":
+        classes = "bg-blue-400 text-white";
         break;
       default:
         classes = "bg-gray-300 text-black";
@@ -217,28 +211,20 @@ export default function CommercialDetails({ customer, onBack }) {
 
   const handleDocumentStatusChange = async () => {
     if (!currentFacility || !currentDocument) return;
-    
+
     const docKey = `${currentFacility.id}-${currentDocument.type}`;
     setApprovingDoc(docKey);
-    
-    const newStatus = actionType === "APPROVE" ? "APPROVED" : "REJECTED";
-    updateFacilityDocumentStatus(
-      currentFacility.id,
-      currentDocument.type,
-      newStatus,
-      actionType === "REJECT" ? rejectionReason || "No reason provided" : null
-    );
-    
+
     try {
       const authToken = localStorage.getItem('authToken');
       if (!authToken) throw new Error('No authentication token found');
 
       const endpoint = `https://services.dcarbon.solutions/api/admin/commercial-facility/${currentFacility.id}/document/${currentDocument.type}/status`;
-      
+
       const body = {
-        status: newStatus,
-        ...(actionType === "REJECT" && { 
-          rejectionReason: rejectionReason || "No reason provided" 
+        status: actionType === "APPROVE" ? "APPROVED" : "REJECTED",
+        ...(actionType === "REJECT" && {
+          rejectionReason: rejectionReason || "No reason provided"
         })
       };
 
@@ -259,6 +245,29 @@ export default function CommercialDetails({ customer, onBack }) {
       const data = await response.json();
       if (data.status === 'success') {
         toast.success(data.message);
+        
+        const statusFieldMap = {
+          "wregisAssignment": "wregisAssignmentStatus",
+          "financeAgreement": "financeAgreementStatus",
+          "solarInstallationContract": "solarInstallationContractStatus",
+          "interconnectionAgreement": "interconnectionAgreementStatus",
+          "ptoLetter": "ptoLetterStatus",
+          "singleLineDiagram": "singleLineDiagramStatus",
+          "sitePlan": "sitePlanStatus",
+          "panelInverterDatasheet": "inverterDatasheetStatus",
+          "revenueMeterData": "revenueMeterDataStatus",
+          "utilityMeterPhoto": "utilityMeterPhotoStatus"
+        };
+
+        const updatedFacility = {
+          ...currentFacility,
+          [statusFieldMap[currentDocument.type]]: actionType === "APPROVE" ? "APPROVED" : "REJECTED",
+          ...(actionType === "REJECT" && {
+            [`${currentDocument.type}RejectionReason`]: rejectionReason || "No reason provided"
+          })
+        };
+
+        updateFacilityFromResponse(updatedFacility);
         closeStatusModal();
       } else {
         throw new Error(data.message || 'Failed to update document status');
@@ -266,7 +275,6 @@ export default function CommercialDetails({ customer, onBack }) {
     } catch (err) {
       console.error('Error updating document status:', err);
       toast.error(err.message || 'Failed to update document status');
-      fetchFacilities();
     } finally {
       setApprovingDoc(null);
     }
@@ -274,7 +282,7 @@ export default function CommercialDetails({ customer, onBack }) {
 
   const handleVerifyFacility = async (facilityId) => {
     setVerifyingFacility(facilityId);
-    
+
     try {
       const authToken = localStorage.getItem('authToken');
       if (!authToken) throw new Error('No authentication token found');
@@ -297,7 +305,7 @@ export default function CommercialDetails({ customer, onBack }) {
       const data = await response.json();
       if (data.status === 'success') {
         toast.success(data.message);
-        fetchFacilities();
+        updateFacilityFromResponse(data.data);
         closeFacilityModal();
       } else {
         throw new Error(data.message || 'Failed to verify facility');
@@ -312,7 +320,7 @@ export default function CommercialDetails({ customer, onBack }) {
 
   const FacilityCard = ({ facility }) => {
     return (
-      <div 
+      <div
         className="border border-gray-200 rounded-lg p-6 mb-4 bg-white hover:bg-gray-50 cursor-pointer transition-colors"
         onClick={() => openFacilityModal(facility)}
       >
@@ -324,7 +332,7 @@ export default function CommercialDetails({ customer, onBack }) {
           </div>
           <StatusBadge status={facility.status} />
         </div>
-        
+
         <div className="mt-4 grid grid-cols-2 gap-4">
           <div>
             <p className="text-sm text-gray-500">Utility Provider</p>
@@ -348,7 +356,7 @@ export default function CommercialDetails({ customer, onBack }) {
       { name: "Utility PTO Letter", url: facility.ptoLetterUrl, status: facility.ptoLetterStatus, type: "ptoLetter", rejectionReason: facility.ptoLetterRejectionReason },
       { name: "Single Line Diagram", url: facility.singleLineDiagramUrl, status: facility.singleLineDiagramStatus, type: "singleLineDiagram", rejectionReason: facility.singleLineDiagramRejectionReason },
       { name: "Installation Site Plan", url: facility.sitePlanUrl, status: facility.sitePlanStatus, type: "sitePlan", rejectionReason: facility.sitePlanRejectionReason },
-      { name: "Panel/Inverter Datasheet", url: facility.inverterDatasheetUrl, status: facility.inverterDatasheetStatus, type: "inverterDatasheet", rejectionReason: facility.inverterDatasheetRejectionReason },
+      { name: "Panel/Inverter Datasheet", url: facility.inverterDatasheetUrl, status: facility.inverterDatasheetStatus, type: "panelInverterDatasheet", rejectionReason: facility.inverterDatasheetRejectionReason },
       { name: "Revenue Meter Datasheet", url: facility.revenueMeterDataUrl, status: facility.revenueMeterDataStatus, type: "revenueMeterData", rejectionReason: facility.revenueMeterDataRejectionReason },
       { name: "Utility Meter Photo", url: facility.utilityMeterPhotoUrl, status: facility.utilityMeterPhotoStatus, type: "utilityMeterPhoto", rejectionReason: facility.utilityMeterPhotoRejectionReason }
     ];
@@ -366,7 +374,7 @@ export default function CommercialDetails({ customer, onBack }) {
           </div>
           <StatusBadge status={facility.status} />
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-3">
             <div>
@@ -386,7 +394,7 @@ export default function CommercialDetails({ customer, onBack }) {
               <p className="font-medium capitalize">{facility.entityType}</p>
             </div>
           </div>
-          
+
           <div className="space-y-3">
             <div>
               <p className="text-sm text-gray-500">Total RECs</p>
@@ -422,11 +430,11 @@ export default function CommercialDetails({ customer, onBack }) {
               <div className="col-span-2 font-medium">Status</div>
               <div className="col-span-2 font-medium">Actions</div>
             </div>
-            
+
             {documents.map((doc, index) => {
               const docKey = `${facility.id}-${doc.type}`;
               const isApproving = approvingDoc === docKey;
-              
+
               return (
                 <div key={index} className="grid grid-cols-12 p-3 border-b last:border-b-0 items-center text-sm">
                   <div className="col-span-5">
@@ -435,17 +443,17 @@ export default function CommercialDetails({ customer, onBack }) {
                       <p className="text-xs text-red-500 mt-1">Reason: {doc.rejectionReason}</p>
                     )}
                   </div>
-                  
+
                   <div className="col-span-3">
                     {doc.url ? (
                       <div className="flex items-center gap-2">
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-6 w-6" 
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
                                 onClick={() => openPdfModal(doc.url, doc, facility)}
                                 disabled={isApproving}
                               >
@@ -460,10 +468,10 @@ export default function CommercialDetails({ customer, onBack }) {
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-6 w-6" 
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
                                 onClick={() => {
                                   const link = document.createElement('a');
                                   link.href = doc.url;
@@ -487,7 +495,7 @@ export default function CommercialDetails({ customer, onBack }) {
                       <span className="text-sm text-gray-400">No document uploaded</span>
                     )}
                   </div>
-                  
+
                   <div className="col-span-2">
                     <span className={`text-xs font-semibold px-3 py-1 rounded-full ${getStatusColor(doc.status)}`}>
                       {isApproving ? (
@@ -500,23 +508,23 @@ export default function CommercialDetails({ customer, onBack }) {
                       )}
                     </span>
                   </div>
-                  
+
                   <div className="col-span-2 flex gap-2">
                     {doc.url && doc.status !== "APPROVED" && (
                       <>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="h-8 text-xs" 
-                          onClick={() => openStatusModal("APPROVE", doc, facility)} 
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs"
+                          onClick={() => openStatusModal("APPROVE", doc, facility)}
                           disabled={isApproving}
                         >
                           Approve
                         </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="h-8 text-xs bg-red-50 text-red-600 hover:bg-red-100" 
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs bg-red-50 text-red-600 hover:bg-red-100"
                           onClick={() => openStatusModal("REJECT", doc, facility)}
                           disabled={isApproving}
                         >
@@ -556,17 +564,17 @@ export default function CommercialDetails({ customer, onBack }) {
           </DialogHeader>
           <div className="h-full w-full">
             {currentPdfUrl && (
-              <iframe 
-                src={currentPdfUrl} 
-                className="w-full h-full border rounded" 
+              <iframe
+                src={currentPdfUrl}
+                className="w-full h-full border rounded"
                 frameBorder="0"
                 title={`PDF Viewer - ${currentDocument?.name}`}
               />
             )}
           </div>
           <div className="flex justify-end gap-2 mt-4">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => {
                 const link = document.createElement('a');
                 link.href = currentPdfUrl;
@@ -590,12 +598,12 @@ export default function CommercialDetails({ customer, onBack }) {
               {actionType === "APPROVE" ? "Approve Document" : "Reject Document"}
             </DialogTitle>
             <DialogDescription>
-              {actionType === "APPROVE" 
+              {actionType === "APPROVE"
                 ? "Are you sure you want to approve this document?"
                 : "Please provide a reason for rejecting this document"}
             </DialogDescription>
           </DialogHeader>
-          
+
           {actionType === "REJECT" && (
             <div className="py-4">
               <Input
@@ -605,12 +613,12 @@ export default function CommercialDetails({ customer, onBack }) {
               />
             </div>
           )}
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={closeStatusModal}>
               Cancel
             </Button>
-            <Button 
+            <Button
               onClick={handleDocumentStatusChange}
               disabled={approvingDoc === `${currentFacility?.id}-${currentDocument?.type}` || (actionType === "REJECT" && !rejectionReason)}
               className={actionType === "APPROVE" ? "bg-[#039994] hover:bg-[#02857f]" : "bg-red-500 hover:bg-red-600"}
@@ -639,9 +647,9 @@ export default function CommercialDetails({ customer, onBack }) {
         </DialogContent>
       </Dialog>
 
-      <div className="flex justify-between items-center mb-6 w-full max-w-7xl">
-        <button className={backArrow} onClick={onBack}>
-          <ChevronLeft className="h-5 w-5" />
+      <div className="flex justify-between items-center mb-6">
+        <button className="flex items-center text-[#039994] hover:text-[#02857f] pl-0" onClick={onBack}>
+          <ChevronLeft className="h-5 w-5 mr-1" />
           <span>Customer Details</span>
         </button>
       </div>
@@ -745,7 +753,7 @@ export default function CommercialDetails({ customer, onBack }) {
             </div>
           )}
         </div>
-        
+
         {facilitiesError && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
             <p className="text-red-600 text-sm">Error loading facilities: {facilitiesError}</p>
@@ -754,13 +762,13 @@ export default function CommercialDetails({ customer, onBack }) {
             </Button>
           </div>
         )}
-        
+
         {!facilitiesLoading && !facilitiesError && facilities.length === 0 && (
           <div className="border border-gray-200 rounded-lg p-8 text-center">
             <p className="text-gray-500">No facilities found for this customer.</p>
           </div>
         )}
-        
+
         {facilities.map((facility) => (
           <FacilityCard key={facility.id} facility={facility} />
         ))}
