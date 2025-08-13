@@ -48,6 +48,13 @@ export default function CommercialDetails({ customer, onBack }) {
   const [rejectionReason, setRejectionReason] = useState("");
   const [actionType, setActionType] = useState("");
   const [facilityModalOpen, setFacilityModalOpen] = useState(false);
+  const [wregisModalOpen, setWregisModalOpen] = useState(false);
+  const [wregisForm, setWregisForm] = useState({
+    wregisEligibilityDate: "",
+    wregisId: "",
+    rpsId: ""
+  });
+  const [updatingWregis, setUpdatingWregis] = useState(false);
 
   useEffect(() => {
     if (customer?.id) fetchFacilities();
@@ -209,6 +216,26 @@ export default function CommercialDetails({ customer, onBack }) {
     setCurrentFacility(null);
   };
 
+  const openWregisModal = (facility) => {
+    setCurrentFacility(facility);
+    setWregisForm({
+      wregisEligibilityDate: facility.wregisEligibilityDate ? facility.wregisEligibilityDate.split('T')[0] : "",
+      wregisId: facility.wregisId || "",
+      rpsId: facility.rpsId || ""
+    });
+    setWregisModalOpen(true);
+  };
+
+  const closeWregisModal = () => {
+    setWregisModalOpen(false);
+    setCurrentFacility(null);
+    setWregisForm({
+      wregisEligibilityDate: "",
+      wregisId: "",
+      rpsId: ""
+    });
+  };
+
   const handleDocumentStatusChange = async () => {
     if (!currentFacility || !currentDocument) return;
 
@@ -318,6 +345,53 @@ export default function CommercialDetails({ customer, onBack }) {
     }
   };
 
+  const handleWregisUpdate = async () => {
+    if (!currentFacility) return;
+    setUpdatingWregis(true);
+
+    try {
+      const authToken = localStorage.getItem('authToken');
+      if (!authToken) throw new Error('No authentication token found');
+
+      const endpoint = `https://services.dcarbon.solutions/api/admin/update-wregis-info/${currentFacility.id}`;
+
+      const body = {
+        wregisEligibilityDate: wregisForm.wregisEligibilityDate ? `${wregisForm.wregisEligibilityDate}T00:00:00Z` : null,
+        wregisId: wregisForm.wregisId || null,
+        rpsId: wregisForm.rpsId || null
+      };
+
+      const response = await fetch(endpoint, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.status === 'success') {
+        toast.success(data.message);
+        updateFacilityFromResponse(data.data);
+        closeWregisModal();
+        fetchFacilities();
+      } else {
+        throw new Error(data.message || 'Failed to update WREGIS information');
+      }
+    } catch (err) {
+      console.error('Error updating WREGIS information:', err);
+      toast.error(err.message || 'Failed to update WREGIS information');
+    } finally {
+      setUpdatingWregis(false);
+    }
+  };
+
   const FacilityCard = ({ facility }) => {
     return (
       <div
@@ -342,6 +416,20 @@ export default function CommercialDetails({ customer, onBack }) {
             <p className="text-sm text-gray-500">Meter IDs</p>
             <p className="font-medium">{facility.meterIds?.join(', ') || 'Not specified'}</p>
           </div>
+        </div>
+
+        <div className="mt-4">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={(e) => {
+              e.stopPropagation();
+              openWregisModal(facility);
+            }}
+            className="text-[#039994] border-[#039994] hover:bg-[#03999410]"
+          >
+            Update WREGIS Information
+          </Button>
         </div>
       </div>
     );
@@ -393,6 +481,10 @@ export default function CommercialDetails({ customer, onBack }) {
               <p className="text-sm text-gray-500">Entity Type</p>
               <p className="font-medium capitalize">{facility.entityType}</p>
             </div>
+            <div>
+              <p className="text-sm text-gray-500">WREGIS ID</p>
+              <p className="font-medium">{facility.wregisId || 'Not specified'}</p>
+            </div>
           </div>
 
           <div className="space-y-3">
@@ -403,6 +495,14 @@ export default function CommercialDetails({ customer, onBack }) {
             <div>
               <p className="text-sm text-gray-500">Last REC Calculation</p>
               <p className="font-medium">{formatDate(facility.lastRecCalculation)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">WREGIS Eligibility Date</p>
+              <p className="font-medium">{formatDate(facility.wregisEligibilityDate)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">RPS ID</p>
+              <p className="font-medium">{facility.rpsId || 'Not specified'}</p>
             </div>
             {facility.name && (
               <div>
@@ -644,6 +744,63 @@ export default function CommercialDetails({ customer, onBack }) {
             </DialogTitle>
           </DialogHeader>
           {currentFacility && <FacilityModalContent facility={currentFacility} />}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={wregisModalOpen} onOpenChange={closeWregisModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Update WREGIS Information</DialogTitle>
+            <DialogDescription>
+              Update WREGIS details for {currentFacility?.facilityName}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className={labelClass}>WREGIS Eligibility Date</label>
+              <Input
+                type="date"
+                value={wregisForm.wregisEligibilityDate}
+                onChange={(e) => setWregisForm({...wregisForm, wregisEligibilityDate: e.target.value})}
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>WREGIS ID</label>
+              <Input
+                type="text"
+                value={wregisForm.wregisId}
+                onChange={(e) => setWregisForm({...wregisForm, wregisId: e.target.value})}
+                className={inputClass}
+                placeholder="Enter WREGIS ID"
+              />
+            </div>
+            <div>
+              <label className={labelClass}>RPS ID</label>
+              <Input
+                type="text"
+                value={wregisForm.rpsId}
+                onChange={(e) => setWregisForm({...wregisForm, rpsId: e.target.value})}
+                className={inputClass}
+                placeholder="Enter RPS ID"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeWregisModal}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleWregisUpdate}
+              disabled={updatingWregis}
+              className="bg-[#039994] hover:bg-[#02857f]"
+            >
+              {updatingWregis ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              {updatingWregis ? "Updating..." : "Update"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
