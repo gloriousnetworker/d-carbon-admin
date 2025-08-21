@@ -18,6 +18,7 @@ import AgreementManagement from '@/components/dashboard/agreement/AgreementManag
 import UserSupport from '@/components/dashboard/user-support/UserSupport';
 import UserManagement from '@/components/dashboard/user-management/UserManagement';
 import Faq from '@/components/dashboard/faq/Faq';
+import FeedbackPage from '@/components/dashboard/FeedbackPage';
 
 export default function UserDashboard() {
   const [activeSection, setActiveSection] = useState('overview');
@@ -45,6 +46,7 @@ export default function UserDashboard() {
     helpCenter: 'Help Centre (FAQs)',
     contactSupport: 'Contact Support',
     faq: 'FAQs',
+    feedback: 'Feedback',
     logout: 'Log Out',
   };
 
@@ -64,13 +66,13 @@ export default function UserDashboard() {
     case 'helpCenter': SectionComponent = DashboardHelpCentre; break;
     case 'contactSupport': SectionComponent = DashboardContactSupport; break;
     case 'faq': SectionComponent = Faq; break;
+    case 'feedback': SectionComponent = FeedbackPage; break;
     case 'logout': SectionComponent = DashboardLogout; break;
     default: SectionComponent = DashboardOverview;
   }
 
   return (
     <div className="min-h-screen flex bg-gray-100">
-      {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-64 bg-white border-r h-screen fixed">
         <DashboardSidebar
           selectedSection={activeSection}
@@ -78,7 +80,6 @@ export default function UserDashboard() {
         />
       </aside>
 
-      {/* Main Area */}
       <div className="md:ml-64 flex-1 flex flex-col">
         <DashboardNavbar
           toggleSidebar={toggleSidebar}
@@ -87,7 +88,6 @@ export default function UserDashboard() {
           onSectionChange={handleSectionChange}
         />
 
-        {/* Mobile Sidebar Overlay */}
         {sidebarOpen && (
           <div className="fixed inset-0 z-50 flex md:hidden">
             <div className="absolute inset-0 bg-black bg-opacity-50" onClick={toggleSidebar} />
@@ -101,7 +101,6 @@ export default function UserDashboard() {
           </div>
         )}
 
-        {/* Main Content */}
         <main className="flex-1">
           <div className="max-w-7xl mx-auto p-6">
             {activeSection === 'logout'

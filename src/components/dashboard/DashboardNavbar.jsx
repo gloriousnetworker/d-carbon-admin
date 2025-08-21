@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { FaBars, FaSearch, FaBell, FaHeadset } from "react-icons/fa";
+import { FaBars, FaSearch, FaBell, FaHeadset, FaComments } from "react-icons/fa";
 
 const DashboardNavbar = ({
   toggleSidebar,
@@ -11,9 +11,10 @@ const DashboardNavbar = ({
 }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotificationDot, setShowNotificationDot] = useState(false);
+  const [unreadFeedbackCount, setUnreadFeedbackCount] = useState(0);
+  const [showFeedbackDot, setShowFeedbackDot] = useState(false);
 
   useEffect(() => {
-    // Check if there are any unread notifications in localStorage
     const storedNotifications = localStorage.getItem('notifications');
     if (storedNotifications) {
       const notifications = JSON.parse(storedNotifications);
@@ -22,7 +23,28 @@ const DashboardNavbar = ({
       setShowNotificationDot(unread > 0);
     }
 
-    // Listen for new notifications from other tabs/windows
+    const fetchFeedback = async () => {
+      try {
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch('https://services.dcarbon.solutions/api/feature-suggestion', {
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          const unreadFeedback = data.data.suggestions.filter(f => f.status === 'PENDING').length;
+          setUnreadFeedbackCount(unreadFeedback);
+          setShowFeedbackDot(unreadFeedback > 0);
+        }
+      } catch (error) {
+        console.error('Error fetching feedback:', error);
+      }
+    };
+
+    fetchFeedback();
+
     const handleStorageChange = (e) => {
       if (e.key === 'notifications') {
         const notifications = JSON.parse(e.newValue);
@@ -30,7 +52,6 @@ const DashboardNavbar = ({
         setUnreadCount(unread);
         setShowNotificationDot(unread > 0);
         
-        // Show visual alert if new notification comes in
         if (unread > unreadCount) {
           flashNotificationDot();
         }
@@ -42,7 +63,6 @@ const DashboardNavbar = ({
   }, [unreadCount]);
 
   const flashNotificationDot = () => {
-    // Flash the dot 3 times to draw attention
     let flashCount = 0;
     const maxFlashes = 3;
     const interval = setInterval(() => {
@@ -58,7 +78,6 @@ const DashboardNavbar = ({
   return (
     <header className="bg-white border-b border-gray-200">
       <div className="max-w-full px-4 py-3 flex items-center justify-between">
-        {/* Left: Hamburger + Title */}
         <div className="flex items-center space-x-4">
           <button className="md:hidden" onClick={toggleSidebar}>
             <FaBars className="text-gray-700" size={20} />
@@ -68,7 +87,6 @@ const DashboardNavbar = ({
           </h1>
         </div>
 
-        {/* Center: Search Bar */}
         <div className="flex-1 flex justify-center mx-4">
           <div className="relative w-full max-w-md">
             <span className="absolute inset-y-0 left-0 flex items-center">
@@ -84,7 +102,6 @@ const DashboardNavbar = ({
           </div>
         </div>
 
-        {/* Right: Notifications & Support */}
         <div className="flex items-center space-x-6">
           <div className="relative">
             <button
@@ -99,6 +116,26 @@ const DashboardNavbar = ({
                   {unreadCount > 0 && (
                     <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
                       {unreadCount}
+                    </span>
+                  )}
+                </>
+              )}
+            </button>
+          </div>
+
+          <div className="relative">
+            <button
+              onClick={() => onSectionChange("feedback")}
+              className="focus:outline-none relative"
+            >
+              <FaComments className="text-[#039994]" size={20} />
+              {showFeedbackDot && unreadFeedbackCount > 0 && (
+                <>
+                  <span className="absolute -top-1 -right-1 block h-2 w-2 rounded-full bg-red-500 animate-ping" />
+                  <span className="absolute -top-1 -right-1 block h-2 w-2 rounded-full bg-red-500" />
+                  {unreadFeedbackCount > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                      {unreadFeedbackCount}
                     </span>
                   )}
                 </>

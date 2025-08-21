@@ -11,7 +11,8 @@ import {
   FiFileText,
   FiHeadphones,
   FiUser,
-  FiLogOut
+  FiLogOut,
+  FiMessageSquare
 } from 'react-icons/fi';
 import Image from 'next/image';
 import { useProfile } from '@/components/contexts/ProfileContext';
@@ -23,15 +24,36 @@ const DashboardSidebar = ({
   hasPendingActions = false,
 }) => {
   const [isClient, setIsClient] = useState(false);
+  const [unreadFeedbackCount, setUnreadFeedbackCount] = useState(0);
   const { profile, loading } = useProfile();
 
   useEffect(() => {
     setIsClient(true);
+    
+    const fetchFeedback = async () => {
+      try {
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch('https://services.dcarbon.solutions/api/feature-suggestion', {
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          const unreadFeedback = data.data.suggestions.filter(f => f.status === 'PENDING').length;
+          setUnreadFeedbackCount(unreadFeedback);
+        }
+      } catch (error) {
+        console.error('Error fetching feedback:', error);
+      }
+    };
+
+    fetchFeedback();
   }, []);
 
   const isActive = (section) => section === selectedSection;
 
-  // Style constants
   const sidebarContainer = 'bg-white w-64 min-h-screen flex flex-col border-r border-gray-200 overflow-y-auto hide-scrollbar';
   const sidebarSection = 'px-4 py-2';
   const sidebarDivider = 'my-2 border-gray-200 mx-4';
@@ -79,7 +101,6 @@ const DashboardSidebar = ({
         />
       </div>
 
-      {/* MAIN MENU */}
       <div className={sidebarSection}>
         <h3 className={sectionHeading}>Dashboard</h3>
       </div>
@@ -137,7 +158,6 @@ const DashboardSidebar = ({
 
       <hr className={sidebarDivider} />
 
-      {/* SETTINGS */}
       <div className={sidebarSection}>
         <h3 className={sectionHeading}>Settings</h3>
       </div>
@@ -160,7 +180,6 @@ const DashboardSidebar = ({
 
       <hr className={sidebarDivider} />
 
-      {/* SUPPORT */}
       <div className={sidebarSection}>
         <h3 className={sectionHeading}>Support</h3>
       </div>
@@ -178,6 +197,18 @@ const DashboardSidebar = ({
         >
           <FiHeadphones className={iconBase} color={isActive('faq') ? '#FFFFFF' : '#039994'} />
           <span>FAQ</span>
+        </button>
+        <button
+          onClick={() => onSectionChange('feedback')}
+          className={`${menuItemBase} ${isActive('feedback') ? menuItemActive : menuItemInactive}`}
+        >
+          <FiMessageSquare className={iconBase} color={isActive('feedback') ? '#FFFFFF' : '#039994'} />
+          <span>Feedback</span>
+          {unreadFeedbackCount > 0 && (
+            <span className="ml-auto bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+              {unreadFeedbackCount}
+            </span>
+          )}
         </button>
       </nav>
 
