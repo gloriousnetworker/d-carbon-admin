@@ -12,11 +12,11 @@ export default function QuickActions() {
     const fetchAnalytics = async () => {
       try {
         setLoading(true);
-        // Get the auth token from local storage
         const authToken = localStorage.getItem('authToken');
         
         if (!authToken) {
-          throw new Error('Authentication token not found');
+          window.location.href = '/login';
+          return;
         }
 
         const response = await axios.get('https://services.dcarbon.solutions/api/admin/analytics', {
@@ -30,6 +30,8 @@ export default function QuickActions() {
       } catch (err) {
         console.error('Error fetching analytics:', err);
         setError('Failed to fetch analytics data');
+        localStorage.clear();
+        window.location.href = '/login';
       } finally {
         setLoading(false);
       }
@@ -38,7 +40,6 @@ export default function QuickActions() {
     fetchAnalytics();
   }, []);
 
-  // Mapping the API response to cards data
   const getCardsData = () => {
     if (!analytics) return [];
 
@@ -63,13 +64,13 @@ export default function QuickActions() {
       },
       {
         key: 'totalCommercialFacilities',
-        icon: '/vectors/TotalCustomers.png', // Assuming you have this icon
+        icon: '/vectors/TotalCustomers.png',
         label: 'Commercial Facilities',
         value: analytics.totalCommercialFacilities || '0',
       },
       {
         key: 'totalResidentialFacilities',
-        icon: '/vectors/TotalCustomers.png', // Assuming you have this icon
+        icon: '/vectors/TotalCustomers.png',
         label: 'Residential Facilities',
         value: analytics.totalResidentialFacilities || '0',
       },
@@ -81,13 +82,13 @@ export default function QuickActions() {
       },
       {
         key: 'commercialRecGenerated',
-        icon: '/vectors/TotalCustomers.png', // Assuming you have this icon
+        icon: '/vectors/TotalCustomers.png',
         label: 'Commercial RECs',
         value: analytics.commercialRecGenerated || '0',
       },
       {
         key: 'residentialRecGenerated',
-        icon: '/vectors/TotalCustomers.png', // Assuming you have this icon
+        icon: '/vectors/TotalCustomers.png',
         label: 'Residential RECs',
         value: analytics.residentialRecGenerated || '0',
       },
@@ -96,21 +97,17 @@ export default function QuickActions() {
 
   return (
     <div className="w-full py-3 px-3">
-      {/* Filter dropdown */}
       <div className="flex justify-end mb-3">
         <div className="relative inline-block">
           <button
-            onClick={() => {/* you can toggle a menu here if needed */}}
             className="flex items-center text-black text-xs font-semibold"
           >
             {filter === 'total' ? 'Total' : filter}
             <FiChevronDown className="ml-1 w-3 h-3" />
           </button>
-          {/* If you need an actual dropdown menu, you can render it here */}
         </div>
       </div>
 
-      {/* Cards Container */}
       {loading ? (
         <div className="flex justify-center items-center h-32">
           <FiLoader className="animate-spin h-6 w-6 text-[#056C69]" />
