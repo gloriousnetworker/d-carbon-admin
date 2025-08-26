@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ChevronUp, ChevronDown, Trash2, Edit, Plus } from "lucide-react"
+import { ChevronUp, ChevronDown, Trash2, Edit, Plus, X } from "lucide-react"
 import toast from "react-hot-toast"
 
 const mainContainer = 'min-h-screen w-full flex flex-col items-center justify-center py-8 px-4 bg-white'
@@ -16,18 +16,21 @@ const sectionHeader = 'p-4 flex items-center justify-between cursor-pointer bg-g
 const sectionTitle = 'text-lg font-medium text-[#039994] font-sfpro'
 const sectionContent = 'p-4 mt-2 border border-gray-200 rounded-md'
 const actionButton = 'flex items-center gap-2'
+const modalOverlay = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50'
+const modalContent = 'bg-white rounded-lg p-6 w-full max-w-md mx-4'
 
 export default function FAQManagement() {
   const [faqs, setFaqs] = useState([])
   const [loading, setLoading] = useState(true)
   const [expandedSection, setExpandedSection] = useState(null)
   const [editMode, setEditMode] = useState(false)
+  const [showModal, setShowModal] = useState(false)
   const [currentFaq, setCurrentFaq] = useState(null)
   const [formData, setFormData] = useState({
     question: '',
     answer: '',
     videoUrl: '',
-    target: 'commercial'
+    target: 'GENERAL'
   })
 
   useEffect(() => {
@@ -83,6 +86,7 @@ export default function FAQManagement() {
         toast.success(data.message)
         fetchFaqs()
         resetForm()
+        if (editMode) setShowModal(false)
       }
     } catch (error) {
       toast.error('Operation failed')
@@ -98,7 +102,7 @@ export default function FAQManagement() {
       videoUrl: faq.videoUrl,
       target: faq.target
     })
-    setExpandedSection('create')
+    setShowModal(true)
   }
 
   const handleDelete = async (id) => {
@@ -127,7 +131,7 @@ export default function FAQManagement() {
       question: '',
       answer: '',
       videoUrl: '',
-      target: 'commercial'
+      target: 'GENERAL'
     })
     setEditMode(false)
     setCurrentFaq(null)
@@ -159,9 +163,7 @@ export default function FAQManagement() {
             className={sectionHeader}
             onClick={() => toggleSection('create')}
           >
-            <h2 className={sectionTitle}>
-              {editMode ? 'Edit FAQ' : 'Create New FAQ'}
-            </h2>
+            <h2 className={sectionTitle}>Create New FAQ</h2>
             {expandedSection === 'create' ? (
               <ChevronUp className="h-5 w-5 text-[#039994]" />
             ) : (
@@ -212,9 +214,11 @@ export default function FAQManagement() {
                     className={inputClass}
                     required
                   >
-                    <option value="commercial">Commercial</option>
-                    <option value="admin">Admin</option>
-                    <option value="general">General</option>
+                    <option value="GENERAL">General</option>
+                    <option value="ADMIN">Admin</option>
+                    <option value="COMMERCIAL">Commercial</option>
+                    <option value="RESIDENTIAL">Residential</option>
+                    <option value="PARTNER">Partner</option>
                   </select>
                 </div>
                 <div className="flex justify-end gap-3">
@@ -229,7 +233,7 @@ export default function FAQManagement() {
                     Cancel
                   </button>
                   <button type="submit" className={buttonPrimary}>
-                    {editMode ? 'Update' : 'Create'}
+                    Create
                   </button>
                 </div>
               </form>
@@ -284,6 +288,89 @@ export default function FAQManagement() {
           )}
         </div>
       </div>
+
+      {showModal && (
+        <div className={modalOverlay}>
+          <div className={modalContent}>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-medium text-[#039994] font-sfpro">Edit FAQ</h2>
+              <button 
+                onClick={() => {
+                  setShowModal(false)
+                  resetForm()
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            <form onSubmit={handleSubmit}>
+              <div className="mb-4">
+                <label className="block mb-2 font-sfpro">Question</label>
+                <input
+                  type="text"
+                  name="question"
+                  value={formData.question}
+                  onChange={handleInputChange}
+                  className={inputClass}
+                  required
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block mb-2 font-sfpro">Answer</label>
+                <textarea
+                  name="answer"
+                  value={formData.answer}
+                  onChange={handleInputChange}
+                  className={`${inputClass} min-h-[100px]`}
+                  required
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block mb-2 font-sfpro">Video URL</label>
+                <input
+                  type="url"
+                  name="videoUrl"
+                  value={formData.videoUrl}
+                  onChange={handleInputChange}
+                  className={inputClass}
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block mb-2 font-sfpro">Target Audience</label>
+                <select
+                  name="target"
+                  value={formData.target}
+                  onChange={handleInputChange}
+                  className={inputClass}
+                  required
+                >
+                  <option value="GENERAL">General</option>
+                  <option value="ADMIN">Admin</option>
+                  <option value="COMMERCIAL">Commercial</option>
+                  <option value="RESIDENTIAL">Residential</option>
+                  <option value="PARTNER">Partner</option>
+                </select>
+              </div>
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowModal(false)
+                    resetForm()
+                  }}
+                  className={buttonOutline}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className={buttonPrimary}>
+                  Update
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
