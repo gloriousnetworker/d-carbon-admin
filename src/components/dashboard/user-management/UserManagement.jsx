@@ -12,6 +12,7 @@ import {
   ChevronRight,
   ChevronDown,
   Info,
+  Mail,
 } from "lucide-react";
 import CommercialDetails from "./customer-details/CommercialDetails";
 import ResidentialDetails from "./customer-details/ResidentialDetails";
@@ -50,6 +51,7 @@ export default function CustomerManagement() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [utilityProviders, setUtilityProviders] = useState([]);
+  const [resending, setResending] = useState(false);
 
   const fetchCustomers = async (page = 1, limit = 50) => {
     try {
@@ -111,6 +113,45 @@ export default function CustomerManagement() {
       }
     } catch (err) {
       console.error("Error fetching utility providers:", err);
+    }
+  };
+
+  const handleResendESignature = async (email) => {
+    try {
+      setResending(true);
+      const authToken = localStorage.getItem("authToken");
+      const userId = localStorage.getItem("userId");
+      
+      if (!authToken || !userId) {
+        throw new Error("Authentication token or user ID not found");
+      }
+
+      const response = await fetch(
+        `https://services.dcarbon.solutions/api/admin/${userId}/request-agreement-resign`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            emails: [email]
+          }),
+        }
+      );
+
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+      const data = await response.json();
+      if (data.status === "success") {
+        alert("E-Signature resend request sent successfully");
+      } else {
+        throw new Error(data.message || "Failed to send resend request");
+      }
+    } catch (err) {
+      alert(`Error: ${err.message}`);
+    } finally {
+      setResending(false);
     }
   };
 
@@ -437,24 +478,24 @@ export default function CustomerManagement() {
                       <th className="py-1 px-1 text-left font-medium">TYPE</th>
                       <th className="py-1 px-1 text-left font-medium">STATUS</th>
                       <th className="py-1 px-1 text-left font-medium">DOCS</th>
+                      <th className="py-1 px-1 text-left font-medium">RESEND</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredCustomers.map((customer, index) => (
                       <tr
                         key={customer.id}
-                        className="border-b hover:bg-gray-50 cursor-pointer"
-                        onClick={() => handleCustomerClick(customer)}
+                        className="border-b hover:bg-gray-50"
                       >
                         <td className="py-1 px-1">{(currentPage - 1) * 50 + index + 1}</td>
-                        <td className="py-1 px-1 truncate max-w-[100px]">{customer.name}</td>
-                        <td className="py-1 px-1 truncate max-w-[120px]">{customer.email}</td>
-                        <td className="py-1 px-1">{customer.phoneNumber}</td>
-                        <td className="py-1 px-1">{customer.userType}</td>
-                        <td className="py-1 px-1">
+                        <td className="py-1 px-1 truncate max-w-[100px] cursor-pointer" onClick={() => handleCustomerClick(customer)}>{customer.name}</td>
+                        <td className="py-1 px-1 truncate max-w-[120px] cursor-pointer" onClick={() => handleCustomerClick(customer)}>{customer.email}</td>
+                        <td className="py-1 px-1 cursor-pointer" onClick={() => handleCustomerClick(customer)}>{customer.phoneNumber}</td>
+                        <td className="py-1 px-1 cursor-pointer" onClick={() => handleCustomerClick(customer)}>{customer.userType}</td>
+                        <td className="py-1 px-1 cursor-pointer" onClick={() => handleCustomerClick(customer)}>
                           <StatusBadge status={customer.status} />
                         </td>
-                        <td className="py-1 px-1">
+                        <td className="py-1 px-1 cursor-pointer" onClick={() => handleCustomerClick(customer)}>
                           <div className="relative group">
                             {customer.facilityStatus === "PENDING" ? (
                               <AlertTriangle className="h-3 w-3 text-amber-400" />
@@ -464,6 +505,18 @@ export default function CustomerManagement() {
                               <span className="text-[9px] text-gray-400">N/A</span>
                             )}
                           </div>
+                        </td>
+                        <td className="py-1 px-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-5 text-[9px] gap-1"
+                            onClick={() => handleResendESignature(customer.email)}
+                            disabled={resending}
+                          >
+                            <Mail className="h-2 w-2" />
+                            E-Sign
+                          </Button>
                         </td>
                       </tr>
                     ))}
