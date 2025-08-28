@@ -86,6 +86,22 @@ const DOCUMENT_TYPES = {
     statusField: "singleLineDiagramStatus",
     rejectionField: "singleLineDiagramRejectionReason",
     mandatory: true
+  },
+  assignmentOfRegistrationRight: {
+    name: "Assignment of Registration Right",
+    type: "assignmentOfRegistrationRight",
+    urlField: "assignmentOfRegistrationRightUrl",
+    statusField: "assignmentOfRegistrationRightStatus",
+    rejectionField: "assignmentOfRegistrationRightRejectionReason",
+    mandatory: true
+  },
+  acknowledgementOfStationService: {
+    name: "Acknowledgement of Station Service",
+    type: "acknowledgementOfStationService",
+    urlField: "acknowledgementOfStationServiceUrl",
+    statusField: "acknowledgementOfStationServiceStatus",
+    rejectionField: "acknowledgementOfStationServiceRejectionReason",
+    mandatory: true
   }
 };
 
