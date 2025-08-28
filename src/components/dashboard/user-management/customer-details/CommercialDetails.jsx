@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { ChevronLeft, Trash2, Eye, Download, ChevronDown, AlertTriangle, CheckCircle, Loader2, X } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { ChevronLeft, Trash2, Eye, Download, ChevronDown, AlertTriangle, CheckCircle, Loader2, X, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { toast } from "react-hot-toast";
@@ -55,6 +55,8 @@ export default function CommercialDetails({ customer, onBack }) {
     rpsId: ""
   });
   const [updatingWregis, setUpdatingWregis] = useState(false);
+  const [uploadingAck, setUploadingAck] = useState(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (customer?.id) fetchFacilities();
@@ -283,7 +285,9 @@ export default function CommercialDetails({ customer, onBack }) {
           "sitePlan": "sitePlanStatus",
           "panelInverterDatasheet": "inverterDatasheetStatus",
           "revenueMeterData": "revenueMeterDataStatus",
-          "utilityMeterPhoto": "utilityMeterPhotoStatus"
+          "utilityMeterPhoto": "utilityMeterPhotoStatus",
+          "assignmentOfRegistrationRight": "assignmentOfRegistrationRightStatus",
+          "acknowledgementOfStationService": "acknowledgementOfStationServiceStatus"
         };
 
         const updatedFacility = {
@@ -392,6 +396,46 @@ export default function CommercialDetails({ customer, onBack }) {
     }
   };
 
+  const handleAckUpload = async (facilityId, file) => {
+    setUploadingAck(facilityId);
+    
+    try {
+      const authToken = localStorage.getItem('authToken');
+      if (!authToken) throw new Error('No authentication token found');
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const endpoint = `https://services.dcarbon.solutions/api/admin/update-acknowledgement-of-station-service/${facilityId}`;
+
+      const response = await fetch(endpoint, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.status === 'success') {
+        toast.success(data.message);
+        updateFacilityFromResponse(data.data);
+      } else {
+        throw new Error(data.message || 'Failed to upload document');
+      }
+    } catch (err) {
+      console.error('Error uploading Acknowledgement of Station Service:', err);
+      toast.error(err.message || 'Failed to upload document');
+    } finally {
+      setUploadingAck(null);
+    }
+  };
+
   const FacilityCard = ({ facility }) => {
     return (
       <div
@@ -418,7 +462,7 @@ export default function CommercialDetails({ customer, onBack }) {
           </div>
         </div>
 
-        <div className="mt-4">
+        <div className="mt-4 flex gap-2">
           <Button 
             variant="outline" 
             size="sm" 
@@ -429,6 +473,37 @@ export default function CommercialDetails({ customer, onBack }) {
             className="text-[#039994] border-[#039994] hover:bg-[#03999410]"
           >
             Update WREGIS Information
+          </Button>
+          
+          <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+            onChange={(e) => {
+              const file = e.target.files[0];
+              if (file) {
+                handleAckUpload(facility.id, file);
+              }
+            }}
+          />
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={(e) => {
+              e.stopPropagation();
+              fileInputRef.current?.click();
+            }}
+            disabled={uploadingAck === facility.id}
+            className="text-[#039994] border-[#039994] hover:bg-[#03999410]"
+          >
+            {uploadingAck === facility.id ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+            ) : (
+              <Upload className="h-4 w-4 mr-1" />
+            )}
+            Upload Ack of Station Service
           </Button>
         </div>
       </div>
@@ -446,7 +521,9 @@ export default function CommercialDetails({ customer, onBack }) {
       { name: "Installation Site Plan", url: facility.sitePlanUrl, status: facility.sitePlanStatus, type: "sitePlan", rejectionReason: facility.sitePlanRejectionReason },
       { name: "Panel/Inverter Datasheet", url: facility.inverterDatasheetUrl, status: facility.inverterDatasheetStatus, type: "panelInverterDatasheet", rejectionReason: facility.inverterDatasheetRejectionReason },
       { name: "Revenue Meter Datasheet", url: facility.revenueMeterDataUrl, status: facility.revenueMeterDataStatus, type: "revenueMeterData", rejectionReason: facility.revenueMeterDataRejectionReason },
-      { name: "Utility Meter Photo", url: facility.utilityMeterPhotoUrl, status: facility.utilityMeterPhotoStatus, type: "utilityMeterPhoto", rejectionReason: facility.utilityMeterPhotoRejectionReason }
+      { name: "Utility Meter Photo", url: facility.utilityMeterPhotoUrl, status: facility.utilityMeterPhotoStatus, type: "utilityMeterPhoto", rejectionReason: facility.utilityMeterPhotoRejectionReason },
+      { name: "Assignment of Registration Right", url: facility.assignmentOfRegistrationRightUrl, status: facility.assignmentOfRegistrationRightStatus, type: "assignmentOfRegistrationRight", rejectionReason: facility.assignmentOfRegistrationRightRejectionReason },
+      { name: "Acknowledgement of Station Service", url: facility.acknowledgementOfStationServiceUrl, status: facility.acknowledgementOfStationServiceStatus, type: "acknowledgementOfStationService", rejectionReason: facility.acknowledgementOfStationServiceRejectionReason }
     ];
 
     const allDocumentsApproved = documents.every(doc => doc.status === "APPROVED");
