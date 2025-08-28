@@ -14,8 +14,8 @@ import {
   Info,
   Mail,
 } from "lucide-react";
-import CommercialDetails from "./customer-details/CommercialDetails";
-import ResidentialDetails from "./customer-details/ResidentialDetails";
+import CommercialDetails from "./customer-details/commercial-details/CommercialDetails";
+import ResidentialDetails from "./customer-details/residential-details/ResidentialDetails";
 import PartnerDetails from "./customer-details/PartnerDetails";
 import SendReminderModal from "./modals/customerManagement/SendReminderModal";
 import InviteCustomerModal from "./modals/customerManagement/InviteCustomerModal";
