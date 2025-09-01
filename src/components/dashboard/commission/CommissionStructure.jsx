@@ -1,119 +1,147 @@
 "use client";
 import React, { useState } from "react";
-import CommissionTable from "./commission/CommissionTable";
+import CommercialCommissionStructure from "./commission/CommercialCommissionStructure";
+import ResidentialCommissionStructure from "./commission/ResidentialCommissionStructure";
+import PartnerCommissionStructure from "./commission/PartnerCommissionStructure";
+import BonusCommissionStructure from "./commission/BonusCommissionStructure";
 import CommissionSummary from "./commission/CommissionSummary";
-import PartnerShareSetupStructureModal from "./modals/PartnerShareSetupStructureModal";
-import MasterPartnerTPOShareSetupStructureModal from "./modals/MasterSuperPartnerTPOShareSetupStructureModal";
-import CustomerSolarOwnerShareSetupStructureModal from "./modals/CustomerSolarOwnerShareSetupStructureModal";
-import SalesAgentCommissionSetupStructureModal from "./modals/SalesAgentCommissionSetupStructureModal";
-import ResidentialReferralSetupModal from "./modals/ResidentialReferralSetupModal";
+import VersioningAndAudit from "./commission/VersioningAndAudit";
+import ValidationRules from "./commission/ValidationRules";
+import CommercialCommissionSetup from "./setupModals/CommercialCommissionSetup";
+import ResidentialCommissionSetup from "./setupModals/ResidentialCommissionSetup";
+import PartnerCommissionSetup from "./setupModals/PartnerCommissionSetup";
+import BonusCommissionSetup from "./setupModals/BonusCommissionSetup";
 import { Toaster } from "react-hot-toast";
 
 const CommissionStructure = () => {
-  const [activeTab, setActiveTab] = useState("Commission Summary");
-  const [activeCommissionType, setActiveCommissionType] = useState("Partner Share");
-  const [activeSummaryType, setActiveSummaryType] = useState("Direct Agent");
-  const [showSetupModal, setShowSetupModal] = useState(false);
-  const [tableData, setTableData] = useState(null);
+  const [activeTab, setActiveTab] = useState("Commercial");
+  const [showCommercialSetup, setShowCommercialSetup] = useState(false);
+  const [showResidentialSetup, setShowResidentialSetup] = useState(false);
+  const [showPartnerSetup, setShowPartnerSetup] = useState(false);
+  const [showBonusSetup, setShowBonusSetup] = useState(false);
 
-  const handleSetupStructure = () => setShowSetupModal(true);
-  const handleCloseModal = () => setShowSetupModal(false);
-  const handleChangeCommissionType = (type) => setActiveCommissionType(type);
-  const handleChangeSummaryType = (type) => setActiveSummaryType(type);
-  
-  const handleUpdateTableData = (newData) => {
-    setTableData(newData);
-  };
-
-  const renderSetupModal = () => {
-    if (!showSetupModal) return null;
-    switch (activeCommissionType) {
-      case "Partner Share":
-        return (
-          <PartnerShareSetupStructureModal
-            onClose={handleCloseModal}
-            onUpdate={handleUpdateTableData}
-          />
-        );
-      case "Master/Super Partner TPO Share":
-        return (
-          <MasterPartnerTPOShareSetupStructureModal
-            onClose={handleCloseModal}
-            onUpdate={handleUpdateTableData}
-          />
-        );
-      case "Customer/Solar Owner Share":
-        return (
-          <CustomerSolarOwnerShareSetupStructureModal
-            onClose={handleCloseModal}
-            onUpdate={handleUpdateTableData}
-          />
-        );
-      case "Sales Agent Commission":
-        return (
-          <SalesAgentCommissionSetupStructureModal
-            onClose={handleCloseModal}
-            onUpdate={handleUpdateTableData}
-          />
-        );
-      case "Residential Referral":
-        return (
-          <ResidentialReferralSetupModal
-            onClose={handleCloseModal}
-            onUpdate={handleUpdateTableData}
-          />
-        );
-      default:
-        return null;
-    }
-  };
+  const handleCommercialSetup = () => setShowCommercialSetup(true);
+  const handleCloseCommercialSetup = () => setShowCommercialSetup(false);
+  const handleResidentialSetup = () => setShowResidentialSetup(true);
+  const handleCloseResidentialSetup = () => setShowResidentialSetup(false);
+  const handlePartnerSetup = () => setShowPartnerSetup(true);
+  const handleClosePartnerSetup = () => setShowPartnerSetup(false);
+  const handleBonusSetup = () => setShowBonusSetup(true);
+  const handleCloseBonusSetup = () => setShowBonusSetup(false);
 
   return (
     <div className="min-h-screen bg-[#F7F7F7] py-8 px-4">
       <Toaster position="top-right" />
-      {renderSetupModal()}
+      {showCommercialSetup && (
+        <CommercialCommissionSetup onClose={handleCloseCommercialSetup} />
+      )}
+      {showResidentialSetup && (
+        <ResidentialCommissionSetup onClose={handleCloseResidentialSetup} />
+      )}
+      {showPartnerSetup && (
+        <PartnerCommissionSetup onClose={handleClosePartnerSetup} />
+      )}
+      {showBonusSetup && (
+        <BonusCommissionSetup onClose={handleCloseBonusSetup} />
+      )}
       <div className="max-w-6xl mx-auto">
         <div className="bg-white rounded-2xl shadow-sm border border-[#E8E8E8]">
-          {/* Tab Navigation */}
           <div className="border-b border-gray-200">
-            <div className="flex">
+            <div className="flex justify-between">
               <button
-                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === "Commission Summary"
+                className={`px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
+                  activeTab === "Commercial"
                     ? "text-[#039994] border-[#039994]"
                     : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
                 }`}
-                onClick={() => setActiveTab("Commission Summary")}
+                onClick={() => setActiveTab("Commercial")}
               >
-                Commission Summary
+                Commercial
               </button>
               <button
-                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === "Commission Structure"
+                className={`px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
+                  activeTab === "Residential"
                     ? "text-[#039994] border-[#039994]"
                     : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
                 }`}
-                onClick={() => setActiveTab("Commission Structure")}
+                onClick={() => setActiveTab("Residential")}
               >
-                Commission Structure
+                Residential
+              </button>
+              <button
+                className={`px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
+                  activeTab === "Partner"
+                    ? "text-[#039994] border-[#039994]"
+                    : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
+                }`}
+                onClick={() => setActiveTab("Partner")}
+              >
+                Partner
+              </button>
+              <button
+                className={`px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
+                  activeTab === "Bonus"
+                    ? "text-[#039994] border-[#039994]"
+                    : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
+                }`}
+                onClick={() => setActiveTab("Bonus")}
+              >
+                Bonus
+              </button>
+              <button
+                className={`px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
+                  activeTab === "Summary"
+                    ? "text-[#039994] border-[#039994]"
+                    : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
+                }`}
+                onClick={() => setActiveTab("Summary")}
+              >
+                Summary
+              </button>
+              <button
+                className={`px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
+                  activeTab === "Versioning"
+                    ? "text-[#039994] border-[#039994]"
+                    : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
+                }`}
+                onClick={() => setActiveTab("Versioning")}
+              >
+                Versioning & Audit
+              </button>
+              <button
+                className={`px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
+                  activeTab === "Validation"
+                    ? "text-[#039994] border-[#039994]"
+                    : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
+                }`}
+                onClick={() => setActiveTab("Validation")}
+              >
+                Validation Rules
               </button>
             </div>
           </div>
 
-          {/* Tab Content */}
           <div className="p-6">
-            {activeTab === "Commission Summary" ? (
-              <CommissionSummary
-                activeSummaryType={activeSummaryType}
-                onChangeSummaryType={handleChangeSummaryType}
-              />
-            ) : (
-              <CommissionTable
-                activeCommissionType={activeCommissionType}
-                onChangeCommissionType={handleChangeCommissionType}
-                onSetupStructure={handleSetupStructure}
-                tableData={tableData}
-              />
+            {activeTab === "Commercial" && (
+              <CommercialCommissionStructure onSetupStructure={handleCommercialSetup} />
+            )}
+            {activeTab === "Residential" && (
+              <ResidentialCommissionStructure onSetupStructure={handleResidentialSetup} />
+            )}
+            {activeTab === "Partner" && (
+              <PartnerCommissionStructure onSetupStructure={handlePartnerSetup} />
+            )}
+            {activeTab === "Bonus" && (
+              <BonusCommissionStructure onSetupStructure={handleBonusSetup} />
+            )}
+            {activeTab === "Summary" && (
+              <CommissionSummary />
+            )}
+            {activeTab === "Versioning" && (
+              <VersioningAndAudit />
+            )}
+            {activeTab === "Validation" && (
+              <ValidationRules />
             )}
           </div>
         </div>
