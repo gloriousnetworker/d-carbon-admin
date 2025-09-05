@@ -6,36 +6,32 @@ import { toast } from "react-hot-toast";
 
 const BonusCommissionSetup = ({ onClose }) => {
   const [formValues, setFormValues] = useState({
-    quarterlyCommercial: {
-      lessThan500k: 1.0,
-      between500kTo2_5m: 1.5,
-      moreThan2_5m: 2.0,
-      maxDuration: 3,
-      agreementDuration: 1
-    },
-    quarterlyResidential: {
-      lessThan500k: 0.5,
-      between500kTo2_5m: 0.5,
-      moreThan2_5m: 0.5,
-      maxDuration: 2,
-      agreementDuration: 1
-    },
-    annualBonus: {
-      lessThan500k: 1.0,
-      between500kTo2_5m: 1.0,
-      moreThan2_5m: 1.0,
-      maxDuration: 5,
-      agreementDuration: 1
-    },
+    quarterlyCommercial: [
+      { threshold: "< 1 MW", bonus: 1.0, maxDuration: 3, agreementDuration: 1 },
+      { threshold: "1 - 5 MW", bonus: 1.5, maxDuration: 3, agreementDuration: 1 },
+      { threshold: "> 5 MW", bonus: 2.0, maxDuration: 3, agreementDuration: 1 }
+    ],
+    quarterlyResidential: [
+      { threshold: "5-10 referrals", bonus: 0.5, maxDuration: 2, agreementDuration: 1 },
+      { threshold: "11-20 referrals", bonus: 1.0, maxDuration: 2, agreementDuration: 1 },
+      { threshold: ">20 referrals", bonus: 1.5, maxDuration: 2, agreementDuration: 1 }
+    ],
+    annualBonus: [
+      { threshold: "< 10 MW", bonus: 1.0, maxDuration: 5, agreementDuration: 1 },
+      { threshold: "10 - 50 MW", bonus: 1.5, maxDuration: 5, agreementDuration: 1 },
+      { threshold: "> 50 MW", bonus: 2.0, maxDuration: 5, agreementDuration: 1 }
+    ],
     notes: ""
   });
 
   const [updating, setUpdating] = useState(false);
 
-  const handleInputChange = (section, field, value) => {
+  const handleInputChange = (section, index, field, value) => {
     setFormValues(prev => ({
       ...prev,
-      [section]: { ...prev[section], [field]: parseFloat(value) || 0 },
+      [section]: prev[section].map((item, i) => 
+        i === index ? { ...item, [field]: field === 'threshold' ? value : parseFloat(value) || 0 } : item
+      )
     }));
   };
 
@@ -52,19 +48,17 @@ const BonusCommissionSetup = ({ onClose }) => {
       const validationErrors = [];
       
       ["quarterlyCommercial", "quarterlyResidential", "annualBonus"].forEach(section => {
-        ["lessThan500k", "between500kTo2_5m", "moreThan2_5m"].forEach(tier => {
-          const value = formValues[section][tier];
-          if (value < 0 || value > 100) {
-            validationErrors.push(`${section} ${tier} must be between 0-100%`);
+        formValues[section].forEach((item, index) => {
+          if (item.bonus < 0 || item.bonus > 100) {
+            validationErrors.push(`${section} tier ${index + 1} bonus must be between 0-100%`);
+          }
+          if (item.maxDuration < 0) {
+            validationErrors.push(`${section} tier ${index + 1} max duration must be ≥ 0`);
+          }
+          if (item.agreementDuration < 0) {
+            validationErrors.push(`${section} tier ${index + 1} agreement duration must be ≥ 0`);
           }
         });
-        
-        if (formValues[section].maxDuration < 0) {
-          validationErrors.push(`${section} max duration must be ≥ 0`);
-        }
-        if (formValues[section].agreementDuration < 0) {
-          validationErrors.push(`${section} agreement duration must be ≥ 0`);
-        }
       });
       
       if (validationErrors.length > 0) {
@@ -88,63 +82,62 @@ const BonusCommissionSetup = ({ onClose }) => {
   const renderBonusSection = (title, section) => (
     <div className="mb-8 p-4 border border-gray-200 rounded-lg">
       <h3 className="font-medium text-[#1E1E1E] text-sm mb-4">{title}</h3>
-      <div className="grid grid-cols-5 gap-4 text-xs">
-        <div className="flex flex-col">
-          <label className="mb-1 text-gray-600 text-xs">&lt;$500k (%)</label>
-          <input
-            type="number"
-            step="0.1"
-            value={formValues[section].lessThan500k}
-            onChange={(e) => handleInputChange(section, "lessThan500k", e.target.value)}
-            className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
-            min="0"
-            max="100"
-          />
-        </div>
-        <div className="flex flex-col">
-          <label className="mb-1 text-gray-600 text-xs">$500k - $2.5M (%)</label>
-          <input
-            type="number"
-            step="0.1"
-            value={formValues[section].between500kTo2_5m}
-            onChange={(e) => handleInputChange(section, "between500kTo2_5m", e.target.value)}
-            className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
-            min="0"
-            max="100"
-          />
-        </div>
-        <div className="flex flex-col">
-          <label className="mb-1 text-gray-600 text-xs">&gt;$2.5M (%)</label>
-          <input
-            type="number"
-            step="0.1"
-            value={formValues[section].moreThan2_5m}
-            onChange={(e) => handleInputChange(section, "moreThan2_5m", e.target.value)}
-            className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
-            min="0"
-            max="100"
-          />
-        </div>
-        <div className="flex flex-col">
-          <label className="mb-1 text-gray-600 text-xs">Max Duration (Years)</label>
-          <input
-            type="number"
-            value={formValues[section].maxDuration}
-            onChange={(e) => handleInputChange(section, "maxDuration", e.target.value)}
-            className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
-            min="0"
-          />
-        </div>
-        <div className="flex flex-col">
-          <label className="mb-1 text-gray-600 text-xs">Agreement Duration (Years)</label>
-          <input
-            type="number"
-            value={formValues[section].agreementDuration}
-            onChange={(e) => handleInputChange(section, "agreementDuration", e.target.value)}
-            className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
-            min="0"
-          />
-        </div>
+      <div className="space-y-4">
+        {formValues[section].map((item, index) => (
+          <div key={index} className="grid grid-cols-5 gap-4 text-xs items-end">
+            <div className="flex flex-col">
+              <label className="mb-1 text-gray-600 text-xs">Threshold</label>
+              <input
+                type="text"
+                value={item.threshold}
+                onChange={(e) => handleInputChange(section, index, "threshold", e.target.value)}
+                className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
+                placeholder="e.g., < 1 MW"
+              />
+            </div>
+            <div className="flex flex-col">
+              <label className="mb-1 text-gray-600 text-xs">Bonus (%)</label>
+              <input
+                type="number"
+                step="0.1"
+                value={item.bonus}
+                onChange={(e) => handleInputChange(section, index, "bonus", e.target.value)}
+                className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
+                min="0"
+                max="100"
+              />
+            </div>
+            <div className="flex flex-col">
+              <label className="mb-1 text-gray-600 text-xs">Max Duration (Years)</label>
+              <input
+                type="number"
+                value={item.maxDuration}
+                onChange={(e) => handleInputChange(section, index, "maxDuration", e.target.value)}
+                className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
+                min="0"
+              />
+            </div>
+            <div className="flex flex-col">
+              <label className="mb-1 text-gray-600 text-xs">Agreement Duration (Years)</label>
+              <input
+                type="number"
+                value={item.agreementDuration}
+                onChange={(e) => handleInputChange(section, index, "agreementDuration", e.target.value)}
+                className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
+                min="0"
+              />
+            </div>
+            <div className="flex flex-col">
+              <label className="mb-1 text-gray-600 text-xs invisible">Action</label>
+              <button className="text-red-500 text-xs hover:text-red-700">
+                Remove
+              </button>
+            </div>
+          </div>
+        ))}
+        <button className="text-[#039994] text-xs hover:text-[#028B86] mt-2">
+          + Add Tier
+        </button>
       </div>
     </div>
   );
@@ -163,9 +156,9 @@ const BonusCommissionSetup = ({ onClose }) => {
         </div>
 
         <div className="space-y-4">
-          {renderBonusSection("Quarterly Bonus — Commercial", "quarterlyCommercial")}
-          {renderBonusSection("Bonus — Residential", "quarterlyResidential")}
-          {renderBonusSection("Annual Bonus", "annualBonus")}
+          {renderBonusSection("Quarterly Bonus — Commercial (MW Based)", "quarterlyCommercial")}
+          {renderBonusSection("Bonus — Residential (Referral Based)", "quarterlyResidential")}
+          {renderBonusSection("Annual Bonus — Partners (MW Based)", "annualBonus")}
 
           <div className="mb-6">
             <h3 className="font-medium text-[#1E1E1E] text-sm mb-3">Notes</h3>

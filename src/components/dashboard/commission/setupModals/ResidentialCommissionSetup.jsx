@@ -40,13 +40,17 @@ const ResidentialCommissionSetup = ({ onClose }) => {
 
   const [updating, setUpdating] = useState(false);
 
-  const calculateCompanyRemainder = (tier) => {
+  const calculatePartnerTotal = (tier) => {
     const customer = formValues.customerShare[tier];
     const salesAgent = formValues.salesAgent[tier];
     const installerEPC = formValues.installerEPC[tier];
     const financeCompany = formValues.financeCompany[tier];
     
-    return (100 - (customer + salesAgent + installerEPC + financeCompany)).toFixed(1);
+    return (customer + salesAgent + installerEPC + financeCompany).toFixed(1);
+  };
+
+  const calculateCompanyRemainder = (tier) => {
+    return (100 - parseFloat(calculatePartnerTotal(tier))).toFixed(1);
   };
 
   const calculateNoReferralRemainder = (tier) => {
@@ -69,10 +73,7 @@ const ResidentialCommissionSetup = ({ onClose }) => {
       const validationErrors = [];
       
       ["lessThan500k", "between500kTo2_5m", "moreThan2_5m"].forEach(tier => {
-        const total = formValues.customerShare[tier] + 
-                     formValues.salesAgent[tier] + 
-                     formValues.installerEPC[tier] + 
-                     formValues.financeCompany[tier];
+        const total = parseFloat(calculatePartnerTotal(tier));
         
         if (total > 100) {
           validationErrors.push(`Total exceeds 100% in ${tier} tier`);
@@ -101,7 +102,7 @@ const ResidentialCommissionSetup = ({ onClose }) => {
     }
   };
 
-  const renderPercentageInputs = (title, section, fields) => {
+  const renderPercentageInputs = (title, section, fields, showTotal = false) => {
     return (
       <div className="mb-6">
         <h3 className="font-medium text-[#1E1E1E] text-sm mb-3">{title}</h3>
@@ -121,30 +122,57 @@ const ResidentialCommissionSetup = ({ onClose }) => {
             </div>
           ))}
         </div>
+        {showTotal && (
+          <div className="mt-3 p-2 bg-blue-50 rounded">
+            <div className="grid grid-cols-3 gap-4 text-xs">
+              <div className="flex flex-col">
+                <label className="mb-1 text-gray-600 text-xs">Total ($500k)</label>
+                <div className="py-1 px-2 bg-white rounded border border-gray-300 text-gray-700">
+                  {calculatePartnerTotal("lessThan500k")}%
+                </div>
+              </div>
+              <div className="flex flex-col">
+                <label className="mb-1 text-gray-600 text-xs">Total ($500k-$2.5M)</label>
+                <div className="py-1 px-2 bg-white rounded border border-gray-300 text-gray-700">
+                  {calculatePartnerTotal("between500kTo2_5m")}%
+                </div>
+              </div>
+              <div className="flex flex-col">
+                <label className="mb-1 text-gray-600 text-xs">Total ($2.5M)</label>
+                <div className="py-1 px-2 bg-white rounded border border-gray-300 text-gray-700">
+                  {calculatePartnerTotal("moreThan2_5m")}%
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
 
-  const renderReadOnlySection = (title, values) => {
+  const renderVariableSection = (title, values, isNoReferral = false) => {
     return (
-      <div className="mb-6 p-3 bg-gray-50 rounded">
+      <div className="mb-6 p-3 bg-blue-50 rounded">
         <h3 className="font-medium text-[#1E1E1E] text-sm mb-3">{title}</h3>
+        <p className="text-xs text-gray-600 mb-3">
+          This remainder is automatically calculated to make the total 100%.
+        </p>
         <div className="grid grid-cols-3 gap-4 text-xs">
           <div className="flex flex-col">
             <label className="mb-1 text-gray-600 text-xs">&lt;$500k (%)</label>
-            <div className="py-2 px-3 bg-gray-100 rounded text-gray-700">
+            <div className="py-2 px-3 bg-white rounded border border-gray-300 text-gray-700">
               {values.lessThan500k}
             </div>
           </div>
           <div className="flex flex-col">
             <label className="mb-1 text-gray-600 text-xs">$500k - $2.5M (%)</label>
-            <div className="py-2 px-3 bg-gray-100 rounded text-gray-700">
+            <div className="py-2 px-3 bg-white rounded border border-gray-300 text-gray-700">
               {values.between500kTo2_5m}
             </div>
           </div>
           <div className="flex flex-col">
             <label className="mb-1 text-gray-600 text-xs">&gt;$2.5M (%)</label>
-            <div className="py-2 px-3 bg-gray-100 rounded text-gray-700">
+            <div className="py-2 px-3 bg-white rounded border border-gray-300 text-gray-700">
               {values.moreThan2_5m}
             </div>
           </div>
@@ -223,7 +251,7 @@ const ResidentialCommissionSetup = ({ onClose }) => {
             { key: "lessThan500k", label: "<$500k (%)" },
             { key: "between500kTo2_5m", label: "$500k - $2.5M (%)" },
             { key: "moreThan2_5m", label: ">$2.5M (%)" },
-          ])}
+          ], true)}
 
           <h3 className="font-medium text-[#1E1E1E] text-sm">When Referred by Partner</h3>
           
@@ -245,7 +273,7 @@ const ResidentialCommissionSetup = ({ onClose }) => {
             { key: "moreThan2_5m", label: ">$2.5M (%)" },
           ])}
 
-          {renderReadOnlySection("DCarbon Remainder (Computed)", companyRemainder)}
+          {renderVariableSection("DCarbon Remainder (Variable)", companyRemainder)}
 
           <h3 className="font-medium text-[#1E1E1E] text-sm">When No Referral</h3>
           
@@ -255,7 +283,7 @@ const ResidentialCommissionSetup = ({ onClose }) => {
             { key: "moreThan2_5m", label: ">$2.5M (%)" },
           ])}
 
-          {renderReadOnlySection("DCarbon Remainder (Computed)", noReferralRemainder)}
+          {renderVariableSection("DCarbon Remainder (Variable)", noReferralRemainder, true)}
 
           {renderDurationInputs()}
         </div>

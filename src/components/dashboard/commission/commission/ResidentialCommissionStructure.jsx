@@ -13,10 +13,8 @@ const ResidentialCommissionStructure = ({ onSetupStructure }) => {
       ["Residential (with Partner Referral) – Sales Agent", "1.0", "1.0", "1.0", "15", "2", "—"],
       ["Residential (with Partner Referral) – Installer/EPC", "5.0", "5.0", "5.0", "15", "2", "—"],
       ["Residential (with Partner Referral) – Finance Company", "5.0", "5.0", "5.0", "15", "2", "—"],
-      ["Residential (with Partner Referral) – DCarbon (Remainder)", "39.0", "39.0", "39.0", "15", "2", "—"],
       ["", "", "", "", "", "", ""],
       ["Residential (No Referral) – Customer", "55.0", "55.0", "55.0", "15", "2", "$250"],
-      ["Residential (No Referral) – DCarbon (Remainder)", "45.0", "45.0", "45.0", "15", "2", "—"],
     ],
   };
 
@@ -81,11 +79,20 @@ const ResidentialCommissionStructure = ({ onSetupStructure }) => {
                 ))}
               </tr>
             ))}
+            <tr className="bg-blue-50">
+              <td className="py-3 px-4 text-sm font-medium border-b border-gray-200">Total (Partner Referral)</td>
+              <td className="py-3 px-4 text-sm border-b border-gray-200">61.0%</td>
+              <td className="py-3 px-4 text-sm border-b border-gray-200">61.0%</td>
+              <td className="py-3 px-4 text-sm border-b border-gray-200">61.0%</td>
+              <td className="py-3 px-4 text-sm border-b border-gray-200">-</td>
+              <td className="py-3 px-4 text-sm border-b border-gray-200">-</td>
+              <td className="py-3 px-4 text-sm border-b border-gray-200">-</td>
+            </tr>
           </tbody>
         </table>
       </div>
       <div className="text-xs text-gray-500 mt-2">
-        Company share is auto-calculated as 100 − (Customer + Partner splits) for each tier.
+        Dcarbon remainder is variable and calculated to make total 100% for each revenue tier.
       </div>
     </div>
   );

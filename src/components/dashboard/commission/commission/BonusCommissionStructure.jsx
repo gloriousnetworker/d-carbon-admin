@@ -6,18 +6,30 @@ const BonusCommissionStructure = ({ onSetupStructure }) => {
   const [tableData, setTableData] = useState(null);
 
   const QUARTERLY_COMMERCIAL = {
-    headers: ["<$500k (%)", "$500k - $2.5M (%)", ">$2.5M (%)", "Max Duration (Years)", "Agreement Duration (Years)"],
-    rows: [["1.0", "1.5", "2.0", "3", "1"]]
+    headers: ["MW Threshold", "Bonus (%)", "Max Duration (Years)", "Agreement Duration (Years)"],
+    rows: [
+      ["< 1 MW", "1.0", "3", "1"],
+      ["1 - 5 MW", "1.5", "3", "1"],
+      ["> 5 MW", "2.0", "3", "1"]
+    ]
   };
 
   const QUARTERLY_RESIDENTIAL = {
-    headers: ["<$500k (%)", "$500k - $2.5M (%)", ">$2.5M (%)", "Max Duration (Years)", "Agreement Duration (Years)"],
-    rows: [["0.5", "0.5", "0.5", "2", "1"]]
+    headers: ["Referrals", "Bonus (%)", "Max Duration (Years)", "Agreement Duration (Years)"],
+    rows: [
+      ["5-10 referrals", "0.5", "2", "1"],
+      ["11-20 referrals", "1.0", "2", "1"],
+      [">20 referrals", "1.5", "2", "1"]
+    ]
   };
 
   const ANNUAL_BONUS = {
-    headers: ["<$500k (%)", "$500k - $2.5M (%)", ">$2.5M (%)", "Max Duration (Years)", "Agreement Duration (Years)"],
-    rows: [["1.0", "1.0", "1.0", "5", "1"]]
+    headers: ["MW Threshold", "Bonus (%)", "Max Duration (Years)", "Agreement Duration (Years)"],
+    rows: [
+      ["< 10 MW", "1.0", "5", "1"],
+      ["10 - 50 MW", "1.5", "5", "1"],
+      ["> 50 MW", "2.0", "5", "1"]
+    ]
   };
 
   useEffect(() => {
@@ -86,12 +98,12 @@ const BonusCommissionStructure = ({ onSetupStructure }) => {
         </button>
       </div>
 
-      {renderTable("Quarterly Bonus — Commercial", tableData.QUARTERLY_COMMERCIAL)}
-      {renderTable("Bonus — Residential", tableData.QUARTERLY_RESIDENTIAL)}
-      {renderTable("Annual Bonus", tableData.ANNUAL_BONUS)}
+      {renderTable("Quarterly Bonus — Commercial (MW Based)", tableData.QUARTERLY_COMMERCIAL)}
+      {renderTable("Bonus — Residential (Referral Based)", tableData.QUARTERLY_RESIDENTIAL)}
+      {renderTable("Annual Bonus — Partners (MW Based)", tableData.ANNUAL_BONUS)}
 
       <div className="text-xs text-gray-500 mt-2">
-        Bonuses apply after base commissions and do not affect the Company remainder math.
+        All bonuses are based on megawatts (MW) generated or number of referrals, not dollar amounts.
       </div>
     </div>
   );

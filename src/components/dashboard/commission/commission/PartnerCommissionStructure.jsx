@@ -19,11 +19,10 @@ const PartnerCommissionStructure = ({ onSetupStructure }) => {
     rows: [
       ["Finance Company", "3.0", "2.0", "1.5", "15", "2"],
       ["Installer / EPC", "2.0", "2.0", "1.0", "15", "2"],
-      ["Dcarbon and Customer (Remainder)", "95.0", "96.0", "97.5", "15", "2"],
     ],
   };
 
-  const renderTable = (data) => (
+  const renderTable = (data, showTotal = false) => (
     <div className="w-full overflow-auto rounded-lg border border-gray-200 mt-4">
       <table className="w-full">
         <thead>
@@ -56,6 +55,16 @@ const PartnerCommissionStructure = ({ onSetupStructure }) => {
               ))}
             </tr>
           ))}
+          {showTotal && (
+            <tr className="bg-blue-50">
+              <td className="py-3 px-4 text-sm font-medium border-b border-gray-200">Total</td>
+              <td className="py-3 px-4 text-sm border-b border-gray-200">5.0%</td>
+              <td className="py-3 px-4 text-sm border-b border-gray-200">5.0%</td>
+              <td className="py-3 px-4 text-sm border-b border-gray-200">3.25%</td>
+              <td className="py-3 px-4 text-sm border-b border-gray-200">-</td>
+              <td className="py-3 px-4 text-sm border-b border-gray-200">-</td>
+            </tr>
+          )}
         </tbody>
       </table>
     </div>
@@ -117,8 +126,9 @@ const PartnerCommissionStructure = ({ onSetupStructure }) => {
           <p className="text-xs text-gray-500 mb-4">
             Customer & other partner splits (if any) are configured in Commercial/Residential. 
             This table only defines the Finance–EPC split taken from Company share for this scenario.
+            Dcarbon remainder is variable and calculated to make total 100%.
           </p>
-          {renderTable(EPC_ASSISTED_DATA)}
+          {renderTable(EPC_ASSISTED_DATA, true)}
         </div>
       )}
     </div>

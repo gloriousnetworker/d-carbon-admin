@@ -22,10 +22,17 @@ const PartnerCommissionSetup = ({ onClose }) => {
     notes: ""
   });
 
-  const calculateEpcRemainder = (tier) => {
+  const calculateEpcTotal = (tier) => {
     const finance = epcForm.financeCompany[tier];
     const epc = epcForm.installerEPC[tier];
-    return (100 - (finance + epc)).toFixed(1);
+    return (finance + epc).toFixed(1);
+  };
+
+  const calculateSalesAgentTotal = (tier) => {
+    const salesAgent = salesAgentForm.salesAgent[tier];
+    const installer = salesAgentForm.installerEPC[tier];
+    const finance = salesAgentForm.financeCompany[tier];
+    return (salesAgent + installer + finance).toFixed(1);
   };
 
   const handleSalesAgentInput = (section, field, value) => {
@@ -68,10 +75,15 @@ const PartnerCommissionSetup = ({ onClose }) => {
           if (salesAgentForm.financeCompany[tier] > 100 || salesAgentForm.financeCompany[tier] < 0) {
             validationErrors.push(`Finance Company ${tier} must be between 0-100%`);
           }
+          
+          const total = parseFloat(calculateSalesAgentTotal(tier));
+          if (total > 100) {
+            validationErrors.push(`Total exceeds 100% in ${tier} tier`);
+          }
         });
       } else {
         ["lessThan500k", "between500kTo2_5m", "moreThan2_5m"].forEach(tier => {
-          const total = epcForm.financeCompany[tier] + epcForm.installerEPC[tier];
+          const total = parseFloat(calculateEpcTotal(tier));
           if (total > 100) {
             validationErrors.push(`Total exceeds 100% in ${tier} tier`);
           }
@@ -96,7 +108,7 @@ const PartnerCommissionSetup = ({ onClose }) => {
     }
   };
 
-  const renderPercentageInputs = (title, section, fields, form, onChange) => (
+  const renderPercentageInputs = (title, section, fields, form, onChange, showTotal = false, totalCalculator = null) => (
     <div className="mb-6">
       <h3 className="font-medium text-[#1E1E1E] text-sm mb-3">{title}</h3>
       <div className="grid grid-cols-4 gap-4 text-xs">
@@ -115,6 +127,36 @@ const PartnerCommissionSetup = ({ onClose }) => {
           </div>
         ))}
       </div>
+      {showTotal && totalCalculator && (
+        <div className="mt-3 p-2 bg-blue-50 rounded">
+          <div className="grid grid-cols-4 gap-4 text-xs">
+            <div className="flex flex-col">
+              <label className="mb-1 text-gray-600 text-xs">Total ($500k)</label>
+              <div className="py-1 px-2 bg-white rounded border border-gray-300 text-gray-700">
+                {totalCalculator("lessThan500k")}%
+              </div>
+            </div>
+            <div className="flex flex-col">
+              <label className="mb-1 text-gray-600 text-xs">Total ($500k-$2.5M)</label>
+              <div className="py-1 px-2 bg-white rounded border border-gray-300 text-gray-700">
+                {totalCalculator("between500kTo2_5m")}%
+              </div>
+            </div>
+            <div className="flex flex-col">
+              <label className="mb-1 text-gray-600 text-xs">Total ($2.5M)</label>
+              <div className="py-1 px-2 bg-white rounded border border-gray-300 text-gray-700">
+                {totalCalculator("moreThan2_5m")}%
+              </div>
+            </div>
+            <div className="flex flex-col">
+              <label className="mb-1 text-gray-600 text-xs">Remaining</label>
+              <div className="py-1 px-2 bg-white rounded border border-gray-300 text-gray-700">
+                {fields[0].key === "annualCap" ? "-" : `${(100 - parseFloat(totalCalculator("lessThan500k"))).toFixed(1)}%`}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -125,7 +167,7 @@ const PartnerCommissionSetup = ({ onClose }) => {
         { key: "between500kTo2_5m", label: "$500k - $2.5M (%)" },
         { key: "moreThan2_5m", label: ">$2.5M (%)" },
         { key: "annualCap", label: "Annual Cap ($)" }
-      ], salesAgentForm, handleSalesAgentInput)}
+      ], salesAgentForm, handleSalesAgentInput, true, calculateSalesAgentTotal)}
 
       {renderPercentageInputs("Installer/EPC Commission", "installerEPC", [
         { key: "lessThan500k", label: "<$500k (%)" },
@@ -154,19 +196,13 @@ const PartnerCommissionSetup = ({ onClose }) => {
   );
 
   const renderEpcAssisted = () => {
-    const remainder = {
-      lessThan500k: calculateEpcRemainder("lessThan500k"),
-      between500kTo2_5m: calculateEpcRemainder("between500kTo2_5m"),
-      moreThan2_5m: calculateEpcRemainder("moreThan2_5m"),
-    };
-
     return (
       <div className="space-y-4">
         {renderPercentageInputs("Finance Company Share", "financeCompany", [
           { key: "lessThan500k", label: "<$500k (%)" },
           { key: "between500kTo2_5m", label: "$500k - $2.5M (%)" },
           { key: "moreThan2_5m", label: ">$2.5M (%)" }
-        ], epcForm, handleEpcInput)}
+        ], epcForm, handleEpcInput, true, calculateEpcTotal)}
 
         {renderPercentageInputs("Installer/EPC Share", "installerEPC", [
           { key: "lessThan500k", label: "<$500k (%)" },
@@ -174,20 +210,29 @@ const PartnerCommissionSetup = ({ onClose }) => {
           { key: "moreThan2_5m", label: ">$2.5M (%)" }
         ], epcForm, handleEpcInput)}
 
-        <div className="mb-6 p-3 bg-gray-50 rounded">
-          <h3 className="font-medium text-[#1E1E1E] text-sm mb-3">Dcarbon and Customer Remainder (Computed)</h3>
+        <div className="mb-6 p-3 bg-blue-50 rounded">
+          <h3 className="font-medium text-[#1E1E1E] text-sm mb-3">Dcarbon and Customer Remainder (Variable)</h3>
+          <p className="text-xs text-gray-600 mb-3">
+            This remainder is automatically calculated to make the total 100% and varies based on the referral scenario.
+          </p>
           <div className="grid grid-cols-3 gap-4 text-xs">
             <div className="flex flex-col">
               <label className="mb-1 text-gray-600 text-xs">&lt;$500k (%)</label>
-              <div className="py-2 px-3 bg-gray-100 rounded text-gray-700">{remainder.lessThan500k}</div>
+              <div className="py-2 px-3 bg-white rounded border border-gray-300 text-gray-700">
+                {(100 - calculateEpcTotal("lessThan500k")).toFixed(1)}
+              </div>
             </div>
             <div className="flex flex-col">
               <label className="mb-1 text-gray-600 text-xs">$500k - $2.5M (%)</label>
-              <div className="py-2 px-3 bg-gray-100 rounded text-gray-700">{remainder.between500kTo2_5m}</div>
+              <div className="py-2 px-3 bg-white rounded border border-gray-300 text-gray-700">
+                {(100 - calculateEpcTotal("between500kTo2_5m")).toFixed(1)}
+              </div>
             </div>
             <div className="flex flex-col">
               <label className="mb-1 text-gray-600 text-xs">&gt;$2.5M (%)</label>
-              <div className="py-2 px-3 bg-gray-100 rounded text-gray-700">{remainder.moreThan2_5m}</div>
+              <div className="py-2 px-3 bg-white rounded border border-gray-300 text-gray-700">
+                {(100 - calculateEpcTotal("moreThan2_5m")).toFixed(1)}
+              </div>
             </div>
           </div>
         </div>
