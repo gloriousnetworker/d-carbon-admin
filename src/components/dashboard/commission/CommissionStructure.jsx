@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import CommercialCommissionStructure from "./commission/CommercialCommissionStructure";
 import ResidentialCommissionStructure from "./commission/ResidentialCommissionStructure";
 import PartnerCommissionStructure from "./commission/PartnerCommissionStructure";
+import SalesAgentCommissionStructure from "./commission/SalesAgentCommissionStructure";
 import BonusCommissionStructure from "./commission/BonusCommissionStructure";
 import CommissionSummary from "./commission/CommissionSummary";
 import VersioningAndAudit from "./commission/VersioningAndAudit";
@@ -10,6 +11,7 @@ import ValidationRules from "./commission/ValidationRules";
 import CommercialCommissionSetup from "./setupModals/CommercialCommissionSetup";
 import ResidentialCommissionSetup from "./setupModals/ResidentialCommissionSetup";
 import PartnerCommissionSetup from "./setupModals/PartnerCommissionSetup";
+import SalesAgentCommissionSetup from "./setupModals/SalesAgentCommissionSetup";
 import BonusCommissionSetup from "./setupModals/BonusCommissionSetup";
 import { Toaster } from "react-hot-toast";
 
@@ -18,6 +20,7 @@ const CommissionStructure = () => {
   const [showCommercialSetup, setShowCommercialSetup] = useState(false);
   const [showResidentialSetup, setShowResidentialSetup] = useState(false);
   const [showPartnerSetup, setShowPartnerSetup] = useState(false);
+  const [showSalesAgentSetup, setShowSalesAgentSetup] = useState(false);
   const [showBonusSetup, setShowBonusSetup] = useState(false);
 
   const handleCommercialSetup = () => setShowCommercialSetup(true);
@@ -26,6 +29,8 @@ const CommissionStructure = () => {
   const handleCloseResidentialSetup = () => setShowResidentialSetup(false);
   const handlePartnerSetup = () => setShowPartnerSetup(true);
   const handleClosePartnerSetup = () => setShowPartnerSetup(false);
+  const handleSalesAgentSetup = () => setShowSalesAgentSetup(true);
+  const handleCloseSalesAgentSetup = () => setShowSalesAgentSetup(false);
   const handleBonusSetup = () => setShowBonusSetup(true);
   const handleCloseBonusSetup = () => setShowBonusSetup(false);
 
@@ -40,6 +45,9 @@ const CommissionStructure = () => {
       )}
       {showPartnerSetup && (
         <PartnerCommissionSetup onClose={handleClosePartnerSetup} />
+      )}
+      {showSalesAgentSetup && (
+        <SalesAgentCommissionSetup onClose={handleCloseSalesAgentSetup} />
       )}
       {showBonusSetup && (
         <BonusCommissionSetup onClose={handleCloseBonusSetup} />
@@ -77,6 +85,16 @@ const CommissionStructure = () => {
                 onClick={() => setActiveTab("Partner")}
               >
                 Partner
+              </button>
+              <button
+                className={`px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
+                  activeTab === "SalesAgent"
+                    ? "text-[#039994] border-[#039994]"
+                    : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
+                }`}
+                onClick={() => setActiveTab("SalesAgent")}
+              >
+                Sales Agent
               </button>
               <button
                 className={`px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
@@ -130,6 +148,9 @@ const CommissionStructure = () => {
             )}
             {activeTab === "Partner" && (
               <PartnerCommissionStructure onSetupStructure={handlePartnerSetup} />
+            )}
+            {activeTab === "SalesAgent" && (
+              <SalesAgentCommissionStructure onSetupStructure={handleSalesAgentSetup} />
             )}
             {activeTab === "Bonus" && (
               <BonusCommissionStructure onSetupStructure={handleBonusSetup} />
