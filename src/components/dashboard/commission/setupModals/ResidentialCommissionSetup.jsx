@@ -11,11 +11,6 @@ const ResidentialCommissionSetup = ({ onClose }) => {
       between500kTo2_5m: 50.0,
       moreThan2_5m: 50.0,
     },
-    salesAgent: {
-      lessThan500k: 1.0,
-      between500kTo2_5m: 1.0,
-      moreThan2_5m: 1.0,
-    },
     installerEPC: {
       lessThan500k: 5.0,
       between500kTo2_5m: 5.0,
@@ -42,11 +37,10 @@ const ResidentialCommissionSetup = ({ onClose }) => {
 
   const calculatePartnerTotal = (tier) => {
     const customer = formValues.customerShare[tier];
-    const salesAgent = formValues.salesAgent[tier];
     const installerEPC = formValues.installerEPC[tier];
     const financeCompany = formValues.financeCompany[tier];
     
-    return (customer + salesAgent + installerEPC + financeCompany).toFixed(1);
+    return (customer + installerEPC + financeCompany).toFixed(1);
   };
 
   const calculateCompanyRemainder = (tier) => {
@@ -255,12 +249,6 @@ const ResidentialCommissionSetup = ({ onClose }) => {
 
           <h3 className="font-medium text-[#1E1E1E] text-sm">When Referred by Partner</h3>
           
-          {renderPercentageInputs("Sales Agent", "salesAgent", [
-            { key: "lessThan500k", label: "<$500k (%)" },
-            { key: "between500kTo2_5m", label: "$500k - $2.5M (%)" },
-            { key: "moreThan2_5m", label: ">$2.5M (%)" },
-          ])}
-
           {renderPercentageInputs("Installer / EPC", "installerEPC", [
             { key: "lessThan500k", label: "<$500k (%)" },
             { key: "between500kTo2_5m", label: "$500k - $2.5M (%)" },

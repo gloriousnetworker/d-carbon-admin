@@ -10,7 +10,6 @@ const CommercialCommissionStructure = ({ onSetupStructure }) => {
     headers: ["Party Type", "<$500k (%)", "$500k - $2.5M (%)", ">$2.5M (%)", "Max Duration (Years)", "Agreement Duration (Years)", "Cancellation Fee"],
     rows: [
       ["Commercial (with Partner Referral) – Customer/Facility", "50.0", "60.0", "70.0", "15", "2", "$500"],
-      ["Commercial (with Partner Referral) – Sales Agent", "2.5", "2.5", "2.5", "15", "2", "—"],
       ["Commercial (with Partner Referral) – Installer/EPC", "10.0", "10.0", "10.0", "15", "2", "—"],
       ["Commercial (with Partner Referral) – Finance Company", "10.0", "10.0", "10.0", "15", "2", "—"],
       ["", "", "", "", "", "", ""],
@@ -81,9 +80,9 @@ const CommercialCommissionStructure = ({ onSetupStructure }) => {
             ))}
             <tr className="bg-blue-50">
               <td className="py-3 px-4 text-sm font-medium border-b border-gray-200">Total (Partner Referral)</td>
-              <td className="py-3 px-4 text-sm border-b border-gray-200">72.5%</td>
-              <td className="py-3 px-4 text-sm border-b border-gray-200">82.5%</td>
-              <td className="py-3 px-4 text-sm border-b border-gray-200">92.5%</td>
+              <td className="py-3 px-4 text-sm border-b border-gray-200">70.0%</td>
+              <td className="py-3 px-4 text-sm border-b border-gray-200">80.0%</td>
+              <td className="py-3 px-4 text-sm border-b border-gray-200">90.0%</td>
               <td className="py-3 px-4 text-sm border-b border-gray-200">-</td>
               <td className="py-3 px-4 text-sm border-b border-gray-200">-</td>
               <td className="py-3 px-4 text-sm border-b border-gray-200">-</td>
