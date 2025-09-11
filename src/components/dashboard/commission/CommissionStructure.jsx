@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import CommercialCommissionStructure from "./commission/CommercialCommissionStructure";
 import ResidentialCommissionStructure from "./commission/ResidentialCommissionStructure";
 import PartnerCommissionStructure from "./commission/PartnerCommissionStructure";
-import SalesAgentCommissionStructure from "./commission/SalesAgentCommissionStructure";
+import AccountLevelBasedCommissionStructure from "./commission/AccountLevelBasedReferralCommissionStructure";
 import BonusCommissionStructure from "./commission/BonusCommissionStructure";
 import CommissionSummary from "./commission/CommissionSummary";
 import VersioningAndAudit from "./commission/VersioningAndAudit";
@@ -11,7 +11,7 @@ import ValidationRules from "./commission/ValidationRules";
 import CommercialCommissionSetup from "./setupModals/CommercialCommissionSetup";
 import ResidentialCommissionSetup from "./setupModals/ResidentialCommissionSetup";
 import PartnerCommissionSetup from "./setupModals/PartnerCommissionSetup";
-import SalesAgentCommissionSetup from "./setupModals/SalesAgentCommissionSetup";
+import AccountLevelBasedCommissionSetup from "./setupModals/AccountLevelBasedReferralCommissionStructure";
 import BonusCommissionSetup from "./setupModals/BonusCommissionSetup";
 import { Toaster } from "react-hot-toast";
 
@@ -47,7 +47,7 @@ const CommissionStructure = () => {
         <PartnerCommissionSetup onClose={handleClosePartnerSetup} />
       )}
       {showSalesAgentSetup && (
-        <SalesAgentCommissionSetup onClose={handleCloseSalesAgentSetup} />
+        <AccountLevelBasedCommissionSetup onClose={handleCloseSalesAgentSetup} />
       )}
       {showBonusSetup && (
         <BonusCommissionSetup onClose={handleCloseBonusSetup} />
@@ -94,7 +94,7 @@ const CommissionStructure = () => {
                 }`}
                 onClick={() => setActiveTab("SalesAgent")}
               >
-                Sales Agent
+                Account Level Based Referral Commission Structure
               </button>
               <button
                 className={`px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
@@ -150,7 +150,7 @@ const CommissionStructure = () => {
               <PartnerCommissionStructure onSetupStructure={handlePartnerSetup} />
             )}
             {activeTab === "SalesAgent" && (
-              <SalesAgentCommissionStructure onSetupStructure={handleSalesAgentSetup} />
+              <AccountLevelBasedCommissionStructure onSetupStructure={handleSalesAgentSetup} />
             )}
             {activeTab === "Bonus" && (
               <BonusCommissionStructure onSetupStructure={handleBonusSetup} />

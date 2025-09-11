@@ -2,26 +2,35 @@
 import React, { useState, useEffect } from "react";
 import { IoSettingsSharp } from "react-icons/io5";
 
-const SalesAgentCommissionStructure = ({ onSetupStructure }) => {
+const AccountLevelBasedCommissionStructure = ({ onSetupStructure }) => {
   const [activeSubTab, setActiveSubTab] = useState("commercial");
   
   const COMMERCIAL_DATA = {
     headers: ["Referrer Type", "<$500k (%)", "$500k - $2.5M (%)", ">$2.5M (%)", "Annual Cap ($)"],
     rows: [
-      ["Sales Agent", "2.0", "2.5", "3.0", "50,000"],
-      ["Commercial User", "5.0", "5.5", "6.0", "100,000"],
+      ["Commercial → Commercial", "5.0", "5.5", "6.0", "100,000"],
+      ["Commercial → Residential", "3.0", "3.5", "4.0", "50,000"],
     ],
   };
 
   const RESIDENTIAL_DATA = {
     headers: ["Referrer Type", "<$500k (%)", "$500k - $2.5M (%)", ">$2.5M (%)", "Annual Cap ($)"],
     rows: [
-      ["Sales Agent", "1.5", "2.0", "2.5", "25,000"],
-      ["Residential User", "3.0", "3.5", "4.0", "50,000"],
+      ["Residential → Commercial", "4.0", "4.5", "5.0", "75,000"],
+      ["Residential → Residential", "3.0", "3.5", "4.0", "50,000"],
     ],
   };
 
-  const renderTable = (data) => (
+  const SALES_AGENT_DATA = {
+    headers: ["Referrer Type", "<$500k (%)", "$500k - $2.5M (%)", ">$2.5M (%)", "Annual Cap ($)"],
+    rows: [
+      ["Sales Agent → Commercial", "2.0", "2.5", "3.0", "50,000"],
+      ["Sales Agent → Residential", "1.5", "2.0", "2.5", "25,000"],
+      ["Sales Agent → Sales Agent", "1.0", "1.5", "2.0", "20,000"],
+    ],
+  };
+
+  const renderTable = (data, type) => (
     <div className="w-full overflow-auto rounded-lg border border-gray-200 mt-4">
       <table className="w-full">
         <thead>
@@ -54,32 +63,23 @@ const SalesAgentCommissionStructure = ({ onSetupStructure }) => {
               ))}
             </tr>
           ))}
-          <tr className="bg-blue-50">
-            <td className="py-3 px-4 text-sm font-medium border-b border-gray-200">Total Allocation</td>
-            <td className="py-3 px-4 text-sm border-b border-gray-200">
-              {activeSubTab === "commercial" ? "7.0%" : "4.5%"}
-            </td>
-            <td className="py-3 px-4 text-sm border-b border-gray-200">
-              {activeSubTab === "commercial" ? "8.0%" : "5.5%"}
-            </td>
-            <td className="py-3 px-4 text-sm border-b border-gray-200">
-              {activeSubTab === "commercial" ? "9.0%" : "6.5%"}
-            </td>
-            <td className="py-3 px-4 text-sm border-b border-gray-200">-</td>
-          </tr>
-          <tr className="bg-green-50">
-            <td className="py-3 px-4 text-sm font-medium border-b border-gray-200">Decarbon Remainder</td>
-            <td className="py-3 px-4 text-sm border-b border-gray-200">
-              {activeSubTab === "commercial" ? "93.0%" : "95.5%"}
-            </td>
-            <td className="py-3 px-4 text-sm border-b border-gray-200">
-              {activeSubTab === "commercial" ? "92.0%" : "94.5%"}
-            </td>
-            <td className="py-3 px-4 text-sm border-b border-gray-200">
-              {activeSubTab === "commercial" ? "91.0%" : "93.5%"}
-            </td>
-            <td className="py-3 px-4 text-sm border-b border-gray-200">-</td>
-          </tr>
+          {data.rows.map((row, rowIndex) => (
+            <tr key={`remainder-${rowIndex}`} className="bg-green-50">
+              <td className="py-3 px-4 text-sm font-medium border-b border-gray-200">
+                DCarbon Remainder ({row[0].split("→")[1].trim()})
+              </td>
+              <td className="py-3 px-4 text-sm border-b border-gray-200">
+                {(100 - parseFloat(row[1])).toFixed(1)}%
+              </td>
+              <td className="py-3 px-4 text-sm border-b border-gray-200">
+                {(100 - parseFloat(row[2])).toFixed(1)}%
+              </td>
+              <td className="py-3 px-4 text-sm border-b border-gray-200">
+                {(100 - parseFloat(row[3])).toFixed(1)}%
+              </td>
+              <td className="py-3 px-4 text-sm border-b border-gray-200">-</td>
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>
@@ -89,7 +89,7 @@ const SalesAgentCommissionStructure = ({ onSetupStructure }) => {
     <div className="w-full">
       <div className="flex items-center justify-between pb-4">
         <h2 className="text-[#039994] font-semibold text-lg">
-          Sales Agent Commission Structure
+          Account Level Based Commission Structure
         </h2>
         <button
           className="flex items-center bg-[#039994] text-white px-4 py-2 rounded-full text-sm hover:bg-[#028B86] transition-colors"
@@ -122,6 +122,16 @@ const SalesAgentCommissionStructure = ({ onSetupStructure }) => {
           >
             Residential Referrals
           </button>
+          <button
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeSubTab === "sales-agent"
+                ? "text-[#039994] border-[#039994]"
+                : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
+            }`}
+            onClick={() => setActiveSubTab("sales-agent")}
+          >
+            Sales Agent Referrals
+          </button>
         </div>
       </div>
 
@@ -129,9 +139,9 @@ const SalesAgentCommissionStructure = ({ onSetupStructure }) => {
         <div>
           <h3 className="text-[#039994] font-medium mb-2">Commercial Account Referrals</h3>
           <p className="text-xs text-gray-500 mb-4">
-            Commission structure for sales agents and commercial users who refer commercial accounts.
+            Commission structure for commercial users who refer other commercial or residential accounts.
           </p>
-          {renderTable(COMMERCIAL_DATA)}
+          {renderTable(COMMERCIAL_DATA, "commercial")}
         </div>
       )}
 
@@ -139,9 +149,19 @@ const SalesAgentCommissionStructure = ({ onSetupStructure }) => {
         <div>
           <h3 className="text-[#039994] font-medium mb-2">Residential Account Referrals</h3>
           <p className="text-xs text-gray-500 mb-4">
-            Commission structure for sales agents and residential users who refer residential accounts.
+            Commission structure for residential users who refer other commercial or residential accounts.
           </p>
-          {renderTable(RESIDENTIAL_DATA)}
+          {renderTable(RESIDENTIAL_DATA, "residential")}
+        </div>
+      )}
+
+      {activeSubTab === "sales-agent" && (
+        <div>
+          <h3 className="text-[#039994] font-medium mb-2">Sales Agent Referrals</h3>
+          <p className="text-xs text-gray-500 mb-4">
+            Commission structure for sales agents who refer commercial, residential, or other sales agent accounts.
+          </p>
+          {renderTable(SALES_AGENT_DATA, "sales-agent")}
         </div>
       )}
 
@@ -152,4 +172,4 @@ const SalesAgentCommissionStructure = ({ onSetupStructure }) => {
   );
 };
 
-export default SalesAgentCommissionStructure;
+export default AccountLevelBasedCommissionStructure;
