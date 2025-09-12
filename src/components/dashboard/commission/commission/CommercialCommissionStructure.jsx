@@ -7,19 +7,15 @@ const CommercialCommissionStructure = ({ onSetupStructure }) => {
   const [tableData, setTableData] = useState(null);
 
   const STATIC_DATA = {
-    headers: ["Scenario", "Customer Referrer (%)", "Installer/EPC (%)", "Finance Company (%)", "DCarbon Remainder (%)", "Max Duration (Years)", "Agreement Duration (Years)", "Cancellation Fee"],
+    headers: ["Party Type", "<$500k (%)", "$500k - $2.5M (%)", ">$2.5M (%)", "Max Duration (Years)", "Agreement Duration (Years)", "Cancellation Fee"],
     rows: [
-      ["Customer Referred by Partner", "—", "—", "—", "—", "—", "—", "—"],
-      ["• Customer only", "10.0", "—", "—", "90.0", "15", "2", "$500"],
-      ["• Installer/EPC only", "—", "10.0", "—", "90.0", "15", "2", "$500"],
-      ["• Finance Company only", "—", "—", "10.0", "90.0", "15", "2", "$500"],
-      ["• Customer + Installer/EPC", "10.0", "10.0", "—", "80.0", "15", "2", "$500"],
-      ["• Customer + Finance Company", "10.0", "—", "10.0", "80.0", "15", "2", "$500"],
-      ["• Installer/EPC + Finance Company", "—", "10.0", "10.0", "80.0", "15", "2", "$500"],
-      ["• All Three Partners", "10.0", "10.0", "10.0", "70.0", "15", "2", "$500"],
-      ["", "", "", "", "", "", "", ""],
-      ["No Referral (Direct)", "—", "—", "—", "—", "—", "—", "—"],
-      ["• Customer Direct Registration", "0.0", "—", "—", "100.0", "15", "2", "$500"],
+      ["Commercial Facility Share with Partner Referral", "50.0", "50.0", "50.0", "15", "2", "$500"],
+      ["When referred by Installer/EPC", "5.0", "5.0", "5.0", "15", "2", "—"],
+      ["When referred by Finance Company", "5.0", "5.0", "5.0", "15", "2", "—"],
+      ["DCarbon Remainder", "45:45", "45:45", "45:45", "15", "2", "—"],
+      ["", "", "", "", "", "", ""],
+      ["Commercial Facility Share (No Referral)", "55.0", "55.0", "55.0", "15", "2", "$500"],
+      ["DCarbon Remainder (No Referral)", "45.0", "45.0", "45.0", "15", "2", "—"],
     ],
   };
 
@@ -52,15 +48,6 @@ const CommercialCommissionStructure = ({ onSetupStructure }) => {
         </button>
       </div>
 
-      <div className="bg-blue-50 p-4 rounded-lg mb-4">
-        <h3 className="font-medium text-[#039994] mb-2">Commission Structure Explanation</h3>
-        <div className="text-sm text-gray-700 space-y-1">
-          <p><strong>Partner Referral Scenarios:</strong> When customers are referred by partners, commissions are shared based on who is involved in the submission process.</p>
-          <p><strong>Direct Registration:</strong> When commercial users register directly without any referral, DCarbon retains 100% of the revenue.</p>
-          <p><strong>DCarbon Remainder:</strong> Automatically calculated as (100% - total partner commissions) to ensure total equals 100%.</p>
-        </div>
-      </div>
-
       <div className="w-full overflow-auto rounded-lg border border-gray-200">
         <table className="w-full">
           <thead>
@@ -68,7 +55,7 @@ const CommercialCommissionStructure = ({ onSetupStructure }) => {
               {headers.map((header, index) => (
                 <th
                   key={index}
-                  className="text-left py-3 px-4 font-medium text-sm text-black border-b border-gray-200 min-w-[120px]"
+                  className="text-left py-3 px-4 font-medium text-sm text-black border-b border-gray-200"
                 >
                   {header}
                 </th>
@@ -76,44 +63,38 @@ const CommercialCommissionStructure = ({ onSetupStructure }) => {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, rowIndex) => {
-              const isHeaderRow = row[0].includes("Customer Referred by Partner") || row[0].includes("No Referral (Direct)");
-              const isEmptyRow = row[0] === "";
-              
-              return (
-                <tr 
-                  key={rowIndex} 
-                  className={
-                    isHeaderRow 
-                      ? "bg-[#039994] text-white" 
-                      : isEmptyRow 
-                      ? "bg-white" 
-                      : rowIndex % 2 === 0 
-                      ? "bg-white hover:bg-gray-50" 
-                      : "bg-gray-50 hover:bg-gray-100"
-                  }
-                >
-                  {row.map((cell, cellIndex) => (
-                    <td
-                      key={cellIndex}
-                      className={`py-3 px-4 text-sm border-b border-gray-200 ${
-                        cellIndex === 0 ? "font-medium" : ""
-                      } ${isHeaderRow ? "text-white font-semibold" : ""}`}
-                    >
-                      {cell}
-                    </td>
-                  ))}
-                </tr>
-              );
-            })}
+            {rows.map((row, rowIndex) => (
+              <tr 
+                key={rowIndex} 
+                className={rowIndex % 2 === 0 ? "bg-white" : "bg-gray-50 hover:bg-gray-100"}
+              >
+                {row.map((cell, cellIndex) => (
+                  <td
+                    key={cellIndex}
+                    className={`py-3 px-4 text-sm border-b border-gray-200 ${
+                      cellIndex === 0 ? "font-medium" : ""
+                    }`}
+                  >
+                    {cell.includes(":") ? (
+                      <div className="group relative inline-block">
+                        <span className="cursor-help">{cell}</span>
+                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap z-10">
+                          Installer: 100 - 50 - 5 = 45<br/>
+                          Finance: 100 - 50 - 5 = 45
+                        </div>
+                      </div>
+                    ) : (
+                      cell
+                    )}
+                  </td>
+                ))}
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
-      
-      <div className="text-xs text-gray-500 mt-2 space-y-1">
-        <p>• All commission percentages are fixed across revenue tiers for simplicity.</p>
-        <p>• DCarbon remainder is automatically calculated to ensure total equals 100%.</p>
-        <p>• Partner combinations determine final commission distribution.</p>
+      <div className="text-xs text-gray-500 mt-2">
+        DCarbon remainder is variable and calculated to make total 100% for each revenue tier.
       </div>
     </div>
   );

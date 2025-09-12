@@ -9,31 +9,18 @@ const PartnerCommissionSetup = ({ onClose }) => {
   const [updating, setUpdating] = useState(false);
 
   const [salesAgentForm, setSalesAgentForm] = useState({
-    salesAgent: { lessThan500k: 0.5, between500kTo2_5m: 0.5, moreThan2_5m: 0.75, annualCap: 25000 },
-    installerEPC: { lessThan500k: 1.0, between500kTo2_5m: 1.0, moreThan2_5m: 1.0, annualCap: 50000 },
-    financeCompany: { lessThan500k: 1.0, between500kTo2_5m: 1.0, moreThan2_5m: 1.0, annualCap: 50000 },
+    salesAgentToSalesAgent: { lessThan500k: 0.5, between500kTo2_5m: 0.5, moreThan2_5m: 0.75, annualCap: 25000 },
+    salesAgentToInstaller: { lessThan500k: 1.0, between500kTo2_5m: 1.0, moreThan2_5m: 1.0, annualCap: 50000 },
+    salesAgentToFinance: { lessThan500k: 1.0, between500kTo2_5m: 1.0, moreThan2_5m: 1.0, annualCap: 50000 },
     notes: ""
   });
 
   const [epcForm, setEpcForm] = useState({
-    financeCompany: { lessThan500k: 3.0, between500kTo2_5m: 2.0, moreThan2_5m: 1.5 },
-    installerEPC: { lessThan500k: 2.0, between500kTo2_5m: 2.0, moreThan2_5m: 1.0 },
+    financeCompany: { lessThan500k: 60.0, between500kTo2_5m: 50.0, moreThan2_5m: 45.5 },
+    installerEPC: { lessThan500k: 40.0, between500kTo2_5m: 50.0, moreThan2_5m: 55.0 },
     durations: { maxDuration: 15, agreementDuration: 2 },
     notes: ""
   });
-
-  const calculateEpcTotal = (tier) => {
-    const finance = epcForm.financeCompany[tier];
-    const epc = epcForm.installerEPC[tier];
-    return (finance + epc).toFixed(1);
-  };
-
-  const calculateSalesAgentTotal = (tier) => {
-    const salesAgent = salesAgentForm.salesAgent[tier];
-    const installer = salesAgentForm.installerEPC[tier];
-    const finance = salesAgentForm.financeCompany[tier];
-    return (salesAgent + installer + finance).toFixed(1);
-  };
 
   const handleSalesAgentInput = (section, field, value) => {
     setSalesAgentForm(prev => ({
@@ -43,10 +30,28 @@ const PartnerCommissionSetup = ({ onClose }) => {
   };
 
   const handleEpcInput = (section, field, value) => {
-    setEpcForm(prev => ({
-      ...prev,
-      [section]: { ...prev[section], [field]: parseFloat(value) || 0 },
-    }));
+    const numValue = parseFloat(value) || 0;
+    
+    if (section === "financeCompany") {
+      const remaining = 100 - numValue;
+      setEpcForm(prev => ({
+        ...prev,
+        financeCompany: { ...prev.financeCompany, [field]: numValue },
+        installerEPC: { ...prev.installerEPC, [field]: remaining }
+      }));
+    } else if (section === "installerEPC") {
+      const remaining = 100 - numValue;
+      setEpcForm(prev => ({
+        ...prev,
+        installerEPC: { ...prev.installerEPC, [field]: numValue },
+        financeCompany: { ...prev.financeCompany, [field]: remaining }
+      }));
+    } else {
+      setEpcForm(prev => ({
+        ...prev,
+        [section]: { ...prev[section], [field]: numValue },
+      }));
+    }
   };
 
   const handleTextArea = (section, value) => {
@@ -66,26 +71,23 @@ const PartnerCommissionSetup = ({ onClose }) => {
       
       if (activeTab === "salesAgentUpline") {
         ["lessThan500k", "between500kTo2_5m", "moreThan2_5m"].forEach(tier => {
-          if (salesAgentForm.salesAgent[tier] > 100 || salesAgentForm.salesAgent[tier] < 0) {
-            validationErrors.push(`Sales Agent ${tier} must be between 0-100%`);
+          if (salesAgentForm.salesAgentToSalesAgent[tier] > 100 || salesAgentForm.salesAgentToSalesAgent[tier] < 0) {
+            validationErrors.push(`Sales Agent to Sales Agent ${tier} must be between 0-100%`);
           }
-          if (salesAgentForm.installerEPC[tier] > 100 || salesAgentForm.installerEPC[tier] < 0) {
-            validationErrors.push(`Installer/EPC ${tier} must be between 0-100%`);
+          if (salesAgentForm.salesAgentToInstaller[tier] > 100 || salesAgentForm.salesAgentToInstaller[tier] < 0) {
+            validationErrors.push(`Sales Agent to Installer ${tier} must be between 0-100%`);
           }
-          if (salesAgentForm.financeCompany[tier] > 100 || salesAgentForm.financeCompany[tier] < 0) {
-            validationErrors.push(`Finance Company ${tier} must be between 0-100%`);
-          }
-          
-          const total = parseFloat(calculateSalesAgentTotal(tier));
-          if (total > 100) {
-            validationErrors.push(`Total exceeds 100% in ${tier} tier`);
+          if (salesAgentForm.salesAgentToFinance[tier] > 100 || salesAgentForm.salesAgentToFinance[tier] < 0) {
+            validationErrors.push(`Sales Agent to Finance ${tier} must be between 0-100%`);
           }
         });
       } else {
         ["lessThan500k", "between500kTo2_5m", "moreThan2_5m"].forEach(tier => {
-          const total = parseFloat(calculateEpcTotal(tier));
-          if (total > 100) {
-            validationErrors.push(`Total exceeds 100% in ${tier} tier`);
+          const finance = epcForm.financeCompany[tier];
+          const installer = epcForm.installerEPC[tier];
+          const total = finance + installer;
+          if (total !== 100) {
+            validationErrors.push(`Finance + Installer must equal 100% in ${tier} tier (currently ${total}%)`);
           }
         });
       }
@@ -108,7 +110,7 @@ const PartnerCommissionSetup = ({ onClose }) => {
     }
   };
 
-  const renderPercentageInputs = (title, section, fields, form, onChange, showTotal = false, totalCalculator = null) => (
+  const renderPercentageInputs = (title, section, fields, form, onChange) => (
     <div className="mb-6">
       <h3 className="font-medium text-[#1E1E1E] text-sm mb-3">{title}</h3>
       <div className="grid grid-cols-4 gap-4 text-xs">
@@ -127,56 +129,26 @@ const PartnerCommissionSetup = ({ onClose }) => {
           </div>
         ))}
       </div>
-      {showTotal && totalCalculator && (
-        <div className="mt-3 p-2 bg-blue-50 rounded">
-          <div className="grid grid-cols-4 gap-4 text-xs">
-            <div className="flex flex-col">
-              <label className="mb-1 text-gray-600 text-xs">Total ($500k)</label>
-              <div className="py-1 px-2 bg-white rounded border border-gray-300 text-gray-700">
-                {totalCalculator("lessThan500k")}%
-              </div>
-            </div>
-            <div className="flex flex-col">
-              <label className="mb-1 text-gray-600 text-xs">Total ($500k-$2.5M)</label>
-              <div className="py-1 px-2 bg-white rounded border border-gray-300 text-gray-700">
-                {totalCalculator("between500kTo2_5m")}%
-              </div>
-            </div>
-            <div className="flex flex-col">
-              <label className="mb-1 text-gray-600 text-xs">Total ($2.5M)</label>
-              <div className="py-1 px-2 bg-white rounded border border-gray-300 text-gray-700">
-                {totalCalculator("moreThan2_5m")}%
-              </div>
-            </div>
-            <div className="flex flex-col">
-              <label className="mb-1 text-gray-600 text-xs">Remaining</label>
-              <div className="py-1 px-2 bg-white rounded border border-gray-300 text-gray-700">
-                {fields[0].key === "annualCap" ? "-" : `${(100 - parseFloat(totalCalculator("lessThan500k"))).toFixed(1)}%`}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 
   const renderSalesAgentUpline = () => (
     <div className="space-y-4">
-      {renderPercentageInputs("Sales Agent Commission", "salesAgent", [
-        { key: "lessThan500k", label: "<$500k (%)" },
-        { key: "between500kTo2_5m", label: "$500k - $2.5M (%)" },
-        { key: "moreThan2_5m", label: ">$2.5M (%)" },
-        { key: "annualCap", label: "Annual Cap ($)" }
-      ], salesAgentForm, handleSalesAgentInput, true, calculateSalesAgentTotal)}
-
-      {renderPercentageInputs("Installer/EPC Commission", "installerEPC", [
+      {renderPercentageInputs("Sales Agent → Sales Agent Commission", "salesAgentToSalesAgent", [
         { key: "lessThan500k", label: "<$500k (%)" },
         { key: "between500kTo2_5m", label: "$500k - $2.5M (%)" },
         { key: "moreThan2_5m", label: ">$2.5M (%)" },
         { key: "annualCap", label: "Annual Cap ($)" }
       ], salesAgentForm, handleSalesAgentInput)}
 
-      {renderPercentageInputs("Finance Company Commission", "financeCompany", [
+      {renderPercentageInputs("Sales Agent → Installer/EPC Commission", "salesAgentToInstaller", [
+        { key: "lessThan500k", label: "<$500k (%)" },
+        { key: "between500kTo2_5m", label: "$500k - $2.5M (%)" },
+        { key: "moreThan2_5m", label: ">$2.5M (%)" },
+        { key: "annualCap", label: "Annual Cap ($)" }
+      ], salesAgentForm, handleSalesAgentInput)}
+
+      {renderPercentageInputs("Sales Agent → Finance Company Commission", "salesAgentToFinance", [
         { key: "lessThan500k", label: "<$500k (%)" },
         { key: "between500kTo2_5m", label: "$500k - $2.5M (%)" },
         { key: "moreThan2_5m", label: ">$2.5M (%)" },
@@ -202,40 +174,13 @@ const PartnerCommissionSetup = ({ onClose }) => {
           { key: "lessThan500k", label: "<$500k (%)" },
           { key: "between500kTo2_5m", label: "$500k - $2.5M (%)" },
           { key: "moreThan2_5m", label: ">$2.5M (%)" }
-        ], epcForm, handleEpcInput, true, calculateEpcTotal)}
+        ], epcForm, handleEpcInput)}
 
         {renderPercentageInputs("Installer/EPC Share", "installerEPC", [
           { key: "lessThan500k", label: "<$500k (%)" },
           { key: "between500kTo2_5m", label: "$500k - $2.5M (%)" },
           { key: "moreThan2_5m", label: ">$2.5M (%)" }
         ], epcForm, handleEpcInput)}
-
-        <div className="mb-6 p-3 bg-blue-50 rounded">
-          <h3 className="font-medium text-[#1E1E1E] text-sm mb-3">Dcarbon and Customer Remainder (Variable)</h3>
-          <p className="text-xs text-gray-600 mb-3">
-            This remainder is automatically calculated to make the total 100% and varies based on the referral scenario.
-          </p>
-          <div className="grid grid-cols-3 gap-4 text-xs">
-            <div className="flex flex-col">
-              <label className="mb-1 text-gray-600 text-xs">&lt;$500k (%)</label>
-              <div className="py-2 px-3 bg-white rounded border border-gray-300 text-gray-700">
-                {(100 - calculateEpcTotal("lessThan500k")).toFixed(1)}
-              </div>
-            </div>
-            <div className="flex flex-col">
-              <label className="mb-1 text-gray-600 text-xs">$500k - $2.5M (%)</label>
-              <div className="py-2 px-3 bg-white rounded border border-gray-300 text-gray-700">
-                {(100 - calculateEpcTotal("between500kTo2_5m")).toFixed(1)}
-              </div>
-            </div>
-            <div className="flex flex-col">
-              <label className="mb-1 text-gray-600 text-xs">&gt;$2.5M (%)</label>
-              <div className="py-2 px-3 bg-white rounded border border-gray-300 text-gray-700">
-                {(100 - calculateEpcTotal("moreThan2_5m")).toFixed(1)}
-              </div>
-            </div>
-          </div>
-        </div>
 
         <div className="mb-6">
           <h3 className="font-medium text-[#1E1E1E] text-sm mb-3">Durations</h3>

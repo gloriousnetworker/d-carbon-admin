@@ -9,11 +9,13 @@ const ResidentialCommissionStructure = ({ onSetupStructure }) => {
   const STATIC_DATA = {
     headers: ["Party Type", "<$500k (%)", "$500k - $2.5M (%)", ">$2.5M (%)", "Max Duration (Years)", "Agreement Duration (Years)", "Cancellation Fee"],
     rows: [
-      ["Residential (with Partner Referral) – Customer", "50.0", "50.0", "50.0", "15", "2", "$250"],
-      ["Residential (with Partner Referral) – Installer/EPC", "5.0", "5.0", "5.0", "15", "2", "—"],
-      ["Residential (with Partner Referral) – Finance Company", "5.0", "5.0", "5.0", "15", "2", "—"],
+      ["Residential Facility Share with Partner Referral", "50.0", "50.0", "50.0", "15", "2", "$250"],
+      ["When referred by Installer/EPC", "5.0", "5.0", "5.0", "15", "2", "—"],
+      ["When referred by Finance Company", "5.0", "5.0", "5.0", "15", "2", "—"],
+      ["DCarbon Remainder", "45:45", "45:45", "45:45", "15", "2", "—"],
       ["", "", "", "", "", "", ""],
-      ["Residential (No Referral) – Customer", "55.0", "55.0", "55.0", "15", "2", "$250"],
+      ["Residential Facility Share (No Referral)", "55.0", "55.0", "55.0", "15", "2", "$250"],
+      ["DCarbon Remainder (No Referral)", "45.0", "45.0", "45.0", "15", "2", "—"],
     ],
   };
 
@@ -73,25 +75,26 @@ const ResidentialCommissionStructure = ({ onSetupStructure }) => {
                       cellIndex === 0 ? "font-medium" : ""
                     }`}
                   >
-                    {cell}
+                    {cell.includes(":") ? (
+                      <div className="group relative inline-block">
+                        <span className="cursor-help">{cell}</span>
+                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap z-10">
+                          Installer: 100 - 50 - 5 = 45<br/>
+                          Finance: 100 - 50 - 5 = 45
+                        </div>
+                      </div>
+                    ) : (
+                      cell
+                    )}
                   </td>
                 ))}
               </tr>
             ))}
-            <tr className="bg-blue-50">
-              <td className="py-3 px-4 text-sm font-medium border-b border-gray-200">Total (Partner Referral)</td>
-              <td className="py-3 px-4 text-sm border-b border-gray-200">60.0%</td>
-              <td className="py-3 px-4 text-sm border-b border-gray-200">60.0%</td>
-              <td className="py-3 px-4 text-sm border-b border-gray-200">60.0%</td>
-              <td className="py-3 px-4 text-sm border-b border-gray-200">-</td>
-              <td className="py-3 px-4 text-sm border-b border-gray-200">-</td>
-              <td className="py-3 px-4 text-sm border-b border-gray-200">-</td>
-            </tr>
           </tbody>
         </table>
       </div>
       <div className="text-xs text-gray-500 mt-2">
-        Dcarbon remainder is variable and calculated to make total 100% for each revenue tier.
+        DCarbon remainder is variable and calculated to make total 100% for each revenue tier.
       </div>
     </div>
   );

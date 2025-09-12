@@ -6,19 +6,19 @@ const PartnerCommissionStructure = ({ onSetupStructure }) => {
   const [activeSubTab, setActiveSubTab] = useState("salesAgentUpline");
   
   const SALES_AGENT_DATA = {
-    headers: ["Invited Partner Type", "<$500k (%)", "$500k - $2.5M (%)", ">$2.5M (%)", "Annual Cap"],
+    headers: ["Relationship Type", "<$500k (%)", "$500k - $2.5M (%)", ">$2.5M (%)", "Annual Cap"],
     rows: [
-      ["Sales Agent", "0.5", "0.5", "0.75", "$25,000"],
-      ["Installer / EPC", "1.0", "1.0", "1.0", "$50,000"],
-      ["Finance Company", "1.0", "1.0", "1.0", "$50,000"],
+      ["Sales Agent → Sales Agent", "0.5", "0.5", "0.75", "$25,000"],
+      ["Sales Agent → Installer/EPC", "1.0", "1.0", "1.0", "$50,000"],
+      ["Sales Agent → Finance Company", "1.0", "1.0", "1.0", "$50,000"],
     ],
   };
 
   const EPC_ASSISTED_DATA = {
     headers: ["Stakeholder", "<$500k (%)", "$500k - $2.5M (%)", ">$2.5M (%)", "Max Duration (Years)", "Agreement Duration (Years)"],
     rows: [
-      ["Finance Company", "3.0", "2.0", "1.5", "15", "2"],
-      ["Installer / EPC", "2.0", "2.0", "1.0", "15", "2"],
+      ["Finance Company", "60.0", "50.0", "45.5", "15", "2"],
+      ["Installer / EPC", "40.0", "50.0", "55.0", "15", "2"],
     ],
   };
 
@@ -55,16 +55,6 @@ const PartnerCommissionStructure = ({ onSetupStructure }) => {
               ))}
             </tr>
           ))}
-          {showTotal && (
-            <tr className="bg-blue-50">
-              <td className="py-3 px-4 text-sm font-medium border-b border-gray-200">Total</td>
-              <td className="py-3 px-4 text-sm border-b border-gray-200">5.0%</td>
-              <td className="py-3 px-4 text-sm border-b border-gray-200">5.0%</td>
-              <td className="py-3 px-4 text-sm border-b border-gray-200">3.25%</td>
-              <td className="py-3 px-4 text-sm border-b border-gray-200">-</td>
-              <td className="py-3 px-4 text-sm border-b border-gray-200">-</td>
-            </tr>
-          )}
         </tbody>
       </table>
     </div>

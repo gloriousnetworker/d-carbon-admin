@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { IoSettingsSharp } from "react-icons/io5";
 
 const AccountLevelBasedCommissionStructure = ({ onSetupStructure }) => {
@@ -26,7 +26,6 @@ const AccountLevelBasedCommissionStructure = ({ onSetupStructure }) => {
     rows: [
       ["Sales Agent → Commercial", "2.0", "2.5", "3.0", "50,000"],
       ["Sales Agent → Residential", "1.5", "2.0", "2.5", "25,000"],
-      ["Sales Agent → Sales Agent", "1.0", "1.5", "2.0", "20,000"],
     ],
   };
 
@@ -61,23 +60,6 @@ const AccountLevelBasedCommissionStructure = ({ onSetupStructure }) => {
                   {cell}
                 </td>
               ))}
-            </tr>
-          ))}
-          {data.rows.map((row, rowIndex) => (
-            <tr key={`remainder-${rowIndex}`} className="bg-green-50">
-              <td className="py-3 px-4 text-sm font-medium border-b border-gray-200">
-                DCarbon Remainder ({row[0].split("→")[1].trim()})
-              </td>
-              <td className="py-3 px-4 text-sm border-b border-gray-200">
-                {(100 - parseFloat(row[1])).toFixed(1)}%
-              </td>
-              <td className="py-3 px-4 text-sm border-b border-gray-200">
-                {(100 - parseFloat(row[2])).toFixed(1)}%
-              </td>
-              <td className="py-3 px-4 text-sm border-b border-gray-200">
-                {(100 - parseFloat(row[3])).toFixed(1)}%
-              </td>
-              <td className="py-3 px-4 text-sm border-b border-gray-200">-</td>
             </tr>
           ))}
         </tbody>
@@ -159,7 +141,7 @@ const AccountLevelBasedCommissionStructure = ({ onSetupStructure }) => {
         <div>
           <h3 className="text-[#039994] font-medium mb-2">Sales Agent Referrals</h3>
           <p className="text-xs text-gray-500 mb-4">
-            Commission structure for sales agents who refer commercial, residential, or other sales agent accounts.
+            Commission structure for sales agents who refer commercial or residential accounts.
           </p>
           {renderTable(SALES_AGENT_DATA, "sales-agent")}
         </div>

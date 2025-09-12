@@ -23,7 +23,6 @@ const AccountLevelBasedCommissionSetup = ({ onClose }) => {
   const [salesAgentForm, setSalesAgentForm] = useState({
     salesAgentToCommercial: { lessThan500k: 2.0, between500kTo2_5m: 2.5, moreThan2_5m: 3.0, annualCap: 50000 },
     salesAgentToResidential: { lessThan500k: 1.5, between500kTo2_5m: 2.0, moreThan2_5m: 2.5, annualCap: 25000 },
-    salesAgentToSalesAgent: { lessThan500k: 1.0, between500kTo2_5m: 1.5, moreThan2_5m: 2.0, annualCap: 20000 },
     notes: ""
   });
 
@@ -91,9 +90,6 @@ const AccountLevelBasedCommissionSetup = ({ onClose }) => {
           if (salesAgentForm.salesAgentToResidential[tier] > 100 || salesAgentForm.salesAgentToResidential[tier] < 0) {
             validationErrors.push(`Sales Agent → Residential ${tier} must be between 0-100%`);
           }
-          if (salesAgentForm.salesAgentToSalesAgent[tier] > 100 || salesAgentForm.salesAgentToSalesAgent[tier] < 0) {
-            validationErrors.push(`Sales Agent → Sales Agent ${tier} must be between 0-100%`);
-          }
         });
       }
       
@@ -133,29 +129,6 @@ const AccountLevelBasedCommissionSetup = ({ onClose }) => {
             />
           </div>
         ))}
-      </div>
-      <div className="mt-3 p-2 bg-blue-50 rounded">
-        <h4 className="font-medium text-xs mb-2">DCarbon Remainder</h4>
-        <div className="grid grid-cols-3 gap-4 text-xs">
-          <div className="flex flex-col">
-            <label className="mb-1 text-gray-600 text-xs">&lt;$500k (%)</label>
-            <div className="py-1 px-2 bg-white rounded border border-gray-300 text-gray-700">
-              {(100 - form[section].lessThan500k).toFixed(1)}%
-            </div>
-          </div>
-          <div className="flex flex-col">
-            <label className="mb-1 text-gray-600 text-xs">$500k-$2.5M (%)</label>
-            <div className="py-1 px-2 bg-white rounded border border-gray-300 text-gray-700">
-              {(100 - form[section].between500kTo2_5m).toFixed(1)}%
-            </div>
-          </div>
-          <div className="flex flex-col">
-            <label className="mb-1 text-gray-600 text-xs">&gt;$2.5M (%)</label>
-            <div className="py-1 px-2 bg-white rounded border border-gray-300 text-gray-700">
-              {(100 - form[section].moreThan2_5m).toFixed(1)}%
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
@@ -226,13 +199,6 @@ const AccountLevelBasedCommissionSetup = ({ onClose }) => {
       ], salesAgentForm, handleSalesAgentInput)}
 
       {renderPercentageInputs("Sales Agent → Residential Commission", "salesAgentToResidential", [
-        { key: "lessThan500k", label: "<$500k (%)" },
-        { key: "between500kTo2_5m", label: "$500k - $2.5M (%)" },
-        { key: "moreThan2_5m", label: ">$2.5M (%)" },
-        { key: "annualCap", label: "Annual Cap ($)" }
-      ], salesAgentForm, handleSalesAgentInput)}
-
-      {renderPercentageInputs("Sales Agent → Sales Agent Commission", "salesAgentToSalesAgent", [
         { key: "lessThan500k", label: "<$500k (%)" },
         { key: "between500kTo2_5m", label: "$500k - $2.5M (%)" },
         { key: "moreThan2_5m", label: ">$2.5M (%)" },

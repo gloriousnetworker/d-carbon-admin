@@ -6,7 +6,7 @@ import { toast } from "react-hot-toast";
 
 const ResidentialCommissionSetup = ({ onClose }) => {
   const [formValues, setFormValues] = useState({
-    customerShare: {
+    facilityShareWithReferral: {
       lessThan500k: 50.0,
       between500kTo2_5m: 50.0,
       moreThan2_5m: 50.0,
@@ -21,7 +21,7 @@ const ResidentialCommissionSetup = ({ onClose }) => {
       between500kTo2_5m: 5.0,
       moreThan2_5m: 5.0,
     },
-    noReferralCustomer: {
+    facilityShareNoReferral: {
       lessThan500k: 55.0,
       between500kTo2_5m: 55.0,
       moreThan2_5m: 55.0,
@@ -35,20 +35,20 @@ const ResidentialCommissionSetup = ({ onClose }) => {
 
   const [updating, setUpdating] = useState(false);
 
-  const calculatePartnerTotal = (tier) => {
-    const customer = formValues.customerShare[tier];
-    const installerEPC = formValues.installerEPC[tier];
-    const financeCompany = formValues.financeCompany[tier];
-    
-    return (customer + installerEPC + financeCompany).toFixed(1);
+  const calculateRemainderWithInstaller = (tier) => {
+    const facility = formValues.facilityShareWithReferral[tier];
+    const installer = formValues.installerEPC[tier];
+    return (100 - facility - installer).toFixed(1);
   };
 
-  const calculateCompanyRemainder = (tier) => {
-    return (100 - parseFloat(calculatePartnerTotal(tier))).toFixed(1);
+  const calculateRemainderWithFinance = (tier) => {
+    const facility = formValues.facilityShareWithReferral[tier];
+    const finance = formValues.financeCompany[tier];
+    return (100 - facility - finance).toFixed(1);
   };
 
   const calculateNoReferralRemainder = (tier) => {
-    return (100 - formValues.noReferralCustomer[tier]).toFixed(1);
+    return (100 - formValues.facilityShareNoReferral[tier]).toFixed(1);
   };
 
   const handleInputChange = (section, field, value) => {
@@ -67,14 +67,20 @@ const ResidentialCommissionSetup = ({ onClose }) => {
       const validationErrors = [];
       
       ["lessThan500k", "between500kTo2_5m", "moreThan2_5m"].forEach(tier => {
-        const total = parseFloat(calculatePartnerTotal(tier));
+        const installerRemainder = parseFloat(calculateRemainderWithInstaller(tier));
+        const financeRemainder = parseFloat(calculateRemainderWithFinance(tier));
+        const noReferralRemainder = parseFloat(calculateNoReferralRemainder(tier));
         
-        if (total > 100) {
-          validationErrors.push(`Total exceeds 100% in ${tier} tier`);
+        if (installerRemainder < 0) {
+          validationErrors.push(`Installer/EPC total exceeds 100% in ${tier} tier`);
         }
         
-        if (formValues.noReferralCustomer[tier] > 100) {
-          validationErrors.push(`No referral customer share exceeds 100% in ${tier} tier`);
+        if (financeRemainder < 0) {
+          validationErrors.push(`Finance Company total exceeds 100% in ${tier} tier`);
+        }
+        
+        if (noReferralRemainder < 0) {
+          validationErrors.push(`No referral facility share exceeds 100% in ${tier} tier`);
         }
       });
       
@@ -96,7 +102,7 @@ const ResidentialCommissionSetup = ({ onClose }) => {
     }
   };
 
-  const renderPercentageInputs = (title, section, fields, showTotal = false) => {
+  const renderPercentageInputs = (title, section, fields) => {
     return (
       <div className="mb-6">
         <h3 className="font-medium text-[#1E1E1E] text-sm mb-3">{title}</h3>
@@ -116,35 +122,11 @@ const ResidentialCommissionSetup = ({ onClose }) => {
             </div>
           ))}
         </div>
-        {showTotal && (
-          <div className="mt-3 p-2 bg-blue-50 rounded">
-            <div className="grid grid-cols-3 gap-4 text-xs">
-              <div className="flex flex-col">
-                <label className="mb-1 text-gray-600 text-xs">Total ($500k)</label>
-                <div className="py-1 px-2 bg-white rounded border border-gray-300 text-gray-700">
-                  {calculatePartnerTotal("lessThan500k")}%
-                </div>
-              </div>
-              <div className="flex flex-col">
-                <label className="mb-1 text-gray-600 text-xs">Total ($500k-$2.5M)</label>
-                <div className="py-1 px-2 bg-white rounded border border-gray-300 text-gray-700">
-                  {calculatePartnerTotal("between500kTo2_5m")}%
-                </div>
-              </div>
-              <div className="flex flex-col">
-                <label className="mb-1 text-gray-600 text-xs">Total ($2.5M)</label>
-                <div className="py-1 px-2 bg-white rounded border border-gray-300 text-gray-700">
-                  {calculatePartnerTotal("moreThan2_5m")}%
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     );
   };
 
-  const renderVariableSection = (title, values, isNoReferral = false) => {
+  const renderVariableSection = (title, values) => {
     return (
       <div className="mb-6 p-3 bg-blue-50 rounded">
         <h3 className="font-medium text-[#1E1E1E] text-sm mb-3">{title}</h3>
@@ -215,10 +197,16 @@ const ResidentialCommissionSetup = ({ onClose }) => {
     );
   };
 
-  const companyRemainder = {
-    lessThan500k: calculateCompanyRemainder("lessThan500k"),
-    between500kTo2_5m: calculateCompanyRemainder("between500kTo2_5m"),
-    moreThan2_5m: calculateCompanyRemainder("moreThan2_5m"),
+  const installerRemainder = {
+    lessThan500k: calculateRemainderWithInstaller("lessThan500k"),
+    between500kTo2_5m: calculateRemainderWithInstaller("between500kTo2_5m"),
+    moreThan2_5m: calculateRemainderWithInstaller("moreThan2_5m"),
+  };
+
+  const financeRemainder = {
+    lessThan500k: calculateRemainderWithFinance("lessThan500k"),
+    between500kTo2_5m: calculateRemainderWithFinance("between500kTo2_5m"),
+    moreThan2_5m: calculateRemainderWithFinance("moreThan2_5m"),
   };
 
   const noReferralRemainder = {
@@ -241,37 +229,39 @@ const ResidentialCommissionSetup = ({ onClose }) => {
         </div>
 
         <div className="space-y-4">
-          {renderPercentageInputs("Residential Customer Share", "customerShare", [
-            { key: "lessThan500k", label: "<$500k (%)" },
-            { key: "between500kTo2_5m", label: "$500k - $2.5M (%)" },
-            { key: "moreThan2_5m", label: ">$2.5M (%)" },
-          ], true)}
-
-          <h3 className="font-medium text-[#1E1E1E] text-sm">When Referred by Partner</h3>
+          <h3 className="font-medium text-[#1E1E1E] text-sm">With Partner Referral</h3>
           
-          {renderPercentageInputs("Installer / EPC", "installerEPC", [
+          {renderPercentageInputs("Residential Facility Share", "facilityShareWithReferral", [
             { key: "lessThan500k", label: "<$500k (%)" },
             { key: "between500kTo2_5m", label: "$500k - $2.5M (%)" },
             { key: "moreThan2_5m", label: ">$2.5M (%)" },
           ])}
 
-          {renderPercentageInputs("Finance Company", "financeCompany", [
+          {renderPercentageInputs("When referred by Installer/EPC", "installerEPC", [
             { key: "lessThan500k", label: "<$500k (%)" },
             { key: "between500kTo2_5m", label: "$500k - $2.5M (%)" },
             { key: "moreThan2_5m", label: ">$2.5M (%)" },
           ])}
 
-          {renderVariableSection("DCarbon Remainder (Variable)", companyRemainder)}
+          {renderVariableSection("DCarbon Remainder (With Installer/EPC)", installerRemainder)}
 
-          <h3 className="font-medium text-[#1E1E1E] text-sm">When No Referral</h3>
+          {renderPercentageInputs("When referred by Finance Company", "financeCompany", [
+            { key: "lessThan500k", label: "<$500k (%)" },
+            { key: "between500kTo2_5m", label: "$500k - $2.5M (%)" },
+            { key: "moreThan2_5m", label: ">$2.5M (%)" },
+          ])}
+
+          {renderVariableSection("DCarbon Remainder (With Finance Company)", financeRemainder)}
+
+          <h3 className="font-medium text-[#1E1E1E] text-sm">No Referral</h3>
           
-          {renderPercentageInputs("Residential Customer Share", "noReferralCustomer", [
+          {renderPercentageInputs("Residential Facility Share", "facilityShareNoReferral", [
             { key: "lessThan500k", label: "<$500k (%)" },
             { key: "between500kTo2_5m", label: "$500k - $2.5M (%)" },
             { key: "moreThan2_5m", label: ">$2.5M (%)" },
           ])}
 
-          {renderVariableSection("DCarbon Remainder (Variable)", noReferralRemainder, true)}
+          {renderVariableSection("DCarbon Remainder (No Referral)", noReferralRemainder)}
 
           {renderDurationInputs()}
         </div>
