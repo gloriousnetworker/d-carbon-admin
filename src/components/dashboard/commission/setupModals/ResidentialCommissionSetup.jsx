@@ -1,39 +1,107 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { IoSettingsSharp } from "react-icons/io5";
 import { IoMdClose } from "react-icons/io";
 import { toast } from "react-hot-toast";
 
-const ResidentialCommissionSetup = ({ onClose }) => {
+const ResidentialCommissionSetup = ({ onClose, onSuccess }) => {
   const [formValues, setFormValues] = useState({
     facilityShareWithReferral: {
-      lessThan500k: 50.0,
-      between500kTo2_5m: 50.0,
-      moreThan2_5m: 50.0,
+      lessThan500k: 0,
+      between500kTo2_5m: 0,
+      moreThan2_5m: 0,
     },
     installerEPC: {
-      lessThan500k: 5.0,
-      between500kTo2_5m: 5.0,
-      moreThan2_5m: 5.0,
+      lessThan500k: 0,
+      between500kTo2_5m: 0,
+      moreThan2_5m: 0,
     },
     financeCompany: {
-      lessThan500k: 5.0,
-      between500kTo2_5m: 5.0,
-      moreThan2_5m: 5.0,
+      lessThan500k: 0,
+      between500kTo2_5m: 0,
+      moreThan2_5m: 0,
     },
     facilityShareNoReferral: {
-      lessThan500k: 55.0,
-      between500kTo2_5m: 55.0,
-      moreThan2_5m: 55.0,
+      lessThan500k: 0,
+      between500kTo2_5m: 0,
+      moreThan2_5m: 0,
     },
     durations: {
-      maxDuration: 15,
-      agreementDuration: 2,
-      cancellationFee: 250,
+      maxDuration: 0,
+      agreementDuration: 0,
+      cancellationFee: 0,
     },
   });
 
   const [updating, setUpdating] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const fetchCommissionData = async () => {
+    try {
+      setLoading(true);
+      const authToken = localStorage.getItem('authToken');
+      
+      const response = await fetch('https://services.dcarbon.solutions/api/commission-structure/residential', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch commission data');
+      }
+
+      const result = await response.json();
+      
+      if (result.status === 'success') {
+        const { direct, partnerInstaller, partnerFinance, terms } = result.data;
+        
+        setFormValues({
+          facilityShareWithReferral: {
+            lessThan500k: partnerInstaller.customerShareLessThan500k || 0,
+            between500kTo2_5m: partnerInstaller.customerShareBetween500kTo2_5m || 0,
+            moreThan2_5m: partnerInstaller.customerShareMoreThan2_5m || 0,
+          },
+          installerEPC: {
+            lessThan500k: partnerInstaller.partnerShareLessThan500k || 0,
+            between500kTo2_5m: partnerInstaller.partnerShareBetween500kTo2_5m || 0,
+            moreThan2_5m: partnerInstaller.partnerShareMoreThan2_5m || 0,
+          },
+          financeCompany: {
+            lessThan500k: partnerFinance.partnerShareLessThan500k || 0,
+            between500kTo2_5m: partnerFinance.partnerShareBetween500kTo2_5m || 0,
+            moreThan2_5m: partnerFinance.partnerShareMoreThan2_5m || 0,
+          },
+          facilityShareNoReferral: {
+            lessThan500k: direct.lessThan500k || 0,
+            between500kTo2_5m: direct.between500kTo2_5m || 0,
+            moreThan2_5m: direct.moreThan2_5m || 0,
+          },
+          durations: {
+            maxDuration: terms.maxDuration || 0,
+            agreementDuration: terms.agreementDuration || 0,
+            cancellationFee: terms.cancellationFee || 0,
+          },
+        });
+      } else {
+        throw new Error(result.message || 'Failed to fetch data');
+      }
+    } catch (error) {
+      console.error('Error fetching commission data:', error);
+      toast.error(`Failed to load commission data: ${error.message}`, {
+        position: 'top-center',
+        duration: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCommissionData();
+  }, []);
 
   const calculateRemainderWithInstaller = (tier) => {
     const facility = formValues.facilityShareWithReferral[tier];
@@ -58,12 +126,112 @@ const ResidentialCommissionSetup = ({ onClose }) => {
     }));
   };
 
+  const updatePartnerInstaller = async () => {
+    const authToken = localStorage.getItem('authToken');
+    
+    const response = await fetch('https://services.dcarbon.solutions/api/commission-structure/residential/partner-installer', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({
+        customerShareLessThan500k: formValues.facilityShareWithReferral.lessThan500k,
+        partnerShareLessThan500k: formValues.installerEPC.lessThan500k,
+        customerShareBetween500kTo2_5m: formValues.facilityShareWithReferral.between500kTo2_5m,
+        partnerShareBetween500kTo2_5m: formValues.installerEPC.between500kTo2_5m,
+        customerShareMoreThan2_5m: formValues.facilityShareWithReferral.moreThan2_5m,
+        partnerShareMoreThan2_5m: formValues.installerEPC.moreThan2_5m,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to update partner installer');
+    }
+
+    return await response.json();
+  };
+
+  const updatePartnerFinance = async () => {
+    const authToken = localStorage.getItem('authToken');
+    
+    const response = await fetch('https://services.dcarbon.solutions/api/commission-structure/residential/partner-finance', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({
+        customerShareLessThan500k: formValues.facilityShareWithReferral.lessThan500k,
+        partnerShareLessThan500k: formValues.financeCompany.lessThan500k,
+        customerShareBetween500kTo2_5m: formValues.facilityShareWithReferral.between500kTo2_5m,
+        partnerShareBetween500kTo2_5m: formValues.financeCompany.between500kTo2_5m,
+        customerShareMoreThan2_5m: formValues.facilityShareWithReferral.moreThan2_5m,
+        partnerShareMoreThan2_5m: formValues.financeCompany.moreThan2_5m,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to update partner finance');
+    }
+
+    return await response.json();
+  };
+
+  const updateDirectCommission = async () => {
+    const authToken = localStorage.getItem('authToken');
+    
+    const response = await fetch('https://services.dcarbon.solutions/api/commission-structure/residential/direct', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({
+        lessThan500k: formValues.facilityShareNoReferral.lessThan500k,
+        between500kTo2_5m: formValues.facilityShareNoReferral.between500kTo2_5m,
+        moreThan2_5m: formValues.facilityShareNoReferral.moreThan2_5m,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to update direct commission');
+    }
+
+    return await response.json();
+  };
+
+  const updateCommissionTerms = async () => {
+    const authToken = localStorage.getItem('authToken');
+    
+    const response = await fetch('https://services.dcarbon.solutions/api/commission-structure/residential/terms', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({
+        maxDuration: formValues.durations.maxDuration,
+        agreementDuration: formValues.durations.agreementDuration,
+        cancellationFee: formValues.durations.cancellationFee,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to update commission terms');
+    }
+
+    return await response.json();
+  };
+
   const handleUpdate = async () => {
     setUpdating(true);
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       const validationErrors = [];
       
       ["lessThan500k", "between500kTo2_5m", "moreThan2_5m"].forEach(tier => {
@@ -87,13 +255,27 @@ const ResidentialCommissionSetup = ({ onClose }) => {
       if (validationErrors.length > 0) {
         throw new Error(validationErrors.join(", "));
       }
+
+      await Promise.all([
+        updatePartnerInstaller(),
+        updatePartnerFinance(),
+        updateDirectCommission(),
+        updateCommissionTerms(),
+      ]);
       
       toast.success("Residential commission structure updated successfully", {
         position: 'top-center',
         duration: 3000,
       });
+
+      if (onSuccess) {
+        onSuccess();
+      }
+
+      window.location.reload();
     } catch (err) {
-      toast.error(`Validation failed: ${err.message}`, {
+      console.error('Error updating commission structure:', err);
+      toast.error(`Update failed: ${err.message}`, {
         position: 'top-center',
         duration: 5000,
       });
@@ -118,6 +300,7 @@ const ResidentialCommissionSetup = ({ onClose }) => {
                 className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
                 min="0"
                 max="100"
+                disabled={loading}
               />
             </div>
           ))}
@@ -170,6 +353,7 @@ const ResidentialCommissionSetup = ({ onClose }) => {
               onChange={(e) => handleInputChange("durations", "maxDuration", e.target.value)}
               className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
               min="0"
+              disabled={loading}
             />
           </div>
           <div className="flex flex-col">
@@ -180,6 +364,7 @@ const ResidentialCommissionSetup = ({ onClose }) => {
               onChange={(e) => handleInputChange("durations", "agreementDuration", e.target.value)}
               className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
               min="0"
+              disabled={loading}
             />
           </div>
           <div className="flex flex-col">
@@ -190,6 +375,7 @@ const ResidentialCommissionSetup = ({ onClose }) => {
               onChange={(e) => handleInputChange("durations", "cancellationFee", e.target.value)}
               className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
               min="0"
+              disabled={loading}
             />
           </div>
         </div>
@@ -214,6 +400,16 @@ const ResidentialCommissionSetup = ({ onClose }) => {
     between500kTo2_5m: calculateNoReferralRemainder("between500kTo2_5m"),
     moreThan2_5m: calculateNoReferralRemainder("moreThan2_5m"),
   };
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-8">
+          <div className="text-[#039994]">Loading commission data...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -270,19 +466,20 @@ const ResidentialCommissionSetup = ({ onClose }) => {
           <button
             onClick={onClose}
             className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 text-sm"
+            disabled={updating}
           >
             Cancel
           </button>
           <button
             onClick={handleUpdate}
-            disabled={updating}
+            disabled={updating || loading}
             className={`px-4 py-2 rounded-md text-sm ${
-              updating
+              updating || loading
                 ? 'bg-gray-400 cursor-not-allowed'
                 : 'bg-[#039994] hover:bg-[#028B86]'
             } text-white transition-colors`}
           >
-            {updating ? 'Validating...' : 'Validate & Update'}
+            {updating ? 'Updating...' : 'Validate & Update'}
           </button>
         </div>
       </div>

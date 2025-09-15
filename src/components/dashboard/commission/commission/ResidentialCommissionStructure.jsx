@@ -5,28 +5,133 @@ import { toast } from "react-hot-toast";
 
 const ResidentialCommissionStructure = ({ onSetupStructure }) => {
   const [tableData, setTableData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const STATIC_DATA = {
-    headers: ["Party Type", "<$500k (%)", "$500k - $2.5M (%)", ">$2.5M (%)", "Max Duration (Years)", "Agreement Duration (Years)", "Cancellation Fee"],
-    rows: [
-      ["Residential Facility Share with Partner Referral", "50.0", "50.0", "50.0", "15", "2", "$250"],
-      ["When referred by Installer/EPC", "5.0", "5.0", "5.0", "15", "2", "—"],
-      ["When referred by Finance Company", "5.0", "5.0", "5.0", "15", "2", "—"],
-      ["DCarbon Remainder", "45:45", "45:45", "45:45", "15", "2", "—"],
-      ["", "", "", "", "", "", ""],
-      ["Residential Facility Share (No Referral)", "55.0", "55.0", "55.0", "15", "2", "$250"],
-      ["DCarbon Remainder (No Referral)", "45.0", "45.0", "45.0", "15", "2", "—"],
-    ],
+  const fetchCommissionData = async () => {
+    try {
+      setLoading(true);
+      const authToken = localStorage.getItem('authToken');
+      
+      const response = await fetch('https://services.dcarbon.solutions/api/commission-structure/residential', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch commission data');
+      }
+
+      const result = await response.json();
+      
+      if (result.status === 'success') {
+        const { direct, partnerInstaller, partnerFinance, terms } = result.data;
+        
+        const headers = ["Party Type", "<$500k (%)", "$500k - $2.5M (%)", ">$2.5M (%)", "Max Duration (Years)", "Agreement Duration (Years)", "Cancellation Fee"];
+        
+        const rows = [
+          [
+            "Residential Facility Share with Partner Referral", 
+            partnerInstaller.customerShareLessThan500k?.toString() || "0", 
+            partnerInstaller.customerShareBetween500kTo2_5m?.toString() || "0", 
+            partnerInstaller.customerShareMoreThan2_5m?.toString() || "0", 
+            terms.maxDuration?.toString() || "0", 
+            terms.agreementDuration?.toString() || "0", 
+            `$${terms.cancellationFee || 0}`
+          ],
+          [
+            "When referred by Installer/EPC", 
+            partnerInstaller.partnerShareLessThan500k?.toString() || "0", 
+            partnerInstaller.partnerShareBetween500kTo2_5m?.toString() || "0", 
+            partnerInstaller.partnerShareMoreThan2_5m?.toString() || "0", 
+            terms.maxDuration?.toString() || "0", 
+            terms.agreementDuration?.toString() || "0", 
+            "—"
+          ],
+          [
+            "When referred by Finance Company", 
+            partnerFinance.partnerShareLessThan500k?.toString() || "0", 
+            partnerFinance.partnerShareBetween500kTo2_5m?.toString() || "0", 
+            partnerFinance.partnerShareMoreThan2_5m?.toString() || "0", 
+            terms.maxDuration?.toString() || "0", 
+            terms.agreementDuration?.toString() || "0", 
+            "—"
+          ],
+          [
+            "DCarbon Remainder", 
+            `${partnerInstaller.dcarbonRemainderLessThan500k || 0}:${partnerFinance.dcarbonRemainderLessThan500k || 0}`, 
+            `${partnerInstaller.dcarbonRemainderBetween500kTo2_5m || 0}:${partnerFinance.dcarbonRemainderBetween500kTo2_5m || 0}`, 
+            `${partnerInstaller.dcarbonRemainderMoreThan2_5m || 0}:${partnerFinance.dcarbonRemainderMoreThan2_5m || 0}`, 
+            terms.maxDuration?.toString() || "0", 
+            terms.agreementDuration?.toString() || "0", 
+            "—"
+          ],
+          ["", "", "", "", "", "", ""],
+          [
+            "Residential Facility Share (No Referral)", 
+            direct.lessThan500k?.toString() || "0", 
+            direct.between500kTo2_5m?.toString() || "0", 
+            direct.moreThan2_5m?.toString() || "0", 
+            terms.maxDuration?.toString() || "0", 
+            terms.agreementDuration?.toString() || "0", 
+            `$${terms.cancellationFee || 0}`
+          ],
+          [
+            "DCarbon Remainder (No Referral)", 
+            direct.dcarbonRemainderLessThan500k?.toString() || "0", 
+            direct.dcarbonRemainderBetween500kTo2_5m?.toString() || "0", 
+            direct.dcarbonRemainderMoreThan2_5m?.toString() || "0", 
+            terms.maxDuration?.toString() || "0", 
+            terms.agreementDuration?.toString() || "0", 
+            "—"
+          ],
+        ];
+
+        setTableData({ headers, rows });
+      } else {
+        throw new Error(result.message || 'Failed to fetch data');
+      }
+    } catch (error) {
+      console.error('Error fetching commission data:', error);
+      toast.error(`Failed to load commission data: ${error.message}`, {
+        position: 'top-center',
+        duration: 3000,
+      });
+      
+      const defaultHeaders = ["Party Type", "<$500k (%)", "$500k - $2.5M (%)", ">$2.5M (%)", "Max Duration (Years)", "Agreement Duration (Years)", "Cancellation Fee"];
+      const defaultRows = [
+        ["Residential Facility Share with Partner Referral", "0", "0", "0", "0", "0", "$0"],
+        ["When referred by Installer/EPC", "0", "0", "0", "0", "0", "—"],
+        ["When referred by Finance Company", "0", "0", "0", "0", "0", "—"],
+        ["DCarbon Remainder", "0:0", "0:0", "0:0", "0", "0", "—"],
+        ["", "", "", "", "", "", ""],
+        ["Residential Facility Share (No Referral)", "0", "0", "0", "0", "0", "$0"],
+        ["DCarbon Remainder (No Referral)", "0", "0", "0", "0", "0", "—"],
+      ];
+      setTableData({ headers: defaultHeaders, rows: defaultRows });
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    setTableData(STATIC_DATA);
+    fetchCommissionData();
   }, []);
+
+  if (loading) {
+    return (
+      <div className="w-full flex items-center justify-center py-8">
+        <div className="text-[#039994]">Loading commission data...</div>
+      </div>
+    );
+  }
 
   if (!tableData) {
     return (
       <div className="w-full flex items-center justify-center py-8">
-        <div className="text-[#039994]">Loading commission data...</div>
+        <div className="text-red-500">Failed to load commission data</div>
       </div>
     );
   }
@@ -79,8 +184,8 @@ const ResidentialCommissionStructure = ({ onSetupStructure }) => {
                       <div className="group relative inline-block">
                         <span className="cursor-help">{cell}</span>
                         <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap z-10">
-                          Installer: 100 - 50 - 5 = 45<br/>
-                          Finance: 100 - 50 - 5 = 45
+                          Installer: {cell.split(':')[0]}<br/>
+                          Finance: {cell.split(':')[1]}
                         </div>
                       </div>
                     ) : (
