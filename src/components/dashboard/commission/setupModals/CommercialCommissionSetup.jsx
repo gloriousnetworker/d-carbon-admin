@@ -36,6 +36,13 @@ const CommercialCommissionSetup = ({ onClose, onSuccess }) => {
   const [updating, setUpdating] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  const formatNumber = (num) => {
+    if (typeof num === 'number') {
+      return num % 1 === 0 ? num.toString() : num.toFixed(1).replace('.0', '');
+    }
+    return num || "0";
+  };
+
   const fetchCommissionData = async () => {
     try {
       setLoading(true);
@@ -106,17 +113,20 @@ const CommercialCommissionSetup = ({ onClose, onSuccess }) => {
   const calculateRemainderWithInstaller = (tier) => {
     const facility = formValues.facilityShareWithReferral[tier];
     const installer = formValues.installerEPC[tier];
-    return (100 - facility - installer).toFixed(1);
+    const remainder = (100 - facility - installer).toFixed(1);
+    return formatNumber(parseFloat(remainder));
   };
 
   const calculateRemainderWithFinance = (tier) => {
     const facility = formValues.facilityShareWithReferral[tier];
     const finance = formValues.financeCompany[tier];
-    return (100 - facility - finance).toFixed(1);
+    const remainder = (100 - facility - finance).toFixed(1);
+    return formatNumber(parseFloat(remainder));
   };
 
   const calculateNoReferralRemainder = (tier) => {
-    return (100 - formValues.facilityShareNoReferral[tier]).toFixed(1);
+    const remainder = (100 - formValues.facilityShareNoReferral[tier]).toFixed(1);
+    return formatNumber(parseFloat(remainder));
   };
 
   const handleInputChange = (section, field, value) => {
@@ -272,7 +282,7 @@ const CommercialCommissionSetup = ({ onClose, onSuccess }) => {
         onSuccess();
       }
 
-      window.location.reload();
+      onClose();
     } catch (err) {
       console.error('Error updating commission structure:', err);
       toast.error(`Update failed: ${err.message}`, {

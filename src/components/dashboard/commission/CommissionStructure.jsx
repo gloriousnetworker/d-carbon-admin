@@ -22,6 +22,7 @@ const CommissionStructure = () => {
   const [showPartnerSetup, setShowPartnerSetup] = useState(false);
   const [showSalesAgentSetup, setShowSalesAgentSetup] = useState(false);
   const [showBonusSetup, setShowBonusSetup] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const handleCommercialSetup = () => setShowCommercialSetup(true);
   const handleCloseCommercialSetup = () => setShowCommercialSetup(false);
@@ -34,23 +35,27 @@ const CommissionStructure = () => {
   const handleBonusSetup = () => setShowBonusSetup(true);
   const handleCloseBonusSetup = () => setShowBonusSetup(false);
 
+  const handleSuccess = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
+
   return (
     <div className="min-h-screen bg-[#F7F7F7] py-8 px-4">
       <Toaster position="top-right" />
       {showCommercialSetup && (
-        <CommercialCommissionSetup onClose={handleCloseCommercialSetup} />
+        <CommercialCommissionSetup onClose={handleCloseCommercialSetup} onSuccess={handleSuccess} />
       )}
       {showResidentialSetup && (
-        <ResidentialCommissionSetup onClose={handleCloseResidentialSetup} />
+        <ResidentialCommissionSetup onClose={handleCloseResidentialSetup} onSuccess={handleSuccess} />
       )}
       {showPartnerSetup && (
-        <PartnerCommissionSetup onClose={handleClosePartnerSetup} />
+        <PartnerCommissionSetup onClose={handleClosePartnerSetup} onSuccess={handleSuccess} />
       )}
       {showSalesAgentSetup && (
-        <AccountLevelBasedCommissionSetup onClose={handleCloseSalesAgentSetup} />
+        <AccountLevelBasedCommissionSetup onClose={handleCloseSalesAgentSetup} onSuccess={handleSuccess} />
       )}
       {showBonusSetup && (
-        <BonusCommissionSetup onClose={handleCloseBonusSetup} />
+        <BonusCommissionSetup onClose={handleCloseBonusSetup} onSuccess={handleSuccess} />
       )}
       <div className="max-w-6xl mx-auto">
         <div className="bg-white rounded-2xl shadow-sm border border-[#E8E8E8]">
@@ -141,19 +146,19 @@ const CommissionStructure = () => {
 
           <div className="p-6">
             {activeTab === "Commercial" && (
-              <CommercialCommissionStructure onSetupStructure={handleCommercialSetup} />
+              <CommercialCommissionStructure onSetupStructure={handleCommercialSetup} refreshData={refreshTrigger} />
             )}
             {activeTab === "Residential" && (
-              <ResidentialCommissionStructure onSetupStructure={handleResidentialSetup} />
+              <ResidentialCommissionStructure onSetupStructure={handleResidentialSetup} refreshData={refreshTrigger} />
             )}
             {activeTab === "Partner" && (
-              <PartnerCommissionStructure onSetupStructure={handlePartnerSetup} />
+              <PartnerCommissionStructure onSetupStructure={handlePartnerSetup} refreshData={refreshTrigger} />
             )}
             {activeTab === "SalesAgent" && (
-              <AccountLevelBasedCommissionStructure onSetupStructure={handleSalesAgentSetup} />
+              <AccountLevelBasedCommissionStructure onSetupStructure={handleSalesAgentSetup} refreshData={refreshTrigger} />
             )}
             {activeTab === "Bonus" && (
-              <BonusCommissionStructure onSetupStructure={handleBonusSetup} />
+              <BonusCommissionStructure onSetupStructure={handleBonusSetup} refreshData={refreshTrigger} />
             )}
             {activeTab === "Summary" && (
               <CommissionSummary />

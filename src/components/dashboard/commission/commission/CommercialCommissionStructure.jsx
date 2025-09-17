@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { IoSettingsSharp } from "react-icons/io5";
 import { toast } from "react-hot-toast";
 
-const CommercialCommissionStructure = ({ onSetupStructure }) => {
+const CommercialCommissionStructure = ({ onSetupStructure, refreshData }) => {
   const [tableData, setTableData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -29,62 +29,69 @@ const CommercialCommissionStructure = ({ onSetupStructure }) => {
       if (result.status === 'success') {
         const { direct, partnerInstaller, partnerFinance, terms } = result.data;
         
+        const formatNumber = (num) => {
+          if (typeof num === 'number') {
+            return num % 1 === 0 ? num.toString() : num.toFixed(1).replace('.0', '');
+          }
+          return num || "0";
+        };
+
         const headers = ["Party Type", "<$500k (%)", "$500k - $2.5M (%)", ">$2.5M (%)", "Max Duration (Years)", "Agreement Duration (Years)", "Cancellation Fee"];
         
         const rows = [
           [
             "Commercial Facility Share with Partner Referral", 
-            partnerInstaller.customerShareLessThan500k?.toString() || "0", 
-            partnerInstaller.customerShareBetween500kTo2_5m?.toString() || "0", 
-            partnerInstaller.customerShareMoreThan2_5m?.toString() || "0", 
-            terms.maxDuration?.toString() || "0", 
-            terms.agreementDuration?.toString() || "0", 
-            `$${terms.cancellationFee || 0}`
+            formatNumber(partnerInstaller.customerShareLessThan500k), 
+            formatNumber(partnerInstaller.customerShareBetween500kTo2_5m), 
+            formatNumber(partnerInstaller.customerShareMoreThan2_5m), 
+            formatNumber(terms.maxDuration), 
+            formatNumber(terms.agreementDuration), 
+            `$${formatNumber(terms.cancellationFee)}`
           ],
           [
             "When referred by Installer/EPC", 
-            partnerInstaller.partnerShareLessThan500k?.toString() || "0", 
-            partnerInstaller.partnerShareBetween500kTo2_5m?.toString() || "0", 
-            partnerInstaller.partnerShareMoreThan2_5m?.toString() || "0", 
-            terms.maxDuration?.toString() || "0", 
-            terms.agreementDuration?.toString() || "0", 
+            formatNumber(partnerInstaller.partnerShareLessThan500k), 
+            formatNumber(partnerInstaller.partnerShareBetween500kTo2_5m), 
+            formatNumber(partnerInstaller.partnerShareMoreThan2_5m), 
+            formatNumber(terms.maxDuration), 
+            formatNumber(terms.agreementDuration), 
             "—"
           ],
           [
             "When referred by Finance Company", 
-            partnerFinance.partnerShareLessThan500k?.toString() || "0", 
-            partnerFinance.partnerShareBetween500kTo2_5m?.toString() || "0", 
-            partnerFinance.partnerShareMoreThan2_5m?.toString() || "0", 
-            terms.maxDuration?.toString() || "0", 
-            terms.agreementDuration?.toString() || "0", 
+            formatNumber(partnerFinance.partnerShareLessThan500k), 
+            formatNumber(partnerFinance.partnerShareBetween500kTo2_5m), 
+            formatNumber(partnerFinance.partnerShareMoreThan2_5m), 
+            formatNumber(terms.maxDuration), 
+            formatNumber(terms.agreementDuration), 
             "—"
           ],
           [
             "DCarbon Remainder", 
-            `${partnerInstaller.dcarbonRemainderLessThan500k || 0}:${partnerFinance.dcarbonRemainderLessThan500k || 0}`, 
-            `${partnerInstaller.dcarbonRemainderBetween500kTo2_5m || 0}:${partnerFinance.dcarbonRemainderBetween500kTo2_5m || 0}`, 
-            `${partnerInstaller.dcarbonRemainderMoreThan2_5m || 0}:${partnerFinance.dcarbonRemainderMoreThan2_5m || 0}`, 
-            terms.maxDuration?.toString() || "0", 
-            terms.agreementDuration?.toString() || "0", 
+            `${formatNumber(partnerInstaller.dcarbonRemainderLessThan500k)}:${formatNumber(partnerFinance.dcarbonRemainderLessThan500k)}`, 
+            `${formatNumber(partnerInstaller.dcarbonRemainderBetween500kTo2_5m)}:${formatNumber(partnerFinance.dcarbonRemainderBetween500kTo2_5m)}`, 
+            `${formatNumber(partnerInstaller.dcarbonRemainderMoreThan2_5m)}:${formatNumber(partnerFinance.dcarbonRemainderMoreThan2_5m)}`, 
+            formatNumber(terms.maxDuration), 
+            formatNumber(terms.agreementDuration), 
             "—"
           ],
           ["", "", "", "", "", "", ""],
           [
             "Commercial Facility Share (No Referral)", 
-            direct.lessThan500k?.toString() || "0", 
-            direct.between500kTo2_5m?.toString() || "0", 
-            direct.moreThan2_5m?.toString() || "0", 
-            terms.maxDuration?.toString() || "0", 
-            terms.agreementDuration?.toString() || "0", 
-            `$${terms.cancellationFee || 0}`
+            formatNumber(direct.lessThan500k), 
+            formatNumber(direct.between500kTo2_5m), 
+            formatNumber(direct.moreThan2_5m), 
+            formatNumber(terms.maxDuration), 
+            formatNumber(terms.agreementDuration), 
+            `$${formatNumber(terms.cancellationFee)}`
           ],
           [
             "DCarbon Remainder (No Referral)", 
-            direct.dcarbonRemainderLessThan500k?.toString() || "0", 
-            direct.dcarbonRemainderBetween500kTo2_5m?.toString() || "0", 
-            direct.dcarbonRemainderMoreThan2_5m?.toString() || "0", 
-            terms.maxDuration?.toString() || "0", 
-            terms.agreementDuration?.toString() || "0", 
+            formatNumber(direct.dcarbonRemainderLessThan500k), 
+            formatNumber(direct.dcarbonRemainderBetween500kTo2_5m), 
+            formatNumber(direct.dcarbonRemainderMoreThan2_5m), 
+            formatNumber(terms.maxDuration), 
+            formatNumber(terms.agreementDuration), 
             "—"
           ],
         ];
@@ -118,7 +125,7 @@ const CommercialCommissionStructure = ({ onSetupStructure }) => {
 
   useEffect(() => {
     fetchCommissionData();
-  }, []);
+  }, [refreshData]);
 
   if (loading) {
     return (
