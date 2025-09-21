@@ -1,105 +1,296 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { IoSettingsSharp } from "react-icons/io5";
 import { IoMdClose } from "react-icons/io";
 import { toast } from "react-hot-toast";
 
-const PartnerCommissionSetup = ({ onClose }) => {
+const PartnerCommissionSetup = ({ onClose, onSuccess }) => {
   const [activeTab, setActiveTab] = useState("salesAgentUpline");
   const [updating, setUpdating] = useState(false);
+  const [salesAgentData, setSalesAgentData] = useState(null);
+  const [epcAssistedData, setEpcAssistedData] = useState(null);
 
   const [salesAgentForm, setSalesAgentForm] = useState({
-    salesAgentToSalesAgent: { lessThan500k: 0.5, between500kTo2_5m: 0.5, moreThan2_5m: 0.75, annualCap: 25000 },
-    salesAgentToInstaller: { lessThan500k: 1.0, between500kTo2_5m: 1.0, moreThan2_5m: 1.0, annualCap: 50000 },
-    salesAgentToFinance: { lessThan500k: 1.0, between500kTo2_5m: 1.0, moreThan2_5m: 1.0, annualCap: 50000 },
+    salesAgentUnder500k: 0,
+    salesAgent500kTo2_5m: 0,
+    salesAgentOver2_5m: 0,
+    salesAgentAnnualCap: 0,
+    installerUnder500k: 0,
+    installer500kTo2_5m: 0,
+    installerOver2_5m: 0,
+    installerAnnualCap: 0,
+    financeUnder500k: 0,
+    finance500kTo2_5m: 0,
+    financeOver2_5m: 0,
+    financeAnnualCap: 0,
     notes: ""
   });
 
   const [epcForm, setEpcForm] = useState({
-    financeCompany: { lessThan500k: 60.0, between500kTo2_5m: 50.0, moreThan2_5m: 45.5 },
-    installerEPC: { lessThan500k: 40.0, between500kTo2_5m: 50.0, moreThan2_5m: 55.0 },
-    durations: { maxDuration: 15, agreementDuration: 2 },
+    financeShareLessThan500k: 0,
+    financeShare500kTo2_5m: 0,
+    financeShareMoreThan2_5m: 0,
+    installerShareLessThan500k: 0,
+    installerShare500kTo2_5m: 0,
+    installerShareMoreThan2_5m: 0,
+    residentialFinanceShareLessThan500k: 0,
+    residentialFinanceShare500kTo2_5m: 0,
+    residentialFinanceShareMoreThan2_5m: 0,
+    residentialInstallerShareLessThan500k: 0,
+    residentialInstallerShare500kTo2_5m: 0,
+    residentialInstallerShareMoreThan2_5m: 0,
+    maxDuration: 0,
+    agreementDuration: 0,
     notes: ""
   });
 
-  const handleSalesAgentInput = (section, field, value) => {
-    setSalesAgentForm(prev => ({
-      ...prev,
-      [section]: { ...prev[section], [field]: parseFloat(value) || 0 },
-    }));
-  };
+  const fetchSalesAgentData = async () => {
+    try {
+      const authToken = localStorage.getItem('authToken');
+      const response = await fetch('https://services.dcarbon.solutions/api/commission-structure/sales-agent-referral', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
 
-  const handleEpcInput = (section, field, value) => {
-    const numValue = parseFloat(value) || 0;
-    
-    if (section === "financeCompany") {
-      const remaining = 100 - numValue;
-      setEpcForm(prev => ({
-        ...prev,
-        financeCompany: { ...prev.financeCompany, [field]: numValue },
-        installerEPC: { ...prev.installerEPC, [field]: remaining }
-      }));
-    } else if (section === "installerEPC") {
-      const remaining = 100 - numValue;
-      setEpcForm(prev => ({
-        ...prev,
-        installerEPC: { ...prev.installerEPC, [field]: numValue },
-        financeCompany: { ...prev.financeCompany, [field]: remaining }
-      }));
-    } else {
-      setEpcForm(prev => ({
-        ...prev,
-        [section]: { ...prev[section], [field]: numValue },
-      }));
+      if (response.ok) {
+        const result = await response.json();
+        if (result.status === 'success') {
+          setSalesAgentData(result.data);
+          setSalesAgentForm({
+            salesAgentUnder500k: result.data.salesAgentUnder500k,
+            salesAgent500kTo2_5m: result.data.salesAgent500kTo2_5m,
+            salesAgentOver2_5m: result.data.salesAgentOver2_5m,
+            salesAgentAnnualCap: result.data.salesAgentAnnualCap,
+            installerUnder500k: result.data.installerUnder500k,
+            installer500kTo2_5m: result.data.installer500kTo2_5m,
+            installerOver2_5m: result.data.installerOver2_5m,
+            installerAnnualCap: result.data.installerAnnualCap,
+            financeUnder500k: result.data.financeUnder500k,
+            finance500kTo2_5m: result.data.finance500kTo2_5m,
+            financeOver2_5m: result.data.financeOver2_5m,
+            financeAnnualCap: result.data.financeAnnualCap,
+            notes: ""
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching sales agent data:', error);
     }
   };
 
-  const handleTextArea = (section, value) => {
+  const fetchEpcAssistedData = async () => {
+    try {
+      const authToken = localStorage.getItem('authToken');
+      const response = await fetch('https://services.dcarbon.solutions/api/commission-structure/epc-assisted', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.status === 'success') {
+          setEpcAssistedData(result.data);
+          setEpcForm({
+            financeShareLessThan500k: result.data.financeShareLessThan500k || 0,
+            financeShare500kTo2_5m: result.data.financeShare500kTo2_5m || 0,
+            financeShareMoreThan2_5m: result.data.financeShareMoreThan2_5m || 0,
+            installerShareLessThan500k: result.data.installerShareLessThan500k || 0,
+            installerShare500kTo2_5m: result.data.installerShare500kTo2_5m || 0,
+            installerShareMoreThan2_5m: result.data.installerShareMoreThan2_5m || 0,
+            residentialFinanceShareLessThan500k: result.data.residentialFinanceShareLessThan500k || 0,
+            residentialFinanceShare500kTo2_5m: result.data.residentialFinanceShare500kTo2_5m || 0,
+            residentialFinanceShareMoreThan2_5m: result.data.residentialFinanceShareMoreThan2_5m || 0,
+            residentialInstallerShareLessThan500k: result.data.residentialInstallerShareLessThan500k || 0,
+            residentialInstallerShare500kTo2_5m: result.data.residentialInstallerShare500kTo2_5m || 0,
+            residentialInstallerShareMoreThan2_5m: result.data.residentialInstallerShareMoreThan2_5m || 0,
+            maxDuration: result.data.maxDuration || 0,
+            agreementDuration: result.data.agreementDuration || 0,
+            notes: result.data.notes || ""
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching EPC assisted data:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchSalesAgentData();
+    fetchEpcAssistedData();
+  }, []);
+
+  const handleSalesAgentInput = (field, value) => {
+    setSalesAgentForm(prev => ({
+      ...prev,
+      [field]: parseFloat(value) || 0,
+    }));
+  };
+
+  const handleEpcInput = (field, value, isCommercial = true, isFinance = true) => {
+    const numValue = parseFloat(value) || 0;
+    
+    setEpcForm(prev => {
+      const newForm = { ...prev, [field]: numValue };
+      
+      if (isFinance) {
+        const counterpartField = field.replace('Finance', 'Installer').replace('finance', 'installer');
+        newForm[counterpartField] = 100 - numValue;
+      } else {
+        const counterpartField = field.replace('Installer', 'Finance').replace('installer', 'finance');
+        newForm[counterpartField] = 100 - numValue;
+      }
+      
+      return newForm;
+    });
+  };
+
+  const handleResidentialEpcInput = (field, value, isFinance = true) => {
+    const numValue = parseFloat(value) || 0;
+    
+    setEpcForm(prev => {
+      const newForm = { ...prev, [field]: numValue };
+      
+      if (isFinance) {
+        const counterpartField = field.replace('Finance', 'Installer').replace('finance', 'installer');
+        newForm[counterpartField] = 100 - numValue;
+      } else {
+        const counterpartField = field.replace('Installer', 'Finance').replace('installer', 'finance');
+        newForm[counterpartField] = 100 - numValue;
+      }
+      
+      return newForm;
+    });
+  };
+
+  const handleTextArea = (value) => {
     if (activeTab === "salesAgentUpline") {
-      setSalesAgentForm(prev => ({ ...prev, [section]: value }));
+      setSalesAgentForm(prev => ({ ...prev, notes: value }));
     } else {
-      setEpcForm(prev => ({ ...prev, [section]: value }));
+      setEpcForm(prev => ({ ...prev, notes: value }));
+    }
+  };
+
+  const updateSalesAgentStructure = async () => {
+    try {
+      const authToken = localStorage.getItem('authToken');
+      const response = await fetch('https://services.dcarbon.solutions/api/commission-structure/sales-agent-referral', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          salesAgentUnder500k: salesAgentForm.salesAgentUnder500k,
+          salesAgent500kTo2_5m: salesAgentForm.salesAgent500kTo2_5m,
+          salesAgentOver2_5m: salesAgentForm.salesAgentOver2_5m,
+          salesAgentAnnualCap: salesAgentForm.salesAgentAnnualCap,
+          installerUnder500k: salesAgentForm.installerUnder500k,
+          installer500kTo2_5m: salesAgentForm.installer500kTo2_5m,
+          installerOver2_5m: salesAgentForm.installerOver2_5m,
+          installerAnnualCap: salesAgentForm.installerAnnualCap,
+          financeUnder500k: salesAgentForm.financeUnder500k,
+          finance500kTo2_5m: salesAgentForm.finance500kTo2_5m,
+          financeOver2_5m: salesAgentForm.financeOver2_5m,
+          financeAnnualCap: salesAgentForm.financeAnnualCap
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update sales agent structure');
+      }
+
+      const result = await response.json();
+      if (result.status === 'success') {
+        toast.success('Sales agent commission structure updated successfully', {
+          position: 'top-center',
+          duration: 3000,
+        });
+        onSuccess();
+        return true;
+      } else {
+        throw new Error(result.message || 'Failed to update sales agent structure');
+      }
+    } catch (error) {
+      toast.error(`Failed to update: ${error.message}`, {
+        position: 'top-center',
+        duration: 5000,
+      });
+      return false;
+    }
+  };
+
+  const updateEpcAssistedStructure = async () => {
+    try {
+      const authToken = localStorage.getItem('authToken');
+      const response = await fetch('https://services.dcarbon.solutions/api/commission-structure/epc-assisted', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          financeShareLessThan500k: epcForm.financeShareLessThan500k,
+          financeShare500kTo2_5m: epcForm.financeShare500kTo2_5m,
+          financeShareMoreThan2_5m: epcForm.financeShareMoreThan2_5m,
+          installerShareLessThan500k: epcForm.installerShareLessThan500k,
+          installerShare500kTo2_5m: epcForm.installerShare500kTo2_5m,
+          installerShareMoreThan2_5m: epcForm.installerShareMoreThan2_5m,
+          residentialFinanceShareLessThan500k: epcForm.residentialFinanceShareLessThan500k,
+          residentialFinanceShare500kTo2_5m: epcForm.residentialFinanceShare500kTo2_5m,
+          residentialFinanceShareMoreThan2_5m: epcForm.residentialFinanceShareMoreThan2_5m,
+          residentialInstallerShareLessThan500k: epcForm.residentialInstallerShareLessThan500k,
+          residentialInstallerShare500kTo2_5m: epcForm.residentialInstallerShare500kTo2_5m,
+          residentialInstallerShareMoreThan2_5m: epcForm.residentialInstallerShareMoreThan2_5m,
+          maxDuration: epcForm.maxDuration,
+          agreementDuration: epcForm.agreementDuration,
+          notes: epcForm.notes
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update EPC assisted structure');
+      }
+
+      const result = await response.json();
+      if (result.status === 'success') {
+        toast.success('EPC assisted commission structure updated successfully', {
+          position: 'top-center',
+          duration: 3000,
+        });
+        onSuccess();
+        return true;
+      } else {
+        throw new Error(result.message || 'Failed to update EPC assisted structure');
+      }
+    } catch (error) {
+      toast.error(`Failed to update: ${error.message}`, {
+        position: 'top-center',
+        duration: 5000,
+      });
+      return false;
     }
   };
 
   const handleUpdate = async () => {
     setUpdating(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const validationErrors = [];
+      let success = false;
       
       if (activeTab === "salesAgentUpline") {
-        ["lessThan500k", "between500kTo2_5m", "moreThan2_5m"].forEach(tier => {
-          if (salesAgentForm.salesAgentToSalesAgent[tier] > 100 || salesAgentForm.salesAgentToSalesAgent[tier] < 0) {
-            validationErrors.push(`Sales Agent to Sales Agent ${tier} must be between 0-100%`);
-          }
-          if (salesAgentForm.salesAgentToInstaller[tier] > 100 || salesAgentForm.salesAgentToInstaller[tier] < 0) {
-            validationErrors.push(`Sales Agent to Installer ${tier} must be between 0-100%`);
-          }
-          if (salesAgentForm.salesAgentToFinance[tier] > 100 || salesAgentForm.salesAgentToFinance[tier] < 0) {
-            validationErrors.push(`Sales Agent to Finance ${tier} must be between 0-100%`);
-          }
-        });
+        success = await updateSalesAgentStructure();
       } else {
-        ["lessThan500k", "between500kTo2_5m", "moreThan2_5m"].forEach(tier => {
-          const finance = epcForm.financeCompany[tier];
-          const installer = epcForm.installerEPC[tier];
-          const total = finance + installer;
-          if (total !== 100) {
-            validationErrors.push(`Finance + Installer must equal 100% in ${tier} tier (currently ${total}%)`);
-          }
-        });
+        success = await updateEpcAssistedStructure();
       }
       
-      if (validationErrors.length > 0) {
-        throw new Error(validationErrors.join(", "));
+      if (success) {
+        onClose();
       }
-      
-      toast.success(`Partner ${activeTab === "salesAgentUpline" ? "Sales-Agent Upline" : "EPC-Assisted"} commission structure updated successfully`, {
-        position: 'top-center',
-        duration: 3000,
-      });
     } catch (err) {
       toast.error(`Validation failed: ${err.message}`, {
         position: 'top-center',
@@ -110,7 +301,7 @@ const PartnerCommissionSetup = ({ onClose }) => {
     }
   };
 
-  const renderPercentageInputs = (title, section, fields, form, onChange) => (
+  const renderPercentageInputs = (title, fields, form, onChange, isCommercial = true, isFinance = true) => (
     <div className="mb-6">
       <h3 className="font-medium text-[#1E1E1E] text-sm mb-3">{title}</h3>
       <div className="grid grid-cols-4 gap-4 text-xs">
@@ -120,8 +311,8 @@ const PartnerCommissionSetup = ({ onClose }) => {
             <input
               type="number"
               step="0.1"
-              value={form[section][field.key]}
-              onChange={(e) => onChange(section, field.key, e.target.value)}
+              value={form[field.key]}
+              onChange={(e) => onChange(field.key, e.target.value, isCommercial, isFinance)}
               className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
               min="0"
               max="100"
@@ -134,32 +325,32 @@ const PartnerCommissionSetup = ({ onClose }) => {
 
   const renderSalesAgentUpline = () => (
     <div className="space-y-4">
-      {renderPercentageInputs("Sales Agent → Sales Agent Commission", "salesAgentToSalesAgent", [
-        { key: "lessThan500k", label: "<$500k (%)" },
-        { key: "between500kTo2_5m", label: "$500k - $2.5M (%)" },
-        { key: "moreThan2_5m", label: ">$2.5M (%)" },
-        { key: "annualCap", label: "Annual Cap ($)" }
+      {renderPercentageInputs("Sales Agent → Sales Agent Commission", [
+        { key: "salesAgentUnder500k", label: "<$500k (%)" },
+        { key: "salesAgent500kTo2_5m", label: "$500k - $2.5M (%)" },
+        { key: "salesAgentOver2_5m", label: ">$2.5M (%)" },
+        { key: "salesAgentAnnualCap", label: "Annual Cap ($)" }
       ], salesAgentForm, handleSalesAgentInput)}
 
-      {renderPercentageInputs("Sales Agent → Installer/EPC Commission", "salesAgentToInstaller", [
-        { key: "lessThan500k", label: "<$500k (%)" },
-        { key: "between500kTo2_5m", label: "$500k - $2.5M (%)" },
-        { key: "moreThan2_5m", label: ">$2.5M (%)" },
-        { key: "annualCap", label: "Annual Cap ($)" }
+      {renderPercentageInputs("Sales Agent → Installer/EPC Commission", [
+        { key: "installerUnder500k", label: "<$500k (%)" },
+        { key: "installer500kTo2_5m", label: "$500k - $2.5M (%)" },
+        { key: "installerOver2_5m", label: ">$2.5M (%)" },
+        { key: "installerAnnualCap", label: "Annual Cap ($)" }
       ], salesAgentForm, handleSalesAgentInput)}
 
-      {renderPercentageInputs("Sales Agent → Finance Company Commission", "salesAgentToFinance", [
-        { key: "lessThan500k", label: "<$500k (%)" },
-        { key: "between500kTo2_5m", label: "$500k - $2.5M (%)" },
-        { key: "moreThan2_5m", label: ">$2.5M (%)" },
-        { key: "annualCap", label: "Annual Cap ($)" }
+      {renderPercentageInputs("Sales Agent → Finance Company Commission", [
+        { key: "financeUnder500k", label: "<$500k (%)" },
+        { key: "finance500kTo2_5m", label: "$500k - $2.5M (%)" },
+        { key: "financeOver2_5m", label: ">$2.5M (%)" },
+        { key: "financeAnnualCap", label: "Annual Cap ($)" }
       ], salesAgentForm, handleSalesAgentInput)}
 
       <div className="mb-6">
         <h3 className="font-medium text-[#1E1E1E] text-sm mb-3">Notes</h3>
         <textarea
           value={salesAgentForm.notes}
-          onChange={(e) => handleTextArea("notes", e.target.value)}
+          onChange={(e) => handleTextArea(e.target.value)}
           className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs h-20"
           placeholder="Additional notes..."
         />
@@ -170,17 +361,29 @@ const PartnerCommissionSetup = ({ onClose }) => {
   const renderEpcAssisted = () => {
     return (
       <div className="space-y-4">
-        {renderPercentageInputs("Finance Company Share", "financeCompany", [
-          { key: "lessThan500k", label: "<$500k (%)" },
-          { key: "between500kTo2_5m", label: "$500k - $2.5M (%)" },
-          { key: "moreThan2_5m", label: ">$2.5M (%)" }
-        ], epcForm, handleEpcInput)}
+        {renderPercentageInputs("Commercial Finance Company Share", [
+          { key: "financeShareLessThan500k", label: "<$500k (%)" },
+          { key: "financeShare500kTo2_5m", label: "$500k - $2.5M (%)" },
+          { key: "financeShareMoreThan2_5m", label: ">$2.5M (%)" }
+        ], epcForm, handleEpcInput, true, true)}
 
-        {renderPercentageInputs("Installer/EPC Share", "installerEPC", [
-          { key: "lessThan500k", label: "<$500k (%)" },
-          { key: "between500kTo2_5m", label: "$500k - $2.5M (%)" },
-          { key: "moreThan2_5m", label: ">$2.5M (%)" }
-        ], epcForm, handleEpcInput)}
+        {renderPercentageInputs("Commercial Installer/EPC Share", [
+          { key: "installerShareLessThan500k", label: "<$500k (%)" },
+          { key: "installerShare500kTo2_5m", label: "$500k - $2.5M (%)" },
+          { key: "installerShareMoreThan2_5m", label: ">$2.5M (%)" }
+        ], epcForm, (field, value) => handleEpcInput(field, value, true, false), true, false)}
+
+        {renderPercentageInputs("Residential Finance Company Share", [
+          { key: "residentialFinanceShareLessThan500k", label: "<$500k (%)" },
+          { key: "residentialFinanceShare500kTo2_5m", label: "$500k - $2.5M (%)" },
+          { key: "residentialFinanceShareMoreThan2_5m", label: ">$2.5M (%)" }
+        ], epcForm, (field, value) => handleResidentialEpcInput(field, value, true), false, true)}
+
+        {renderPercentageInputs("Residential Installer/EPC Share", [
+          { key: "residentialInstallerShareLessThan500k", label: "<$500k (%)" },
+          { key: "residentialInstallerShare500kTo2_5m", label: "$500k - $2.5M (%)" },
+          { key: "residentialInstallerShareMoreThan2_5m", label: ">$2.5M (%)" }
+        ], epcForm, (field, value) => handleResidentialEpcInput(field, value, false), false, false)}
 
         <div className="mb-6">
           <h3 className="font-medium text-[#1E1E1E] text-sm mb-3">Durations</h3>
@@ -189,8 +392,8 @@ const PartnerCommissionSetup = ({ onClose }) => {
               <label className="mb-1 text-gray-600 text-xs">Max Duration (Years)</label>
               <input
                 type="number"
-                value={epcForm.durations.maxDuration}
-                onChange={(e) => handleEpcInput("durations", "maxDuration", e.target.value)}
+                value={epcForm.maxDuration}
+                onChange={(e) => handleEpcInput("maxDuration", e.target.value)}
                 className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
                 min="0"
               />
@@ -199,8 +402,8 @@ const PartnerCommissionSetup = ({ onClose }) => {
               <label className="mb-1 text-gray-600 text-xs">Agreement Duration (Years)</label>
               <input
                 type="number"
-                value={epcForm.durations.agreementDuration}
-                onChange={(e) => handleEpcInput("durations", "agreementDuration", e.target.value)}
+                value={epcForm.agreementDuration}
+                onChange={(e) => handleEpcInput("agreementDuration", e.target.value)}
                 className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
                 min="0"
               />
@@ -212,7 +415,7 @@ const PartnerCommissionSetup = ({ onClose }) => {
           <h3 className="font-medium text-[#1E1E1E] text-sm mb-3">Notes</h3>
           <textarea
             value={epcForm.notes}
-            onChange={(e) => handleTextArea("notes", e.target.value)}
+            onChange={(e) => handleTextArea(e.target.value)}
             className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs h-20"
             placeholder="Additional notes..."
           />
@@ -280,7 +483,7 @@ const PartnerCommissionSetup = ({ onClose }) => {
                 : 'bg-[#039994] hover:bg-[#028B86]'
             } text-white transition-colors`}
           >
-            {updating ? 'Validating...' : 'Validate & Update'}
+            {updating ? 'Updating...' : 'Update Structure'}
           </button>
         </div>
       </div>

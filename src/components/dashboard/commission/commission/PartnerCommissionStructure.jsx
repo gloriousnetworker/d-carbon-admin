@@ -3,56 +3,125 @@ import React, { useState, useEffect } from "react";
 import { IoSettingsSharp } from "react-icons/io5";
 import { toast } from "react-hot-toast";
 
-const PartnerCommissionStructure = ({ onSetupStructure }) => {
+const PartnerCommissionStructure = ({ onSetupStructure, refreshData }) => {
   const [activeSubTab, setActiveSubTab] = useState("salesAgentUpline");
+  const [salesAgentData, setSalesAgentData] = useState(null);
+  const [epcAssistedData, setEpcAssistedData] = useState(null);
   const [commercialData, setCommercialData] = useState(null);
   const [residentialData, setResidentialData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const SALES_AGENT_DATA = {
-    headers: ["Relationship Type", "<$500k (%)", "$500k - $2.5M (%)", ">$2.5M (%)", "Annual Cap"],
-    rows: [
-      ["Sales Agent → Sales Agent", "0.5", "0.5", "0.75", "$25,000"],
-      ["Sales Agent → Installer/EPC", "1.0", "1.0", "1.0", "$50,000"],
-      ["Sales Agent → Finance Company", "1.0", "1.0", "1.0", "$50,000"],
-    ],
+  const fetchSalesAgentData = async () => {
+    try {
+      const authToken = localStorage.getItem('authToken');
+      const response = await fetch('https://services.dcarbon.solutions/api/commission-structure/sales-agent-referral', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch sales agent data');
+      }
+
+      const result = await response.json();
+      if (result.status === 'success') {
+        setSalesAgentData(result.data);
+      } else {
+        throw new Error('Failed to fetch sales agent data');
+      }
+    } catch (error) {
+      console.error('Error fetching sales agent data:', error);
+    }
+  };
+
+  const fetchEpcAssistedData = async () => {
+    try {
+      const authToken = localStorage.getItem('authToken');
+      const response = await fetch('https://services.dcarbon.solutions/api/commission-structure/epc-assisted', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch EPC assisted data');
+      }
+
+      const result = await response.json();
+      if (result.status === 'success') {
+        setEpcAssistedData(result.data);
+      } else {
+        throw new Error('Failed to fetch EPC assisted data');
+      }
+    } catch (error) {
+      console.error('Error fetching EPC assisted data:', error);
+    }
+  };
+
+  const fetchCommercialData = async () => {
+    try {
+      const authToken = localStorage.getItem('authToken');
+      const response = await fetch('https://services.dcarbon.solutions/api/commission-structure/commercial', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.status === 'success') {
+          setCommercialData(result.data);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching commercial data:', error);
+    }
+  };
+
+  const fetchResidentialData = async () => {
+    try {
+      const authToken = localStorage.getItem('authToken');
+      const response = await fetch('https://services.dcarbon.solutions/api/commission-structure/residential', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.status === 'success') {
+          setResidentialData(result.data);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching residential data:', error);
+    }
+  };
+
+  const calculateEpcSplit = (financeCommission, ratio = 0.6) => {
+    const financeShare = Math.round(financeCommission * ratio * 10) / 10;
+    const installerShare = Math.round((financeCommission - financeShare) * 10) / 10;
+    return { finance: financeShare, installer: installerShare };
   };
 
   const fetchCommissionData = async () => {
     try {
       setLoading(true);
-      const authToken = localStorage.getItem('authToken');
-      
-      const [commercialResponse, residentialResponse] = await Promise.all([
-        fetch('https://services.dcarbon.solutions/api/commission-structure/commercial', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authToken}`,
-          },
-        }),
-        fetch('https://services.dcarbon.solutions/api/commission-structure/residential', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authToken}`,
-          },
-        })
+      await Promise.all([
+        fetchSalesAgentData(),
+        fetchEpcAssistedData(),
+        fetchCommercialData(),
+        fetchResidentialData()
       ]);
-
-      if (!commercialResponse.ok || !residentialResponse.ok) {
-        throw new Error('Failed to fetch commission data');
-      }
-
-      const commercialResult = await commercialResponse.json();
-      const residentialResult = await residentialResponse.json();
-      
-      if (commercialResult.status === 'success' && residentialResult.status === 'success') {
-        setCommercialData(commercialResult.data);
-        setResidentialData(residentialResult.data);
-      } else {
-        throw new Error('Failed to fetch data');
-      }
     } catch (error) {
       console.error('Error fetching commission data:', error);
       toast.error(`Failed to load commission data: ${error.message}`, {
@@ -66,16 +135,32 @@ const PartnerCommissionStructure = ({ onSetupStructure }) => {
 
   useEffect(() => {
     fetchCommissionData();
-  }, []);
+  }, [refreshData]);
 
-  const calculateEpcSplit = (financeCommission, ratio = 0.6) => {
-    const financeShare = Math.round(financeCommission * ratio * 10) / 10;
-    const installerShare = Math.round((financeCommission - financeShare) * 10) / 10;
-    return { finance: financeShare, installer: installerShare };
+  const getSalesAgentTableData = () => {
+    if (!salesAgentData) {
+      return {
+        headers: ["Relationship Type", "<$500k (%)", "$500k - $2.5M (%)", ">$2.5M (%)", "Annual Cap"],
+        rows: [
+          ["Sales Agent → Sales Agent", "0.0", "0.0", "0.0", "$0"],
+          ["Sales Agent → Installer/EPC", "0.0", "0.0", "0.0", "$0"],
+          ["Sales Agent → Finance Company", "0.0", "0.0", "0.0", "$0"],
+        ],
+      };
+    }
+
+    return {
+      headers: ["Relationship Type", "<$500k (%)", "$500k - $2.5M (%)", ">$2.5M (%)", "Annual Cap"],
+      rows: [
+        ["Sales Agent → Sales Agent", salesAgentData.salesAgentUnder500k, salesAgentData.salesAgent500kTo2_5m, salesAgentData.salesAgentOver2_5m, `$${salesAgentData.salesAgentAnnualCap.toLocaleString()}`],
+        ["Sales Agent → Installer/EPC", salesAgentData.installerUnder500k, salesAgentData.installer500kTo2_5m, salesAgentData.installerOver2_5m, `$${salesAgentData.installerAnnualCap.toLocaleString()}`],
+        ["Sales Agent → Finance Company", salesAgentData.financeUnder500k, salesAgentData.finance500kTo2_5m, salesAgentData.financeOver2_5m, `$${salesAgentData.financeAnnualCap.toLocaleString()}`],
+      ],
+    };
   };
 
-  const getEpcAssistedData = () => {
-    if (!commercialData || !residentialData) {
+  const getEpcAssistedTableData = () => {
+    if (!epcAssistedData) {
       return {
         headers: ["Stakeholder", "<$500k (%)", "$500k - $2.5M (%)", ">$2.5M (%)", "Max Duration (Years)", "Agreement Duration (Years)"],
         rows: [
@@ -88,26 +173,38 @@ const PartnerCommissionStructure = ({ onSetupStructure }) => {
       };
     }
 
-    const commercialFinance = commercialData.partnerFinance;
-    const residentialFinance = residentialData.partnerFinance;
-    const terms = commercialData.terms;
+    const commercialFinance = epcAssistedData.financeShareLessThan500k !== null ? {
+      lessThan500k: epcAssistedData.financeShareLessThan500k,
+      between500kTo2_5m: epcAssistedData.financeShare500kTo2_5m,
+      moreThan2_5m: epcAssistedData.financeShareMoreThan2_5m
+    } : { lessThan500k: 0, between500kTo2_5m: 0, moreThan2_5m: 0 };
 
-    const commercialLessThan500k = calculateEpcSplit(commercialFinance.partnerShareLessThan500k);
-    const commercialBetween500kTo2_5m = calculateEpcSplit(commercialFinance.partnerShareBetween500kTo2_5m);
-    const commercialMoreThan2_5m = calculateEpcSplit(commercialFinance.partnerShareMoreThan2_5m);
+    const commercialInstaller = epcAssistedData.installerShareLessThan500k !== null ? {
+      lessThan500k: epcAssistedData.installerShareLessThan500k,
+      between500kTo2_5m: epcAssistedData.installerShare500kTo2_5m,
+      moreThan2_5m: epcAssistedData.installerShareMoreThan2_5m
+    } : { lessThan500k: 0, between500kTo2_5m: 0, moreThan2_5m: 0 };
 
-    const residentialLessThan500k = calculateEpcSplit(residentialFinance.partnerShareLessThan500k);
-    const residentialBetween500kTo2_5m = calculateEpcSplit(residentialFinance.partnerShareBetween500kTo2_5m);
-    const residentialMoreThan2_5m = calculateEpcSplit(residentialFinance.partnerShareMoreThan2_5m);
+    const residentialFinance = epcAssistedData.residentialFinanceShareLessThan500k !== null ? {
+      lessThan500k: epcAssistedData.residentialFinanceShareLessThan500k,
+      between500kTo2_5m: epcAssistedData.residentialFinanceShare500kTo2_5m,
+      moreThan2_5m: epcAssistedData.residentialFinanceShareMoreThan2_5m
+    } : { lessThan500k: 0, between500kTo2_5m: 0, moreThan2_5m: 0 };
+
+    const residentialInstaller = epcAssistedData.residentialInstallerShareLessThan500k !== null ? {
+      lessThan500k: epcAssistedData.residentialInstallerShareLessThan500k,
+      between500kTo2_5m: epcAssistedData.residentialInstallerShare500kTo2_5m,
+      moreThan2_5m: epcAssistedData.residentialInstallerShareMoreThan2_5m
+    } : { lessThan500k: 0, between500kTo2_5m: 0, moreThan2_5m: 0 };
 
     return {
       headers: ["Stakeholder", "<$500k (%)", "$500k - $2.5M (%)", ">$2.5M (%)", "Max Duration (Years)", "Agreement Duration (Years)"],
       rows: [
-        ["Finance Company (Commercial)", commercialLessThan500k.finance, commercialBetween500kTo2_5m.finance, commercialMoreThan2_5m.finance, terms.maxDuration, terms.agreementDuration],
-        ["Installer/EPC (Commercial)", commercialLessThan500k.installer, commercialBetween500kTo2_5m.installer, commercialMoreThan2_5m.installer, terms.maxDuration, terms.agreementDuration],
+        ["Finance Company (Commercial)", commercialFinance.lessThan500k, commercialFinance.between500kTo2_5m, commercialFinance.moreThan2_5m, epcAssistedData.maxDuration, epcAssistedData.agreementDuration],
+        ["Installer/EPC (Commercial)", commercialInstaller.lessThan500k, commercialInstaller.between500kTo2_5m, commercialInstaller.moreThan2_5m, epcAssistedData.maxDuration, epcAssistedData.agreementDuration],
         ["", "", "", "", "", ""],
-        ["Finance Company (Residential)", residentialLessThan500k.finance, residentialBetween500kTo2_5m.finance, residentialMoreThan2_5m.finance, terms.maxDuration, terms.agreementDuration],
-        ["Installer/EPC (Residential)", residentialLessThan500k.installer, residentialBetween500kTo2_5m.installer, residentialMoreThan2_5m.installer, terms.maxDuration, terms.agreementDuration],
+        ["Finance Company (Residential)", residentialFinance.lessThan500k, residentialFinance.between500kTo2_5m, residentialFinance.moreThan2_5m, epcAssistedData.maxDuration, epcAssistedData.agreementDuration],
+        ["Installer/EPC (Residential)", residentialInstaller.lessThan500k, residentialInstaller.between500kTo2_5m, residentialInstaller.moreThan2_5m, epcAssistedData.maxDuration, epcAssistedData.agreementDuration],
       ],
     };
   };
@@ -204,7 +301,7 @@ const PartnerCommissionStructure = ({ onSetupStructure }) => {
           <p className="text-xs text-gray-500 mb-4">
             Upline % is paid from Company share, not deducted from end-customer share.
           </p>
-          {renderTable(SALES_AGENT_DATA)}
+          {renderTable(getSalesAgentTableData())}
         </div>
       )}
 
@@ -215,7 +312,7 @@ const PartnerCommissionStructure = ({ onSetupStructure }) => {
             Commission splits are automatically calculated based on Commercial and Residential commission structures.
             Finance Company receives 60% and Installer/EPC receives 40% of the partner referral commission.
           </p>
-          {renderTable(getEpcAssistedData())}
+          {renderTable(getEpcAssistedTableData())}
         </div>
       )}
     </div>
