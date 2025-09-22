@@ -9,6 +9,16 @@ export default function PartnerCommissionPayoutDetails({ payoutDetails, onBack }
   const [showDocumentModal, setShowDocumentModal] = useState(false)
   const [uploadedInvoice, setUploadedInvoice] = useState(null)
 
+  const recSoldCommercial = 24
+  const recSoldResidential = 64
+  const avgRecPrice = 15.00
+  const avgCommissionCommercial = 0.12
+  const avgCommissionResidential = 0.24
+
+  const commissionPayableCommercial = recSoldCommercial * avgRecPrice * avgCommissionCommercial
+  const commissionPayableResidential = recSoldResidential * avgRecPrice * avgCommissionResidential
+  const totalCommissionPayable = commissionPayableCommercial + commissionPayableResidential
+
   const getStatusColor = (status) => {
     switch (status) {
       case "Completed":
@@ -150,37 +160,37 @@ export default function PartnerCommissionPayoutDetails({ payoutDetails, onBack }
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="font-sfpro text-[14px] text-[#1E1E1E]">• Total REC Sold (Commercial)</span>
-              <span className="font-sfpro text-[14px] font-[600] text-[#1E1E1E]">24</span>
+              <span className="font-sfpro text-[14px] font-[600] text-[#1E1E1E]">{recSoldCommercial}</span>
             </div>
             
             <div className="flex items-center justify-between">
               <span className="font-sfpro text-[14px] text-[#1E1E1E]">• Total REC Sold (DGG)</span>
-              <span className="font-sfpro text-[14px] font-[600] text-[#1E1E1E]">64</span>
+              <span className="font-sfpro text-[14px] font-[600] text-[#1E1E1E]">{recSoldResidential}</span>
             </div>
             
             <div className="flex items-center justify-between">
               <span className="font-sfpro text-[14px] text-[#1E1E1E]">• Average $/REC price</span>
-              <span className="font-sfpro text-[14px] font-[600] text-[#1E1E1E]">$15.00</span>
+              <span className="font-sfpro text-[14px] font-[600] text-[#1E1E1E]">${avgRecPrice.toFixed(2)}</span>
             </div>
             
             <div className="flex items-center justify-between">
               <span className="font-sfpro text-[14px] text-[#1E1E1E]">• Avg. Commission % (Commercial)</span>
-              <span className="font-sfpro text-[14px] font-[600] text-[#1E1E1E]">12%</span>
+              <span className="font-sfpro text-[14px] font-[600] text-[#1E1E1E]">{(avgCommissionCommercial * 100).toFixed(0)}%</span>
             </div>
             
             <div className="flex items-center justify-between">
               <span className="font-sfpro text-[14px] text-[#1E1E1E]">• Avg. Commission % (Residential)</span>
-              <span className="font-sfpro text-[14px] font-[600] text-[#1E1E1E]">24%</span>
+              <span className="font-sfpro text-[14px] font-[600] text-[#1E1E1E]">{(avgCommissionResidential * 100).toFixed(0)}%</span>
             </div>
             
             <div className="flex items-center justify-between">
               <span className="font-sfpro text-[14px] text-[#1E1E1E]">• Commission payable ($) (Commercial)</span>
-              <span className="font-sfpro text-[14px] font-[600] text-[#1E1E1E]">$100.00</span>
+              <span className="font-sfpro text-[14px] font-[600] text-[#1E1E1E]">${commissionPayableCommercial.toFixed(2)}</span>
             </div>
             
             <div className="flex items-center justify-between">
               <span className="font-sfpro text-[14px] text-[#1E1E1E]">• Commission payable ($) (Residential)</span>
-              <span className="font-sfpro text-[14px] font-[600] text-[#1E1E1E]">$100.00</span>
+              <span className="font-sfpro text-[14px] font-[600] text-[#1E1E1E]">${commissionPayableResidential.toFixed(2)}</span>
             </div>
             
             <div className="flex items-center justify-between pt-2 border-t border-[#E5E7EB]">
@@ -198,7 +208,7 @@ export default function PartnerCommissionPayoutDetails({ payoutDetails, onBack }
        
         <div className="bg-[#039994] text-white p-4 rounded-lg flex justify-between items-center">
           <span className="font-sfpro text-[16px] font-[600]">Total Commission Payable</span>
-          <span className="font-sfpro text-[20px] font-[700]">$200.00</span>
+          <span className="font-sfpro text-[20px] font-[700]">${totalCommissionPayable.toFixed(2)}</span>
         </div>
       </div>
 
