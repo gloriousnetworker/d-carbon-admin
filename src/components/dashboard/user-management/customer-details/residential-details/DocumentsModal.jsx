@@ -182,6 +182,102 @@ export default function DocumentsModal({ facility, documents, onVerifyFacility, 
 
   const canVerifyFacility = mandatoryDocsApproved && facility.status !== "VERIFIED";
 
+  const getFileExtension = (url) => {
+    if (!url) return '';
+    return url.split('.').pop().toLowerCase();
+  };
+
+  const renderFileContent = () => {
+    if (!currentPdfUrl) return <div className="flex items-center justify-center h-full text-gray-500">No document available</div>;
+    
+    const extension = getFileExtension(currentPdfUrl);
+    
+    if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(extension)) {
+      return (
+        <div className="flex items-center justify-center h-full p-4">
+          <img 
+            src={currentPdfUrl} 
+            alt={currentDocument?.name} 
+            className="max-w-full max-h-full object-contain"
+            onError={(e) => {
+              e.target.style.display = 'none';
+              e.target.nextSibling.style.display = 'block';
+            }}
+          />
+          <div style={{display: 'none'}} className="text-center">
+            <p className="text-gray-600">Unable to load image</p>
+          </div>
+        </div>
+      );
+    } else if (extension === 'pdf') {
+      const pdfViewerUrl = currentPdfUrl.includes('drive.google.com') 
+        ? currentPdfUrl.replace('/view', '/preview')
+        : `https://docs.google.com/viewer?url=${encodeURIComponent(currentPdfUrl)}&embedded=true`;
+      
+      return (
+        <div className="w-full h-full relative">
+          <iframe
+            src={pdfViewerUrl}
+            className="w-full h-full border-0"
+            title={`PDF Viewer - ${currentDocument?.name}`}
+            frameBorder="0"
+            onError={() => {
+              console.error('PDF viewer failed to load');
+            }}
+          />
+          <div className="absolute inset-0 pointer-events-none"></div>
+        </div>
+      );
+    } else if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(extension)) {
+      const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(currentPdfUrl)}&embedded=true`;
+      
+      return (
+        <div className="w-full h-full">
+          <iframe
+            src={viewerUrl}
+            className="w-full h-full border-0"
+            title={currentDocument?.name}
+            frameBorder="0"
+          />
+        </div>
+      );
+    } else if (['txt', 'csv', 'json', 'xml'].includes(extension)) {
+      return (
+        <div className="w-full h-full p-4">
+          <iframe
+            src={currentPdfUrl}
+            className="w-full h-full border border-gray-300 rounded"
+            title={currentDocument?.name}
+            frameBorder="0"
+          />
+        </div>
+      );
+    } else {
+      return (
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <div className="text-6xl text-gray-400 mb-4">📄</div>
+            <p className="text-gray-600 mb-2">Preview not available for this file type</p>
+            <p className="text-sm text-gray-500 mb-4">File extension: .{extension}</p>
+            <Button
+              onClick={() => {
+                const link = document.createElement('a');
+                link.href = currentPdfUrl;
+                link.download = currentDocument?.name || 'document';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              }}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Download File
+            </Button>
+          </div>
+        </div>
+      );
+    }
+  };
+
   const openPdfModal = (pdfUrl, document) => {
     setCurrentPdfUrl(pdfUrl);
     setCurrentDocument(document);
@@ -204,6 +300,17 @@ export default function DocumentsModal({ facility, documents, onVerifyFacility, 
     setStatusModalOpen(false);
     setRejectionReason("");
     setActionType("");
+  };
+
+  const handleDownload = (e) => {
+    e.preventDefault();
+    const link = document.createElement('a');
+    link.href = currentPdfUrl;
+    link.download = currentDocument?.name || 'document';
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleDocumentStatusChange = async () => {
@@ -259,37 +366,27 @@ export default function DocumentsModal({ facility, documents, onVerifyFacility, 
   return (
     <>
       <Dialog open={pdfModalOpen} onOpenChange={closePdfModal}>
-        <DialogContent className="max-w-4xl h-[90vh]">
-          <DialogHeader>
-            <DialogTitle>
-              {currentDocument?.name} - {facility.facilityName}
+        <DialogContent className="max-w-5xl h-[95vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0 bg-gray-50 p-4 -m-6 mb-4 rounded-t-lg">
+            <DialogTitle className="flex justify-between items-center">
+              <span className="truncate">
+                {currentDocument?.name} - {facility.facilityName}
+              </span>
+              <div className="flex items-center gap-2 ml-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownload}
+                  className="text-xs"
+                >
+                  <Download className="h-3 w-3 mr-1" />
+                  Download
+                </Button>
+              </div>
             </DialogTitle>
           </DialogHeader>
-          <div className="h-full w-full">
-            {currentPdfUrl && (
-              <iframe 
-                src={currentPdfUrl} 
-                className="w-full h-full border rounded" 
-                frameBorder="0"
-                title={`PDF Viewer - ${currentDocument?.name}`}
-              />
-            )}
-          </div>
-          <div className="flex justify-end gap-2 mt-4">
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                const link = document.createElement('a');
-                link.href = currentPdfUrl;
-                link.download = currentDocument?.name || "document";
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-              }}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Download
-            </Button>
+          <div className="flex-1 overflow-hidden bg-gray-100 -mx-6 -mb-6 rounded-b-lg">
+            {renderFileContent()}
           </div>
         </DialogContent>
       </Dialog>
@@ -379,7 +476,7 @@ export default function DocumentsModal({ facility, documents, onVerifyFacility, 
               <p className="font-medium">{facility.systemCapacity}</p>
             </div>
             <div>
-              <p className="textsm text-gray-500">Total RECs</p>
+              <p className="text-sm text-gray-500">Total RECs</p>
               <p className="font-medium">{facility.totalRecs}</p>
             </div>
             <div>
