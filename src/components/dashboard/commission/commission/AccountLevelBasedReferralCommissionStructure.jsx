@@ -3,23 +3,7 @@ import React, { useState } from "react";
 import { IoSettingsSharp } from "react-icons/io5";
 
 const AccountLevelBasedCommissionStructure = ({ onSetupStructure }) => {
-  const [activeSubTab, setActiveSubTab] = useState("commercial");
-  
-  const COMMERCIAL_DATA = {
-    headers: ["Referrer Type", "<$500k (%)", "$500k - $2.5M (%)", ">$2.5M (%)", "Annual Cap ($)"],
-    rows: [
-      ["Commercial → Commercial", "5.0", "5.5", "6.0", "100,000"],
-      ["Commercial → Residential", "3.0", "3.5", "4.0", "50,000"],
-    ],
-  };
-
-  const RESIDENTIAL_DATA = {
-    headers: ["Referrer Type", "<$500k (%)", "$500k - $2.5M (%)", ">$2.5M (%)", "Annual Cap ($)"],
-    rows: [
-      ["Residential → Commercial", "4.0", "4.5", "5.0", "75,000"],
-      ["Residential → Residential", "3.0", "3.5", "4.0", "50,000"],
-    ],
-  };
+  const [activeSubTab, setActiveSubTab] = useState("sales-agent");
 
   const SALES_AGENT_DATA = {
     headers: ["Referrer Type", "<$500k (%)", "$500k - $2.5M (%)", ">$2.5M (%)", "Annual Cap ($)"],
@@ -84,7 +68,8 @@ const AccountLevelBasedCommissionStructure = ({ onSetupStructure }) => {
 
       <div className="border-b border-gray-200 mb-4">
         <div className="flex">
-          <button
+          {/* Commercial Tab - Commented Out */}
+          {/* <button
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeSubTab === "commercial"
                 ? "text-[#039994] border-[#039994]"
@@ -93,8 +78,10 @@ const AccountLevelBasedCommissionStructure = ({ onSetupStructure }) => {
             onClick={() => setActiveSubTab("commercial")}
           >
             Commercial Referrals
-          </button>
-          <button
+          </button> */}
+          
+          {/* Residential Tab - Commented Out */}
+          {/* <button
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeSubTab === "residential"
                 ? "text-[#039994] border-[#039994]"
@@ -103,7 +90,8 @@ const AccountLevelBasedCommissionStructure = ({ onSetupStructure }) => {
             onClick={() => setActiveSubTab("residential")}
           >
             Residential Referrals
-          </button>
+          </button> */}
+          
           <button
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeSubTab === "sales-agent"
@@ -117,7 +105,8 @@ const AccountLevelBasedCommissionStructure = ({ onSetupStructure }) => {
         </div>
       </div>
 
-      {activeSubTab === "commercial" && (
+      {/* Commercial Content - Commented Out */}
+      {/* {activeSubTab === "commercial" && (
         <div>
           <h3 className="text-[#039994] font-medium mb-2">Commercial Account Referrals</h3>
           <p className="text-xs text-gray-500 mb-4">
@@ -125,9 +114,10 @@ const AccountLevelBasedCommissionStructure = ({ onSetupStructure }) => {
           </p>
           {renderTable(COMMERCIAL_DATA, "commercial")}
         </div>
-      )}
+      )} */}
 
-      {activeSubTab === "residential" && (
+      {/* Residential Content - Commented Out */}
+      {/* {activeSubTab === "residential" && (
         <div>
           <h3 className="text-[#039994] font-medium mb-2">Residential Account Referrals</h3>
           <p className="text-xs text-gray-500 mb-4">
@@ -135,7 +125,7 @@ const AccountLevelBasedCommissionStructure = ({ onSetupStructure }) => {
           </p>
           {renderTable(RESIDENTIAL_DATA, "residential")}
         </div>
-      )}
+      )} */}
 
       {activeSubTab === "sales-agent" && (
         <div>

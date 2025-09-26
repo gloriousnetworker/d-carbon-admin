@@ -5,35 +5,17 @@ import { IoSettingsSharp } from "react-icons/io5";
 const BonusCommissionStructure = ({ onSetupStructure }) => {
   const [tableData, setTableData] = useState(null);
 
-  const QUARTERLY_COMMERCIAL = {
-    headers: ["MW Threshold", "Bonus (%)", "Max Duration (Years)", "Agreement Duration (Years)"],
+  const BONUS_DATA = {
+    headers: ["Bonus Type", "Target", "Min", "Max", "Unit", "Bonus (%)"],
     rows: [
-      ["< 1 MW", "1.0", "3", "1"],
-      ["1 - 5 MW", "1.5", "3", "1"],
-      ["> 5 MW", "2.0", "3", "1"]
-    ]
-  };
-
-  const QUARTERLY_RESIDENTIAL = {
-    headers: ["Referrals", "Bonus (%)", "Max Duration (Years)", "Agreement Duration (Years)"],
-    rows: [
-      ["5-10 referrals", "0.5", "2", "1"],
-      ["11-20 referrals", "1.0", "2", "1"],
-      [">20 referrals", "1.5", "2", "1"]
-    ]
-  };
-
-  const ANNUAL_BONUS = {
-    headers: ["MW Threshold", "Bonus (%)", "Max Duration (Years)", "Agreement Duration (Years)"],
-    rows: [
-      ["< 10 MW", "1.0", "5", "1"],
-      ["10 - 50 MW", "1.5", "5", "1"],
-      ["> 50 MW", "2.0", "5", "1"]
+      ["Quarterly", "Commercial", "1", "5", "MW", "2.0"],
+      ["Annually", "Partners", "10", "50", "Referral", "1.5"],
+      ["Annually", "Residential", "5", "20", "MW", "1.0"]
     ]
   };
 
   useEffect(() => {
-    setTableData({ QUARTERLY_COMMERCIAL, QUARTERLY_RESIDENTIAL, ANNUAL_BONUS });
+    setTableData(BONUS_DATA);
   }, []);
 
   if (!tableData) {
@@ -44,9 +26,8 @@ const BonusCommissionStructure = ({ onSetupStructure }) => {
     );
   }
 
-  const renderTable = (title, data) => (
+  const renderTable = (data) => (
     <div className="mb-8">
-      <h3 className="text-[#039994] font-medium mb-3">{title}</h3>
       <div className="w-full overflow-auto rounded-lg border border-gray-200">
         <table className="w-full">
           <thead>
@@ -98,12 +79,10 @@ const BonusCommissionStructure = ({ onSetupStructure }) => {
         </button>
       </div>
 
-      {renderTable("Quarterly Bonus — Commercial (MW Based)", tableData.QUARTERLY_COMMERCIAL)}
-      {renderTable("Bonus — Residential (Referral Based)", tableData.QUARTERLY_RESIDENTIAL)}
-      {renderTable("Annual Bonus — Partners (MW Based)", tableData.ANNUAL_BONUS)}
+      {renderTable(tableData)}
 
       <div className="text-xs text-gray-500 mt-2">
-        All bonuses are based on megawatts (MW) generated or number of referrals, not dollar amounts.
+        All bonuses are based on megawatts (MW) generated or number of referrals.
       </div>
     </div>
   );

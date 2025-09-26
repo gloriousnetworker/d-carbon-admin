@@ -5,40 +5,14 @@ import { IoMdClose } from "react-icons/io";
 import { toast } from "react-hot-toast";
 
 const AccountLevelBasedCommissionSetup = ({ onClose }) => {
-  const [activeTab, setActiveTab] = useState("commercial");
+  const [activeTab, setActiveTab] = useState("sales-agent");
   const [updating, setUpdating] = useState(false);
-
-  const [commercialForm, setCommercialForm] = useState({
-    commercialToCommercial: { lessThan500k: 5.0, between500kTo2_5m: 5.5, moreThan2_5m: 6.0, annualCap: 100000 },
-    commercialToResidential: { lessThan500k: 3.0, between500kTo2_5m: 3.5, moreThan2_5m: 4.0, annualCap: 50000 },
-    notes: ""
-  });
-
-  const [residentialForm, setResidentialForm] = useState({
-    residentialToCommercial: { lessThan500k: 4.0, between500kTo2_5m: 4.5, moreThan2_5m: 5.0, annualCap: 75000 },
-    residentialToResidential: { lessThan500k: 3.0, between500kTo2_5m: 3.5, moreThan2_5m: 4.0, annualCap: 50000 },
-    notes: ""
-  });
 
   const [salesAgentForm, setSalesAgentForm] = useState({
     salesAgentToCommercial: { lessThan500k: 2.0, between500kTo2_5m: 2.5, moreThan2_5m: 3.0, annualCap: 50000 },
     salesAgentToResidential: { lessThan500k: 1.5, between500kTo2_5m: 2.0, moreThan2_5m: 2.5, annualCap: 25000 },
     notes: ""
   });
-
-  const handleCommercialInput = (section, field, value) => {
-    setCommercialForm(prev => ({
-      ...prev,
-      [section]: { ...prev[section], [field]: parseFloat(value) || 0 },
-    }));
-  };
-
-  const handleResidentialInput = (section, field, value) => {
-    setResidentialForm(prev => ({
-      ...prev,
-      [section]: { ...prev[section], [field]: parseFloat(value) || 0 },
-    }));
-  };
 
   const handleSalesAgentInput = (section, field, value) => {
     setSalesAgentForm(prev => ({
@@ -48,13 +22,7 @@ const AccountLevelBasedCommissionSetup = ({ onClose }) => {
   };
 
   const handleTextArea = (value) => {
-    if (activeTab === "commercial") {
-      setCommercialForm(prev => ({ ...prev, notes: value }));
-    } else if (activeTab === "residential") {
-      setResidentialForm(prev => ({ ...prev, notes: value }));
-    } else {
-      setSalesAgentForm(prev => ({ ...prev, notes: value }));
-    }
+    setSalesAgentForm(prev => ({ ...prev, notes: value }));
   };
 
   const handleUpdate = async () => {
@@ -64,34 +32,15 @@ const AccountLevelBasedCommissionSetup = ({ onClose }) => {
       
       const validationErrors = [];
       
-      if (activeTab === "commercial") {
-        ["lessThan500k", "between500kTo2_5m", "moreThan2_5m"].forEach(tier => {
-          if (commercialForm.commercialToCommercial[tier] > 100 || commercialForm.commercialToCommercial[tier] < 0) {
-            validationErrors.push(`Commercial → Commercial ${tier} must be between 0-100%`);
-          }
-          if (commercialForm.commercialToResidential[tier] > 100 || commercialForm.commercialToResidential[tier] < 0) {
-            validationErrors.push(`Commercial → Residential ${tier} must be between 0-100%`);
-          }
-        });
-      } else if (activeTab === "residential") {
-        ["lessThan500k", "between500kTo2_5m", "moreThan2_5m"].forEach(tier => {
-          if (residentialForm.residentialToCommercial[tier] > 100 || residentialForm.residentialToCommercial[tier] < 0) {
-            validationErrors.push(`Residential → Commercial ${tier} must be between 0-100%`);
-          }
-          if (residentialForm.residentialToResidential[tier] > 100 || residentialForm.residentialToResidential[tier] < 0) {
-            validationErrors.push(`Residential → Residential ${tier} must be between 0-100%`);
-          }
-        });
-      } else {
-        ["lessThan500k", "between500kTo2_5m", "moreThan2_5m"].forEach(tier => {
-          if (salesAgentForm.salesAgentToCommercial[tier] > 100 || salesAgentForm.salesAgentToCommercial[tier] < 0) {
-            validationErrors.push(`Sales Agent → Commercial ${tier} must be between 0-100%`);
-          }
-          if (salesAgentForm.salesAgentToResidential[tier] > 100 || salesAgentForm.salesAgentToResidential[tier] < 0) {
-            validationErrors.push(`Sales Agent → Residential ${tier} must be between 0-100%`);
-          }
-        });
-      }
+      // Validation for sales agent form
+      ["lessThan500k", "between500kTo2_5m", "moreThan2_5m"].forEach(tier => {
+        if (salesAgentForm.salesAgentToCommercial[tier] > 100 || salesAgentForm.salesAgentToCommercial[tier] < 0) {
+          validationErrors.push(`Sales Agent → Commercial ${tier} must be between 0-100%`);
+        }
+        if (salesAgentForm.salesAgentToResidential[tier] > 100 || salesAgentForm.salesAgentToResidential[tier] < 0) {
+          validationErrors.push(`Sales Agent → Residential ${tier} must be between 0-100%`);
+        }
+      });
       
       if (validationErrors.length > 0) {
         throw new Error(validationErrors.join(", "));
@@ -133,62 +82,6 @@ const AccountLevelBasedCommissionSetup = ({ onClose }) => {
     </div>
   );
 
-  const renderCommercialTab = () => (
-    <div className="space-y-4">
-      {renderPercentageInputs("Commercial → Commercial Commission", "commercialToCommercial", [
-        { key: "lessThan500k", label: "<$500k (%)" },
-        { key: "between500kTo2_5m", label: "$500k - $2.5M (%)" },
-        { key: "moreThan2_5m", label: ">$2.5M (%)" },
-        { key: "annualCap", label: "Annual Cap ($)" }
-      ], commercialForm, handleCommercialInput)}
-
-      {renderPercentageInputs("Commercial → Residential Commission", "commercialToResidential", [
-        { key: "lessThan500k", label: "<$500k (%)" },
-        { key: "between500kTo2_5m", label: "$500k - $2.5M (%)" },
-        { key: "moreThan2_5m", label: ">$2.5M (%)" },
-        { key: "annualCap", label: "Annual Cap ($)" }
-      ], commercialForm, handleCommercialInput)}
-
-      <div className="mb-6">
-        <h3 className="font-medium text-[#1E1E1E] text-sm mb-3">Notes</h3>
-        <textarea
-          value={commercialForm.notes}
-          onChange={(e) => handleTextArea(e.target.value)}
-          className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs h-20"
-          placeholder="Additional notes..."
-        />
-      </div>
-    </div>
-  );
-
-  const renderResidentialTab = () => (
-    <div className="space-y-4">
-      {renderPercentageInputs("Residential → Commercial Commission", "residentialToCommercial", [
-        { key: "lessThan500k", label: "<$500k (%)" },
-        { key: "between500kTo2_5m", label: "$500k - $2.5M (%)" },
-        { key: "moreThan2_5m", label: ">$2.5M (%)" },
-        { key: "annualCap", label: "Annual Cap ($)" }
-      ], residentialForm, handleResidentialInput)}
-
-      {renderPercentageInputs("Residential → Residential Commission", "residentialToResidential", [
-        { key: "lessThan500k", label: "<$500k (%)" },
-        { key: "between500kTo2_5m", label: "$500k - $2.5M (%)" },
-        { key: "moreThan2_5m", label: ">$2.5M (%)" },
-        { key: "annualCap", label: "Annual Cap ($)" }
-      ], residentialForm, handleResidentialInput)}
-
-      <div className="mb-6">
-        <h3 className="font-medium text-[#1E1E1E] text-sm mb-3">Notes</h3>
-        <textarea
-          value={residentialForm.notes}
-          onChange={(e) => handleTextArea(e.target.value)}
-          className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs h-20"
-          placeholder="Additional notes..."
-        />
-      </div>
-    </div>
-  );
-
   const renderSalesAgentTab = () => (
     <div className="space-y-4">
       {renderPercentageInputs("Sales Agent → Commercial Commission", "salesAgentToCommercial", [
@@ -224,7 +117,7 @@ const AccountLevelBasedCommissionSetup = ({ onClose }) => {
           <div className="flex items-center">
             <IoSettingsSharp className="text-[#039994] mr-2" size={18} />
             <h2 className="text-lg font-semibold text-[#039994]">
-              Account Level Based Setup Commission Structure - {activeTab === "commercial" ? "Commercial Referrals" : activeTab === "residential" ? "Residential Referrals" : "Sales Agent Referrals"}
+              Account Level Based Setup Commission Structure - Sales Agent Referrals
             </h2>
           </div>
           <button onClick={onClose} className="text-red-500 hover:text-red-700">
@@ -234,7 +127,8 @@ const AccountLevelBasedCommissionSetup = ({ onClose }) => {
 
         <div className="border-b border-gray-200 mb-6">
           <div className="flex">
-            <button
+            {/* Commercial Tab - Commented Out */}
+            {/* <button
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === "commercial"
                   ? "text-[#039994] border-[#039994]"
@@ -243,8 +137,10 @@ const AccountLevelBasedCommissionSetup = ({ onClose }) => {
               onClick={() => setActiveTab("commercial")}
             >
               Commercial Referrals
-            </button>
-            <button
+            </button> */}
+            
+            {/* Residential Tab - Commented Out */}
+            {/* <button
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === "residential"
                   ? "text-[#039994] border-[#039994]"
@@ -253,7 +149,8 @@ const AccountLevelBasedCommissionSetup = ({ onClose }) => {
               onClick={() => setActiveTab("residential")}
             >
               Residential Referrals
-            </button>
+            </button> */}
+            
             <button
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === "sales-agent"
@@ -267,8 +164,12 @@ const AccountLevelBasedCommissionSetup = ({ onClose }) => {
           </div>
         </div>
 
-        {activeTab === "commercial" && renderCommercialTab()}
-        {activeTab === "residential" && renderResidentialTab()}
+        {/* Commercial Content - Commented Out */}
+        {/* {activeTab === "commercial" && renderCommercialTab()} */}
+        
+        {/* Residential Content - Commented Out */}
+        {/* {activeTab === "residential" && renderResidentialTab()} */}
+        
         {activeTab === "sales-agent" && renderSalesAgentTab()}
 
         <div className="flex justify-end gap-3 mt-6">

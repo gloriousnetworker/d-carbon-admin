@@ -13,6 +13,7 @@ import ResidentialCommissionSetup from "./setupModals/ResidentialCommissionSetup
 import PartnerCommissionSetup from "./setupModals/PartnerCommissionSetup";
 import AccountLevelBasedCommissionSetup from "./setupModals/AccountLevelBasedReferralCommissionStructure";
 import BonusCommissionSetup from "./setupModals/BonusCommissionSetup";
+import InitiateCommissionModal from "./InitiateCommissionModal";
 import { Toaster } from "react-hot-toast";
 
 const CommissionStructure = () => {
@@ -22,6 +23,7 @@ const CommissionStructure = () => {
   const [showPartnerSetup, setShowPartnerSetup] = useState(false);
   const [showSalesAgentSetup, setShowSalesAgentSetup] = useState(false);
   const [showBonusSetup, setShowBonusSetup] = useState(false);
+  const [showInitiateCommission, setShowInitiateCommission] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const handleCommercialSetup = () => setShowCommercialSetup(true);
@@ -34,6 +36,8 @@ const CommissionStructure = () => {
   const handleCloseSalesAgentSetup = () => setShowSalesAgentSetup(false);
   const handleBonusSetup = () => setShowBonusSetup(true);
   const handleCloseBonusSetup = () => setShowBonusSetup(false);
+  const handleInitiateCommission = () => setShowInitiateCommission(true);
+  const handleCloseInitiateCommission = () => setShowInitiateCommission(false);
 
   const handleSuccess = () => {
     setRefreshTrigger(prev => prev + 1);
@@ -57,10 +61,21 @@ const CommissionStructure = () => {
       {showBonusSetup && (
         <BonusCommissionSetup onClose={handleCloseBonusSetup} onSuccess={handleSuccess} />
       )}
+      {showInitiateCommission && (
+        <InitiateCommissionModal onClose={handleCloseInitiateCommission} onSuccess={handleSuccess} />
+      )}
       <div className="max-w-6xl mx-auto">
+        <div className="flex justify-end mb-4">
+          <button
+            className="bg-[#1E1E1E] text-white px-6 py-3 rounded-md text-sm hover:bg-[#333333] transition-colors font-medium"
+            onClick={handleInitiateCommission}
+          >
+            Initiate Commission
+          </button>
+        </div>
         <div className="bg-white rounded-2xl shadow-sm border border-[#E8E8E8]">
           <div className="border-b border-gray-200">
-            <div className="flex justify-between">
+            <div className="flex">
               <button
                 className={`px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
                   activeTab === "Commercial"
