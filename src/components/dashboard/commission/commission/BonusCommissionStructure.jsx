@@ -5,17 +5,35 @@ import { IoSettingsSharp } from "react-icons/io5";
 const BonusCommissionStructure = ({ onSetupStructure }) => {
   const [tableData, setTableData] = useState(null);
 
-  const BONUS_DATA = {
-    headers: ["Bonus Type", "Target", "Min", "Max", "Unit", "Bonus (%)"],
+  const QUARTERLY_COMMERCIAL = {
+    headers: ["MW Threshold", "Bonus (%)"],
     rows: [
-      ["Quarterly", "Commercial", "1", "5", "MW", "2.0"],
-      ["Annually", "Partners", "10", "50", "Referral", "1.5"],
-      ["Annually", "Residential", "5", "20", "MW", "1.0"]
+      ["< 1 MW", "1.0"],
+      ["1 - 5 MW", "1.5"],
+      ["> 5 MW", "2.0"]
+    ]
+  };
+
+  const QUARTERLY_RESIDENTIAL = {
+    headers: ["Referrals", "Bonus (%)"],
+    rows: [
+      ["5-10 referrals", "0.5"],
+      ["11-20 referrals", "1.0"],
+      [">20 referrals", "1.5"]
+    ]
+  };
+
+  const ANNUAL_BONUS = {
+    headers: ["MW Threshold", "Bonus (%)"],
+    rows: [
+      ["< 10 MW", "1.0"],
+      ["10 - 50 MW", "1.5"],
+      ["> 50 MW", "2.0"]
     ]
   };
 
   useEffect(() => {
-    setTableData(BONUS_DATA);
+    setTableData({ QUARTERLY_COMMERCIAL, QUARTERLY_RESIDENTIAL, ANNUAL_BONUS });
   }, []);
 
   if (!tableData) {
@@ -26,8 +44,9 @@ const BonusCommissionStructure = ({ onSetupStructure }) => {
     );
   }
 
-  const renderTable = (data) => (
+  const renderTable = (title, data) => (
     <div className="mb-8">
+      <h3 className="text-[#039994] font-medium mb-3">{title}</h3>
       <div className="w-full overflow-auto rounded-lg border border-gray-200">
         <table className="w-full">
           <thead>
@@ -79,10 +98,12 @@ const BonusCommissionStructure = ({ onSetupStructure }) => {
         </button>
       </div>
 
-      {renderTable(tableData)}
+      {renderTable("Quarterly Bonus — Commercial (MW Based)", tableData.QUARTERLY_COMMERCIAL)}
+      {renderTable("Bonus — Residential (Referral Based)", tableData.QUARTERLY_RESIDENTIAL)}
+      {renderTable("Annual Bonus — Partners (MW Based)", tableData.ANNUAL_BONUS)}
 
       <div className="text-xs text-gray-500 mt-2">
-        All bonuses are based on megawatts (MW) generated or number of referrals.
+        All bonuses are based on megawatts (MW) generated or number of referrals, not dollar amounts.
       </div>
     </div>
   );

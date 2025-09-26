@@ -6,67 +6,37 @@ import { toast } from "react-hot-toast";
 
 const BonusCommissionSetup = ({ onClose }) => {
   const [formValues, setFormValues] = useState({
-    bonusType: "quarterly",
-    min: "1",
-    max: "5",
-    bonus: 2.0,
-    unit: "MW",
-    target: "Commercial",
+    quarterlyCommercial: [
+      { threshold: "< 1 MW", bonus: 1.0 },
+      { threshold: "1 - 5 MW", bonus: 1.5 },
+      { threshold: "> 5 MW", bonus: 2.0 }
+    ],
+    quarterlyResidential: [
+      { threshold: "5-10 referrals", bonus: 0.5 },
+      { threshold: "11-20 referrals", bonus: 1.0 },
+      { threshold: ">20 referrals", bonus: 1.5 }
+    ],
+    annualBonus: [
+      { threshold: "< 10 MW", bonus: 1.0 },
+      { threshold: "10 - 50 MW", bonus: 1.5 },
+      { threshold: "> 50 MW", bonus: 2.0 }
+    ],
     notes: ""
   });
 
-  const [bonusEntries, setBonusEntries] = useState([
-    { bonusType: "quarterly", min: "1", max: "5", bonus: 2.0, unit: "MW", target: "Commercial" },
-    { bonusType: "annually", min: "10", max: "50", bonus: 1.5, unit: "Referral", target: "Partners" },
-    { bonusType: "annually", min: "5", max: "20", bonus: 1.0, unit: "MW", target: "Residential" }
-  ]);
-
   const [updating, setUpdating] = useState(false);
 
-  const handleInputChange = (field, value) => {
+  const handleInputChange = (section, index, field, value) => {
     setFormValues(prev => ({
       ...prev,
-      [field]: value
+      [section]: prev[section].map((item, i) => 
+        i === index ? { ...item, [field]: field === 'threshold' ? value : parseFloat(value) || 0 } : item
+      )
     }));
-
-    if (field === "bonusType") {
-      if (value === "quarterly") {
-        setFormValues(prev => ({
-          ...prev,
-          bonusType: value,
-          target: "Commercial",
-          unit: "MW"
-        }));
-      } else if (value === "annually") {
-        setFormValues(prev => ({
-          ...prev,
-          bonusType: value,
-          target: "Partners",
-          unit: "Referral"
-        }));
-      }
-    }
   };
 
   const handleTextArea = (value) => {
     setFormValues(prev => ({ ...prev, notes: value }));
-  };
-
-  const handleAddEntry = () => {
-    if (formValues.bonusType && formValues.min && formValues.max && formValues.bonus) {
-      setBonusEntries(prev => [...prev, { ...formValues }]);
-      setFormValues(prev => ({
-        ...prev,
-        min: "",
-        max: "",
-        bonus: 0,
-        notes: ""
-      }));
-    }
-  };
-
-  const handleRemoveEntry = (index) => {
-    setBonusEntries(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleUpdate = async () => {
@@ -77,13 +47,12 @@ const BonusCommissionSetup = ({ onClose }) => {
       
       const validationErrors = [];
       
-      bonusEntries.forEach((entry, index) => {
-        if (entry.bonus < 0 || entry.bonus > 100) {
-          validationErrors.push(`Entry ${index + 1} bonus must be between 0-100%`);
-        }
-        if (parseFloat(entry.min) >= parseFloat(entry.max)) {
-          validationErrors.push(`Entry ${index + 1} min must be less than max`);
-        }
+      ["quarterlyCommercial", "quarterlyResidential", "annualBonus"].forEach(section => {
+        formValues[section].forEach((item, index) => {
+          if (item.bonus < 0 || item.bonus > 100) {
+            validationErrors.push(`${section} tier ${index + 1} bonus must be between 0-100%`);
+          }
+        });
       });
       
       if (validationErrors.length > 0) {
@@ -104,128 +73,45 @@ const BonusCommissionSetup = ({ onClose }) => {
     }
   };
 
-  const renderBonusForm = () => (
+  const renderBonusSection = (title, section) => (
     <div className="mb-8 p-4 border border-gray-200 rounded-lg">
-      <h3 className="font-medium text-[#1E1E1E] text-sm mb-4">Add Bonus Entry</h3>
-      <div className="grid grid-cols-6 gap-4 text-xs items-end">
-        <div className="flex flex-col">
-          <label className="mb-1 text-gray-600 text-xs">Bonus Type</label>
-          <select
-            value={formValues.bonusType}
-            onChange={(e) => handleInputChange("bonusType", e.target.value)}
-            className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
-          >
-            <option value="quarterly">Quarterly</option>
-            <option value="annually">Annually</option>
-          </select>
-        </div>
-        
-        <div className="flex flex-col">
-          <label className="mb-1 text-gray-600 text-xs">Target</label>
-          <input
-            type="text"
-            value={formValues.target}
-            readOnly
-            className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs bg-gray-100"
-          />
-        </div>
-        
-        <div className="flex flex-col">
-          <label className="mb-1 text-gray-600 text-xs">Min</label>
-          <input
-            type="text"
-            value={formValues.min}
-            onChange={(e) => handleInputChange("min", e.target.value)}
-            className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
-            placeholder="Min value"
-          />
-        </div>
-        
-        <div className="flex flex-col">
-          <label className="mb-1 text-gray-600 text-xs">Max</label>
-          <input
-            type="text"
-            value={formValues.max}
-            onChange={(e) => handleInputChange("max", e.target.value)}
-            className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
-            placeholder="Max value"
-          />
-        </div>
-        
-        <div className="flex flex-col">
-          <label className="mb-1 text-gray-600 text-xs">Unit</label>
-          <input
-            type="text"
-            value={formValues.unit}
-            readOnly
-            className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs bg-gray-100"
-          />
-        </div>
-        
-        <div className="flex flex-col">
-          <label className="mb-1 text-gray-600 text-xs">Bonus (%)</label>
-          <input
-            type="number"
-            step="0.1"
-            value={formValues.bonus}
-            onChange={(e) => handleInputChange("bonus", parseFloat(e.target.value) || 0)}
-            className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
-            min="0"
-            max="100"
-          />
-        </div>
-      </div>
-      
-      <button 
-        onClick={handleAddEntry}
-        className="text-[#039994] text-xs hover:text-[#028B86] mt-4"
-      >
-        + Add Entry
-      </button>
-    </div>
-  );
-
-  const renderBonusEntries = () => (
-    <div className="mb-8 p-4 border border-gray-200 rounded-lg">
-      <h3 className="font-medium text-[#1E1E1E] text-sm mb-4">Current Bonus Entries</h3>
+      <h3 className="font-medium text-[#1E1E1E] text-sm mb-4">{title}</h3>
       <div className="space-y-4">
-        {bonusEntries.map((entry, index) => (
-          <div key={index} className="grid grid-cols-7 gap-4 text-xs items-end bg-gray-50 p-3 rounded">
+        {formValues[section].map((item, index) => (
+          <div key={index} className="grid grid-cols-3 gap-4 text-xs items-end">
             <div className="flex flex-col">
-              <label className="mb-1 text-gray-600 text-xs">Bonus Type</label>
-              <div className="text-sm font-medium">{entry.bonusType}</div>
-            </div>
-            <div className="flex flex-col">
-              <label className="mb-1 text-gray-600 text-xs">Target</label>
-              <div className="text-sm font-medium">{entry.target}</div>
-            </div>
-            <div className="flex flex-col">
-              <label className="mb-1 text-gray-600 text-xs">Min</label>
-              <div className="text-sm font-medium">{entry.min}</div>
-            </div>
-            <div className="flex flex-col">
-              <label className="mb-1 text-gray-600 text-xs">Max</label>
-              <div className="text-sm font-medium">{entry.max}</div>
-            </div>
-            <div className="flex flex-col">
-              <label className="mb-1 text-gray-600 text-xs">Unit</label>
-              <div className="text-sm font-medium">{entry.unit}</div>
+              <label className="mb-1 text-gray-600 text-xs">Threshold</label>
+              <input
+                type="text"
+                value={item.threshold}
+                onChange={(e) => handleInputChange(section, index, "threshold", e.target.value)}
+                className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
+                placeholder="e.g., < 1 MW"
+              />
             </div>
             <div className="flex flex-col">
               <label className="mb-1 text-gray-600 text-xs">Bonus (%)</label>
-              <div className="text-sm font-medium">{entry.bonus}</div>
+              <input
+                type="number"
+                step="0.1"
+                value={item.bonus}
+                onChange={(e) => handleInputChange(section, index, "bonus", e.target.value)}
+                className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
+                min="0"
+                max="100"
+              />
             </div>
             <div className="flex flex-col">
               <label className="mb-1 text-gray-600 text-xs invisible">Action</label>
-              <button 
-                onClick={() => handleRemoveEntry(index)}
-                className="text-red-500 text-xs hover:text-red-700"
-              >
+              <button className="text-red-500 text-xs hover:text-red-700">
                 Remove
               </button>
             </div>
           </div>
         ))}
+        <button className="text-[#039994] text-xs hover:text-[#028B86] mt-2">
+          + Add Tier
+        </button>
       </div>
     </div>
   );
@@ -244,8 +130,9 @@ const BonusCommissionSetup = ({ onClose }) => {
         </div>
 
         <div className="space-y-4">
-          {renderBonusForm()}
-          {renderBonusEntries()}
+          {renderBonusSection("Quarterly Bonus — Commercial (MW Based)", "quarterlyCommercial")}
+          {renderBonusSection("Bonus — Residential (Referral Based)", "quarterlyResidential")}
+          {renderBonusSection("Annual Bonus — Partners (MW Based)", "annualBonus")}
 
           <div className="mb-6">
             <h3 className="font-medium text-[#1E1E1E] text-sm mb-3">Notes</h3>
