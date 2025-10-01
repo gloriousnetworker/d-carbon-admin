@@ -1,35 +1,91 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ChevronLeft, ChevronRight, Filter } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import ResidentialRedemptionPayoutFilterModal from "./modals/ResidentialRedemptionPayoutFilterModal"
 import ResidentialPayoutDetails from "./ResidentialPayoutDetails"
-import * as styles from "./styles"
-
-const residentialData = [
-  { id: 1, name: "John Doe", residentId: "RES-001", paymentId: "PAY-001", pointRedeemed: "3000", totalAmount: "$30.00", date: "16-03-2025", status: "Completed" },
-  { id: 2, name: "Jane Smith", residentId: "RES-002", paymentId: "PAY-002", pointRedeemed: "3000", totalAmount: "$30.00", date: "16-03-2025", status: "Completed" },
-  { id: 3, name: "Robert Johnson", residentId: "RES-003", paymentId: "PAY-003", pointRedeemed: "3000", totalAmount: "$30.00", date: "16-03-2025", status: "Pending" },
-  { id: 4, name: "Mary Wilson", residentId: "RES-004", paymentId: "PAY-004", pointRedeemed: "3000", totalAmount: "$30.00", date: "16-03-2025", status: "Completed" },
-  { id: 5, name: "David Brown", residentId: "RES-005", paymentId: "PAY-005", pointRedeemed: "3000", totalAmount: "$30.00", date: "16-03-2025", status: "Pending" },
-  { id: 6, name: "Sarah Davis", residentId: "RES-006", paymentId: "PAY-006", pointRedeemed: "3000", totalAmount: "$30.00", date: "16-03-2025", status: "Pending" },
-  { id: 7, name: "Michael Taylor", residentId: "RES-007", paymentId: "PAY-007", pointRedeemed: "3000", totalAmount: "$30.00", date: "16-03-2025", status: "Pending" },
-  { id: 8, name: "Lisa Anderson", residentId: "RES-008", paymentId: "PAY-008", pointRedeemed: "3000", totalAmount: "$30.00", date: "16-03-2025", status: "Pending" },
-  { id: 9, name: "James Thomas", residentId: "RES-009", paymentId: "PAY-009", pointRedeemed: "3000", totalAmount: "$30.00", date: "16-03-2025", status: "Pending" },
-  { id: 10, name: "Jennifer White", residentId: "RES-010", paymentId: "PAY-010", pointRedeemed: "3000", totalAmount: "$30.00", date: "16-03-2025", status: "Pending" },
-  { id: 11, name: "William Harris", residentId: "RES-011", paymentId: "PAY-011", pointRedeemed: "3000", totalAmount: "$30.00", date: "16-03-2025", status: "Pending" },
-  { id: 12, name: "Patricia Clark", residentId: "RES-012", paymentId: "PAY-012", pointRedeemed: "3000", totalAmount: "$30.00", date: "16-03-2025", status: "Pending" },
-]
 
 export default function ResidentialRedemptionPayout() {
   const [currentPage, setCurrentPage] = useState(1)
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
-  const [filteredData, setFilteredData] = useState(residentialData)
+  const [residentialData, setResidentialData] = useState([])
+  const [filteredData, setFilteredData] = useState([])
   const [selectedPayout, setSelectedPayout] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   
   const itemsPerPage = 10
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage)
+
+  useEffect(() => {
+    fetchAllResidentialUsers()
+  }, [])
+
+  const fetchAllResidentialUsers = async () => {
+    try {
+      setLoading(true)
+      const authToken = localStorage.getItem('authToken')
+      let allResidentialUsers = []
+      let currentPage = 1
+      let hasMore = true
+
+      while (hasMore) {
+        const response = await fetch(
+          `https://services.dcarbon.solutions/api/user/get-all-users?page=${currentPage}&limit=50`,
+          {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${authToken}`
+            }
+          }
+        )
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch users')
+        }
+
+        const result = await response.json()
+        
+        if (result.status === 'success') {
+          const residentialUsers = result.data.users.filter(
+            user => user.userType === 'RESIDENTIAL'
+          )
+          
+          allResidentialUsers = [...allResidentialUsers, ...residentialUsers]
+          hasMore = result.data.metadata.hasNextPage
+          currentPage++
+        } else {
+          hasMore = false
+        }
+      }
+      
+      const formattedData = allResidentialUsers.map((user, index) => ({
+        id: user.id || '-',
+        name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : '-',
+        firstName: user.firstName || '-',
+        lastName: user.lastName || '-',
+        email: user.email || '-',
+        userType: user.userType || '-',
+        residentId: user.id ? user.id.slice(0, 8).toUpperCase() : '-',
+        paymentId: '-',
+        pointRedeemed: '-',
+        totalAmount: '-',
+        date: user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-GB').replace(/\//g, '-') : '-',
+        status: user.isActive ? "Completed" : "Pending",
+        isActive: user.isActive,
+        createdAt: user.createdAt || '-',
+        updatedAt: user.updatedAt || '-'
+      }))
+
+      setResidentialData(formattedData)
+      setFilteredData(formattedData)
+      setLoading(false)
+    } catch (err) {
+      setError(err.message)
+      setLoading(false)
+    }
+  }
 
   const StatusBadge = ({ status }) => {
     const getStatusStyles = () => {
@@ -89,13 +145,54 @@ export default function ResidentialRedemptionPayout() {
   const indexOfLastItem = currentPage * itemsPerPage
   const indexOfFirstItem = indexOfLastItem - itemsPerPage
   const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem)
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage)
 
-  const handleRowClick = (item) => {
-    setSelectedPayout(item)
+  const handleRowClick = async (item) => {
+    try {
+      const authToken = localStorage.getItem('authToken')
+      const response = await fetch(
+        `https://services.dcarbon.solutions/api/user/${item.email}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          }
+        }
+      )
+      if (!response.ok) throw new Error('Failed to fetch user details')
+      const result = await response.json()
+      if (result.status === "success") {
+        setSelectedPayout({
+          ...item,
+          ...result.data
+        })
+      }
+    } catch (err) {
+      console.error(err)
+    }
   }
 
   const handleBackToList = () => {
     setSelectedPayout(null)
+  }
+
+  if (loading) {
+    return (
+      <div className="p-8 text-center">
+        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+        <p className="mt-4 text-gray-600 font-sfpro">Loading residential users...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 text-center">
+        <p className="text-red-600 font-sfpro">Error: {error}</p>
+        <Button onClick={fetchAllResidentialUsers} className="mt-4">Retry</Button>
+      </div>
+    )
   }
 
   if (selectedPayout) {
@@ -126,6 +223,8 @@ export default function ResidentialRedemptionPayout() {
             <tr className="border-y text-sm">
               <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">S/N</th>
               <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Name</th>
+              <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Email</th>
+              <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">User Type</th>
               <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Resident ID</th>
               <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Payment ID</th>
               <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Point Redeemed</th>
@@ -145,6 +244,8 @@ export default function ResidentialRedemptionPayout() {
                 <td className="py-3 px-4 text-[#039994] hover:underline font-sfpro">
                   {item.name}
                 </td>
+                <td className="py-3 px-4 font-sfpro text-[#1E1E1E]">{item.email}</td>
+                <td className="py-3 px-4 font-sfpro text-[#1E1E1E]">{item.userType}</td>
                 <td className="py-3 px-4 font-sfpro text-[#1E1E1E]">{item.residentId}</td>
                 <td className="py-3 px-4 font-sfpro text-[#1E1E1E]">{item.paymentId}</td>
                 <td className="py-3 px-4 font-sfpro text-[#1E1E1E]">{item.pointRedeemed}</td>
@@ -183,7 +284,7 @@ export default function ResidentialRedemptionPayout() {
         </div>
       ) : (
         <div className="p-8 text-center text-gray-500 font-sfpro">
-          No records found matching your filters
+          No residential users found
         </div>
       )}
 

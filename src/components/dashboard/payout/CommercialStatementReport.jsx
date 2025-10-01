@@ -1,35 +1,126 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ChevronLeft, ChevronRight, Filter } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import CommercialStatementPayoutFilterModal from "./modals/CommercialStatementPayoutFilterModal"
 import CommercialPayoutDetails from "./CommercialPayoutDetails"
-import * as styles from "./styles"
-
-const commercialData = [
-  { id: 1, name: "ABC Company", commercialId: "COM-001", invoiceId: "INV-001", totalAmount: "$200.00", date: "16-03-2025", status: "Completed" },
-  { id: 2, name: "XYZ Corporation", commercialId: "COM-002", invoiceId: "INV-002", totalAmount: "$200.00", date: "16-03-2025", status: "Completed" },
-  { id: 3, name: "Tech Solutions Ltd", commercialId: "COM-003", invoiceId: "INV-003", totalAmount: "$200.00", date: "16-03-2025", status: "Completed" },
-  { id: 4, name: "Global Enterprises", commercialId: "COM-004", invoiceId: "INV-004", totalAmount: "$200.00", date: "16-03-2025", status: "Completed" },
-  { id: 5, name: "Innovation Co", commercialId: "COM-005", invoiceId: "INV-005", totalAmount: "$200.00", date: "16-03-2025", status: "Pending" },
-  { id: 6, name: "Smart Business", commercialId: "COM-006", invoiceId: "INV-006", totalAmount: "$200.00", date: "16-03-2025", status: "Pending" },
-  { id: 7, name: "Future Corp", commercialId: "COM-007", invoiceId: "INV-007", totalAmount: "$200.00", date: "16-03-2025", status: "Pending" },
-  { id: 8, name: "Prime Industries", commercialId: "COM-008", invoiceId: "INV-008", totalAmount: "$200.00", date: "16-03-2025", status: "Pending" },
-  { id: 9, name: "Elite Systems", commercialId: "COM-009", invoiceId: "INV-009", totalAmount: "$200.00", date: "16-03-2025", status: "Pending" },
-  { id: 10, name: "Advanced Tech", commercialId: "COM-010", invoiceId: "INV-010", totalAmount: "$200.00", date: "16-03-2025", status: "Pending" },
-  { id: 11, name: "Next Gen Ltd", commercialId: "COM-011", invoiceId: "INV-011", totalAmount: "$200.00", date: "16-03-2025", status: "Pending" },
-  { id: 12, name: "Digital Solutions", commercialId: "COM-012", invoiceId: "INV-012", totalAmount: "$200.00", date: "16-03-2025", status: "Pending" },
-]
 
 export default function CommercialStatementReport() {
   const [currentPage, setCurrentPage] = useState(1)
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
-  const [filteredData, setFilteredData] = useState(commercialData)
+  const [commercialData, setCommercialData] = useState([])
+  const [filteredData, setFilteredData] = useState([])
   const [selectedPayout, setSelectedPayout] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [fetchingDetails, setFetchingDetails] = useState(false)
   
   const itemsPerPage = 10
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage)
+
+  useEffect(() => {
+    fetchAllCommercialUsers()
+  }, [])
+
+  const fetchAllCommercialUsers = async () => {
+    try {
+      setLoading(true)
+      const authToken = localStorage.getItem('authToken')
+      let allCommercialUsers = []
+      let currentPage = 1
+      let hasMore = true
+
+      while (hasMore) {
+        const response = await fetch(
+          `https://services.dcarbon.solutions/api/user/get-all-users?page=${currentPage}&limit=50`,
+          {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${authToken}`
+            }
+          }
+        )
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch users')
+        }
+
+        const result = await response.json()
+        
+        if (result.status === 'success') {
+          const commercialUsers = result.data.users.filter(
+            user => user.userType === 'COMMERCIAL'
+          )
+          
+          allCommercialUsers = [...allCommercialUsers, ...commercialUsers]
+          hasMore = result.data.metadata.hasNextPage
+          currentPage++
+        } else {
+          hasMore = false
+        }
+      }
+      
+      const formattedData = allCommercialUsers.map((user, index) => ({
+        id: user.id || '-',
+        name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : '-',
+        firstName: user.firstName || '-',
+        lastName: user.lastName || '-',
+        email: user.email || '-',
+        userType: user.userType || '-',
+        commercialId: user.id ? user.id.slice(0, 8).toUpperCase() : '-',
+        invoiceId: '-',
+        totalAmount: '-',
+        date: user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-GB').replace(/\//g, '-') : '-',
+        status: user.isActive ? "Completed" : "Pending",
+        isActive: user.isActive,
+        createdAt: user.createdAt || '-',
+        updatedAt: user.updatedAt || '-'
+      }))
+
+      setCommercialData(formattedData)
+      setFilteredData(formattedData)
+      setLoading(false)
+    } catch (err) {
+      setError(err.message)
+      setLoading(false)
+    }
+  }
+
+  const fetchUserDetails = async (email) => {
+    try {
+      setFetchingDetails(true)
+      const authToken = localStorage.getItem('authToken')
+      
+      const response = await fetch(
+        `https://services.dcarbon.solutions/api/user/${email}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          }
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch user details')
+      }
+
+      const result = await response.json()
+      
+      if (result.status === 'success') {
+        return result.data
+      } else {
+        throw new Error('Failed to get user details')
+      }
+    } catch (err) {
+      console.error('Error fetching user details:', err)
+      return null
+    } finally {
+      setFetchingDetails(false)
+    }
+  }
 
   const StatusBadge = ({ status }) => {
     const getStatusStyles = () => {
@@ -84,13 +175,40 @@ export default function CommercialStatementReport() {
   const indexOfLastItem = currentPage * itemsPerPage
   const indexOfFirstItem = indexOfLastItem - itemsPerPage
   const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem)
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage)
 
-  const handleRowClick = (item) => {
-    setSelectedPayout(item)
+  const handleRowClick = async (item) => {
+    const userDetails = await fetchUserDetails(item.email)
+    if (userDetails) {
+      setSelectedPayout({
+        ...item,
+        detailedInfo: userDetails
+      })
+    } else {
+      setSelectedPayout(item)
+    }
   }
 
   const handleBackToList = () => {
     setSelectedPayout(null)
+  }
+
+  if (loading) {
+    return (
+      <div className="p-8 text-center">
+        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+        <p className="mt-4 text-gray-600 font-sfpro">Loading commercial users...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 text-center">
+        <p className="text-red-600 font-sfpro">Error: {error}</p>
+        <Button onClick={fetchAllCommercialUsers} className="mt-4">Retry</Button>
+      </div>
+    )
   }
 
   if (selectedPayout) {
@@ -98,6 +216,7 @@ export default function CommercialStatementReport() {
       <CommercialPayoutDetails 
         payoutDetails={selectedPayout} 
         onBack={handleBackToList}
+        isLoading={fetchingDetails}
       />
     )
   }
@@ -121,6 +240,8 @@ export default function CommercialStatementReport() {
             <tr className="border-y text-sm">
               <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">S/N</th>
               <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Name</th>
+              <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Email</th>
+              <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">User Type</th>
               <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Commercial ID</th>
               <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Invoice ID</th>
               <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Total Amount</th>
@@ -139,6 +260,8 @@ export default function CommercialStatementReport() {
                 <td className="py-3 px-4 text-[#039994] hover:underline font-sfpro">
                   {item.name}
                 </td>
+                <td className="py-3 px-4 font-sfpro text-[#1E1E1E]">{item.email}</td>
+                <td className="py-3 px-4 font-sfpro text-[#1E1E1E]">{item.userType}</td>
                 <td className="py-3 px-4 font-sfpro text-[#1E1E1E]">{item.commercialId}</td>
                 <td className="py-3 px-4 font-sfpro text-[#1E1E1E]">{item.invoiceId}</td>
                 <td className="py-3 px-4 font-sfpro text-[#1E1E1E]">{item.totalAmount}</td>
@@ -176,7 +299,7 @@ export default function CommercialStatementReport() {
         </div>
       ) : (
         <div className="p-8 text-center text-gray-500 font-sfpro">
-          No records found matching your filters
+          No commercial users found
         </div>
       )}
 
