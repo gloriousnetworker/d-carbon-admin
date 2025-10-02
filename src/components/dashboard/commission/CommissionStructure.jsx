@@ -161,19 +161,19 @@ const CommissionStructure = () => {
 
           <div className="p-6">
             {activeTab === "Commercial" && (
-              <CommercialCommissionStructure onSetupStructure={handleCommercialSetup} refreshData={refreshTrigger} />
+              <CommercialCommissionStructure onSetupStructure={handleCommercialSetup} refreshTrigger={refreshTrigger} />
             )}
             {activeTab === "Residential" && (
-              <ResidentialCommissionStructure onSetupStructure={handleResidentialSetup} refreshData={refreshTrigger} />
+              <ResidentialCommissionStructure onSetupStructure={handleResidentialSetup} refreshTrigger={refreshTrigger} />
             )}
             {activeTab === "Partner" && (
-              <PartnerCommissionStructure onSetupStructure={handlePartnerSetup} refreshData={refreshTrigger} />
+              <PartnerCommissionStructure onSetupStructure={handlePartnerSetup} refreshTrigger={refreshTrigger} />
             )}
             {activeTab === "SalesAgent" && (
-              <AccountLevelBasedCommissionStructure onSetupStructure={handleSalesAgentSetup} refreshData={refreshTrigger} />
+              <AccountLevelBasedCommissionStructure onSetupStructure={handleSalesAgentSetup} refreshTrigger={refreshTrigger} />
             )}
             {activeTab === "Bonus" && (
-              <BonusCommissionStructure onSetupStructure={handleBonusSetup} refreshData={refreshTrigger} />
+              <BonusCommissionStructure onSetupStructure={handleBonusSetup} refreshTrigger={refreshTrigger} />
             )}
             {activeTab === "Summary" && (
               <CommissionSummary />

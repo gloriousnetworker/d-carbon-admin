@@ -4,47 +4,41 @@ import { IoSettingsSharp } from "react-icons/io5";
 import { IoMdClose } from "react-icons/io";
 import { toast } from "react-hot-toast";
 
-const BonusCommissionSetup = ({ onClose }) => {
-  const [target, setTarget] = useState("commercial");
-  const [bonusEntries, setBonusEntries] = useState([
-    { bonusType: "quarterly", min: "1", max: "5", bonus: 2.0, unit: "referral", target: "commercial" },
-    { bonusType: "quarterly", min: "6", max: "10", bonus: 2.5, unit: "referral", target: "commercial" },
-    { bonusType: "annually", min: "5", max: "20", bonus: 1.0, unit: "MW", target: "residential" },
-    { bonusType: "annually", min: "21", max: "50", bonus: 1.5, unit: "MW", target: "residential" },
-    { bonusType: "annually", min: "10", max: "50", bonus: 1.5, unit: "partner", target: "partner" },
-    { bonusType: "annually", min: "51", max: "100", bonus: 2.0, unit: "partner", target: "partner" }
-  ]);
-
+const BonusCommissionSetup = ({ onClose, onSuccess }) => {
+  const [target, setTarget] = useState("COMMERCIAL_MW_QUARTERLY");
+  const [bonusEntries, setBonusEntries] = useState([]);
   const [newEntry, setNewEntry] = useState({
-    bonusType: "quarterly",
-    min: "",
-    max: "",
-    bonus: 0,
-    unit: "referral",
-    target: "commercial"
+    minValue: "",
+    maxValue: "",
+    percent: 0,
+    flatValue: ""
   });
-
   const [notes, setNotes] = useState("");
   const [updating, setUpdating] = useState(false);
 
-  const filteredEntries = bonusEntries.filter(entry => entry.target === target);
-
-  const getUnitForTarget = (target) => {
-    switch (target) {
-      case "commercial": return "referral";
-      case "residential": return "MW";
-      case "partner": return "partner";
-      default: return "referral";
+  const getFieldsForTarget = (targetType) => {
+    switch (targetType) {
+      case "COMMERCIAL_MW_QUARTERLY":
+        return { showMin: true, showMax: true, showPercent: true, showFlat: false, unit: "MW" };
+      case "RESIDENTIAL_REFERRAL_QUARTERLY":
+        return { showMin: true, showMax: true, showPercent: true, showFlat: false, unit: "Referrals" };
+      case "PARTNER_MW_ANNUAL":
+        return { showMin: true, showMax: false, showPercent: true, showFlat: false, unit: "MW" };
+      case "SALES_AGENT_FLAT":
+        return { showMin: true, showMax: true, showPercent: false, showFlat: true, unit: "Units" };
+      default:
+        return { showMin: true, showMax: true, showPercent: true, showFlat: false, unit: "" };
     }
   };
 
   const handleTargetChange = (selectedTarget) => {
     setTarget(selectedTarget);
-    setNewEntry(prev => ({
-      ...prev,
-      target: selectedTarget,
-      unit: getUnitForTarget(selectedTarget)
-    }));
+    setNewEntry({
+      minValue: "",
+      maxValue: "",
+      percent: 0,
+      flatValue: ""
+    });
   };
 
   const handleNewEntryChange = (field, value) => {
@@ -55,25 +49,31 @@ const BonusCommissionSetup = ({ onClose }) => {
   };
 
   const handleAddEntry = () => {
-    if (newEntry.min && newEntry.max && newEntry.bonus) {
-      setBonusEntries(prev => [...prev, { ...newEntry }]);
+    const fields = getFieldsForTarget(target);
+    let isValid = true;
+
+    if (fields.showMin && !newEntry.minValue) isValid = false;
+    if (fields.showMax && fields.showMax !== false && !newEntry.maxValue) isValid = false;
+    if (fields.showPercent && !newEntry.percent) isValid = false;
+    if (fields.showFlat && !newEntry.flatValue) isValid = false;
+
+    if (isValid) {
+      const entry = {
+        bonusType: target,
+        minValue: newEntry.minValue ? parseFloat(newEntry.minValue) : null,
+        maxValue: newEntry.maxValue ? parseFloat(newEntry.maxValue) : null,
+        percent: newEntry.percent ? parseFloat(newEntry.percent) : null,
+        flatValue: newEntry.flatValue ? parseFloat(newEntry.flatValue) : null
+      };
+      
+      setBonusEntries(prev => [...prev, entry]);
       setNewEntry({
-        bonusType: "quarterly",
-        min: "",
-        max: "",
-        bonus: 0,
-        unit: getUnitForTarget(target),
-        target: target
+        minValue: "",
+        maxValue: "",
+        percent: 0,
+        flatValue: ""
       });
     }
-  };
-
-  const handleEntryChange = (index, field, value) => {
-    setBonusEntries(prev => 
-      prev.map((entry, i) => 
-        i === index ? { ...entry, [field]: value } : entry
-      )
-    );
   };
 
   const handleRemoveEntry = (index) => {
@@ -84,29 +84,42 @@ const BonusCommissionSetup = ({ onClose }) => {
     setUpdating(true);
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const validationErrors = [];
-      
-      bonusEntries.forEach((entry, index) => {
-        if (entry.bonus < 0 || entry.bonus > 100) {
-          validationErrors.push(`Entry ${index + 1} bonus must be between 0-100%`);
-        }
-        if (parseFloat(entry.min) >= parseFloat(entry.max)) {
-          validationErrors.push(`Entry ${index + 1} min must be less than max`);
-        }
-      });
-      
-      if (validationErrors.length > 0) {
-        throw new Error(validationErrors.join(", "));
+      const authToken = localStorage.getItem("authToken");
+      if (!authToken) {
+        throw new Error("Authentication token not found");
       }
-      
+
+      const requests = bonusEntries.map(entry => 
+        fetch("https://services.dcarbon.solutions/api/bonus-structure", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${authToken}`
+          },
+          body: JSON.stringify(entry)
+        })
+      );
+
+      const responses = await Promise.all(requests);
+      const results = await Promise.all(responses.map(res => res.json()));
+
+      const hasError = results.some(result => !result.success);
+      if (hasError) {
+        throw new Error("Some entries failed to update");
+      }
+
       toast.success("Bonus commission structure updated successfully", {
         position: 'top-center',
         duration: 3000,
       });
+      
+      if (onSuccess) {
+        onSuccess();
+      }
+      
+      onClose();
     } catch (err) {
-      toast.error(`Validation failed: ${err.message}`, {
+      toast.error(`Update failed: ${err.message}`, {
         position: 'top-center',
         duration: 5000,
       });
@@ -117,205 +130,193 @@ const BonusCommissionSetup = ({ onClose }) => {
 
   const renderTargetSelector = () => (
     <div className="mb-6">
-      <label className="block text-sm font-medium text-gray-700 mb-3">Select Target</label>
-      <div className="flex space-x-4">
+      <label className="block text-sm font-medium text-gray-700 mb-3">Select Bonus Type</label>
+      <div className="grid grid-cols-2 gap-3">
         <button
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-            target === "commercial"
+          className={`px-4 py-3 rounded-md text-sm font-medium transition-colors ${
+            target === "COMMERCIAL_MW_QUARTERLY"
               ? "bg-[#039994] text-white"
               : "bg-gray-200 text-gray-700 hover:bg-gray-300"
           }`}
-          onClick={() => handleTargetChange("commercial")}
+          onClick={() => handleTargetChange("COMMERCIAL_MW_QUARTERLY")}
         >
-          Commercial
+          Commercial MW Quarterly
         </button>
         <button
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-            target === "residential"
+          className={`px-4 py-3 rounded-md text-sm font-medium transition-colors ${
+            target === "RESIDENTIAL_REFERRAL_QUARTERLY"
               ? "bg-[#039994] text-white"
               : "bg-gray-200 text-gray-700 hover:bg-gray-300"
           }`}
-          onClick={() => handleTargetChange("residential")}
+          onClick={() => handleTargetChange("RESIDENTIAL_REFERRAL_QUARTERLY")}
         >
-          Residential
+          Residential Referral Quarterly
         </button>
         <button
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-            target === "partner"
+          className={`px-4 py-3 rounded-md text-sm font-medium transition-colors ${
+            target === "PARTNER_MW_ANNUAL"
               ? "bg-[#039994] text-white"
               : "bg-gray-200 text-gray-700 hover:bg-gray-300"
           }`}
-          onClick={() => handleTargetChange("partner")}
+          onClick={() => handleTargetChange("PARTNER_MW_ANNUAL")}
         >
-          Partner
+          Partner MW Annual
+        </button>
+        <button
+          className={`px-4 py-3 rounded-md text-sm font-medium transition-colors ${
+            target === "SALES_AGENT_FLAT"
+              ? "bg-[#039994] text-white"
+              : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+          }`}
+          onClick={() => handleTargetChange("SALES_AGENT_FLAT")}
+        >
+          Sales Agent Flat
         </button>
       </div>
     </div>
   );
 
-  const renderAddEntryForm = () => (
-    <div className="mb-6 p-4 border border-gray-200 rounded-lg">
-      <h3 className="font-medium text-[#1E1E1E] text-sm mb-4">Add New Bonus Entry</h3>
-      <div className="grid grid-cols-6 gap-4 text-xs items-end">
-        <div className="flex flex-col">
-          <label className="mb-1 text-gray-600 text-xs">Bonus Type</label>
-          <select
-            value={newEntry.bonusType}
-            onChange={(e) => handleNewEntryChange("bonusType", e.target.value)}
-            className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
-          >
-            <option value="quarterly">Quarterly</option>
-            <option value="annually">Annually</option>
-          </select>
-        </div>
-        
-        <div className="flex flex-col">
-          <label className="mb-1 text-gray-600 text-xs">Min Threshold</label>
-          <input
-            type="text"
-            value={newEntry.min}
-            onChange={(e) => handleNewEntryChange("min", e.target.value)}
-            className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
-            placeholder="Min"
-          />
-        </div>
-        
-        <div className="flex flex-col">
-          <label className="mb-1 text-gray-600 text-xs">Max Threshold</label>
-          <input
-            type="text"
-            value={newEntry.max}
-            onChange={(e) => handleNewEntryChange("max", e.target.value)}
-            className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
-            placeholder="Max"
-          />
-        </div>
-        
-        <div className="flex flex-col">
-          <label className="mb-1 text-gray-600 text-xs">Bonus (%)</label>
-          <input
-            type="number"
-            step="0.1"
-            value={newEntry.bonus}
-            onChange={(e) => handleNewEntryChange("bonus", parseFloat(e.target.value) || 0)}
-            className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
-            min="0"
-            max="100"
-          />
-        </div>
-        
-        <div className="flex flex-col">
-          <label className="mb-1 text-gray-600 text-xs">Unit</label>
-          <input
-            type="text"
-            value={newEntry.unit}
-            readOnly
-            className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs bg-gray-100"
-          />
-        </div>
-        
-        <div className="flex flex-col">
-          <label className="mb-1 text-gray-600 text-xs invisible">Action</label>
-          <button
-            onClick={handleAddEntry}
-            className="bg-[#039994] text-white px-4 py-2 rounded text-xs hover:bg-[#028B86] transition-colors"
-          >
-            Add Entry
-          </button>
+  const renderAddEntryForm = () => {
+    const fields = getFieldsForTarget(target);
+
+    return (
+      <div className="mb-6 p-4 border border-gray-200 rounded-lg">
+        <h3 className="font-medium text-[#1E1E1E] text-sm mb-4">Add New Bonus Entry</h3>
+        <div className={`grid gap-4 text-xs items-end ${fields.showFlat ? 'grid-cols-5' : 'grid-cols-4'}`}>
+          {fields.showMin && (
+            <div className="flex flex-col">
+              <label className="mb-1 text-gray-600 text-xs">Min Value</label>
+              <input
+                type="number"
+                value={newEntry.minValue}
+                onChange={(e) => handleNewEntryChange("minValue", e.target.value)}
+                className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
+                placeholder="Min"
+                step="0.1"
+              />
+            </div>
+          )}
+          
+          {fields.showMax && fields.showMax !== false && (
+            <div className="flex flex-col">
+              <label className="mb-1 text-gray-600 text-xs">Max Value</label>
+              <input
+                type="number"
+                value={newEntry.maxValue}
+                onChange={(e) => handleNewEntryChange("maxValue", e.target.value)}
+                className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
+                placeholder="Max"
+                step="0.1"
+              />
+            </div>
+          )}
+          
+          {fields.showPercent && (
+            <div className="flex flex-col">
+              <label className="mb-1 text-gray-600 text-xs">Percent (%)</label>
+              <input
+                type="number"
+                step="0.1"
+                value={newEntry.percent}
+                onChange={(e) => handleNewEntryChange("percent", e.target.value)}
+                className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
+                min="0"
+                max="100"
+              />
+            </div>
+          )}
+          
+          {fields.showFlat && (
+            <div className="flex flex-col">
+              <label className="mb-1 text-gray-600 text-xs">Flat Value ($)</label>
+              <input
+                type="number"
+                value={newEntry.flatValue}
+                onChange={(e) => handleNewEntryChange("flatValue", e.target.value)}
+                className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
+                min="0"
+                step="0.01"
+              />
+            </div>
+          )}
+          
+          <div className="flex flex-col">
+            <label className="mb-1 text-gray-600 text-xs invisible">Action</label>
+            <button
+              onClick={handleAddEntry}
+              className="bg-[#039994] text-white px-4 py-2 rounded text-xs hover:bg-[#028B86] transition-colors"
+            >
+              Add Entry
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
-  const renderBonusTable = () => (
-    <div className="mb-6">
-      <h3 className="font-medium text-[#1E1E1E] text-sm mb-4">
-        {target.charAt(0).toUpperCase() + target.slice(1)} Bonus Structure
-      </h3>
-      <div className="w-full overflow-auto rounded-lg border border-gray-200">
-        <table className="w-full">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="text-left py-3 px-4 font-medium text-sm text-black border-b border-gray-200">Bonus Type</th>
-              <th className="text-left py-3 px-4 font-medium text-sm text-black border-b border-gray-200">Min Threshold</th>
-              <th className="text-left py-3 px-4 font-medium text-sm text-black border-b border-gray-200">Max Threshold</th>
-              <th className="text-left py-3 px-4 font-medium text-sm text-black border-b border-gray-200">Bonus (%)</th>
-              <th className="text-left py-3 px-4 font-medium text-sm text-black border-b border-gray-200">Unit</th>
-              <th className="text-left py-3 px-4 font-medium text-sm text-black border-b border-gray-200">Target</th>
-              <th className="text-left py-3 px-4 font-medium text-sm text-black border-b border-gray-200">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredEntries.map((entry, index) => (
-              <tr key={index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                <td className="py-3 px-4 text-sm border-b border-gray-200">
-                  <select
-                    value={entry.bonusType}
-                    onChange={(e) => handleEntryChange(bonusEntries.findIndex(e => e === entry), "bonusType", e.target.value)}
-                    className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-1 px-2 text-xs"
-                  >
-                    <option value="quarterly">Quarterly</option>
-                    <option value="annually">Annually</option>
-                  </select>
-                </td>
-                <td className="py-3 px-4 text-sm border-b border-gray-200">
-                  <input
-                    type="text"
-                    value={entry.min}
-                    onChange={(e) => handleEntryChange(bonusEntries.findIndex(e => e === entry), "min", e.target.value)}
-                    className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-1 px-2 text-xs"
-                  />
-                </td>
-                <td className="py-3 px-4 text-sm border-b border-gray-200">
-                  <input
-                    type="text"
-                    value={entry.max}
-                    onChange={(e) => handleEntryChange(bonusEntries.findIndex(e => e === entry), "max", e.target.value)}
-                    className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-1 px-2 text-xs"
-                  />
-                </td>
-                <td className="py-3 px-4 text-sm border-b border-gray-200">
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={entry.bonus}
-                    onChange={(e) => handleEntryChange(bonusEntries.findIndex(e => e === entry), "bonus", parseFloat(e.target.value) || 0)}
-                    className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-1 px-2 text-xs"
-                    min="0"
-                    max="100"
-                  />
-                </td>
-                <td className="py-3 px-4 text-sm border-b border-gray-200">
-                  <input
-                    type="text"
-                    value={entry.unit}
-                    readOnly
-                    className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-1 px-2 text-xs bg-gray-100"
-                  />
-                </td>
-                <td className="py-3 px-4 text-sm border-b border-gray-200">
-                  <input
-                    type="text"
-                    value={entry.target}
-                    readOnly
-                    className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-1 px-2 text-xs bg-gray-100"
-                  />
-                </td>
-                <td className="py-3 px-4 text-sm border-b border-gray-200">
-                  <button
-                    onClick={() => handleRemoveEntry(bonusEntries.findIndex(e => e === entry))}
-                    className="text-red-500 text-xs hover:text-red-700"
-                  >
-                    Remove
-                  </button>
-                </td>
+  const renderBonusTable = () => {
+    const fields = getFieldsForTarget(target);
+    const filteredEntries = bonusEntries.filter(entry => entry.bonusType === target);
+
+    return (
+      <div className="mb-6">
+        <h3 className="font-medium text-[#1E1E1E] text-sm mb-4">
+          {target.replace(/_/g, " ")} Structure
+        </h3>
+        <div className="w-full overflow-auto rounded-lg border border-gray-200">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="text-left py-3 px-4 font-medium text-sm text-black border-b border-gray-200">Min Value</th>
+                {fields.showMax && fields.showMax !== false && (
+                  <th className="text-left py-3 px-4 font-medium text-sm text-black border-b border-gray-200">Max Value</th>
+                )}
+                {fields.showPercent && (
+                  <th className="text-left py-3 px-4 font-medium text-sm text-black border-b border-gray-200">Percent (%)</th>
+                )}
+                {fields.showFlat && (
+                  <th className="text-left py-3 px-4 font-medium text-sm text-black border-b border-gray-200">Flat Value ($)</th>
+                )}
+                <th className="text-left py-3 px-4 font-medium text-sm text-black border-b border-gray-200">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filteredEntries.map((entry, index) => (
+                <tr key={index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                  <td className="py-3 px-4 text-sm border-b border-gray-200">
+                    {entry.minValue}
+                  </td>
+                  {fields.showMax && fields.showMax !== false && (
+                    <td className="py-3 px-4 text-sm border-b border-gray-200">
+                      {entry.maxValue || "N/A"}
+                    </td>
+                  )}
+                  {fields.showPercent && (
+                    <td className="py-3 px-4 text-sm border-b border-gray-200">
+                      {entry.percent || "N/A"}
+                    </td>
+                  )}
+                  {fields.showFlat && (
+                    <td className="py-3 px-4 text-sm border-b border-gray-200">
+                      {entry.flatValue || "N/A"}
+                    </td>
+                  )}
+                  <td className="py-3 px-4 text-sm border-b border-gray-200">
+                    <button
+                      onClick={() => handleRemoveEntry(bonusEntries.findIndex(e => e === entry))}
+                      className="text-red-500 text-xs hover:text-red-700"
+                    >
+                      Remove
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -353,14 +354,14 @@ const BonusCommissionSetup = ({ onClose }) => {
           </button>
           <button
             onClick={handleUpdate}
-            disabled={updating}
+            disabled={updating || bonusEntries.length === 0}
             className={`px-4 py-2 rounded-md text-sm ${
-              updating
+              updating || bonusEntries.length === 0
                 ? 'bg-gray-400 cursor-not-allowed'
                 : 'bg-[#039994] hover:bg-[#028B86]'
             } text-white transition-colors`}
           >
-            {updating ? 'Validating...' : 'Validate & Update'}
+            {updating ? 'Updating...' : 'Update Structure'}
           </button>
         </div>
       </div>
