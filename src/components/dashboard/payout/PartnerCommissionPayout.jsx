@@ -14,13 +14,71 @@ export default function PartnerCommissionPayout() {
   const [selectedPayout, setSelectedPayout] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [fetchingDetails, setFetchingDetails] = useState(false)
   
   const itemsPerPage = 10
 
   useEffect(() => {
     fetchAllPartnerUsers()
   }, [])
+
+  const fetchUserPayoutStatus = async (email) => {
+    try {
+      const authToken = localStorage.getItem('authToken')
+      const userResponse = await fetch(
+        `https://services.dcarbon.solutions/api/user/${email}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          }
+        }
+      )
+
+      if (!userResponse.ok) return null
+
+      const userResult = await userResponse.json()
+      if (userResult.status !== 'success') return null
+
+      const userId = userResult.data.id
+      
+      const payoutResponse = await fetch(
+        `https://services.dcarbon.solutions/api/payout-request?userId=${userId}&userType=PARTNER`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        }
+      )
+
+      if (!payoutResponse.ok) return null
+
+      const payoutResult = await payoutResponse.json()
+      if (payoutResult.status !== 'success') return null
+
+      const payouts = payoutResult.data
+      const statusCounts = {
+        PENDING: 0,
+        PAID: 0,
+        REJECTED: 0
+      }
+
+      payouts.forEach(payout => {
+        if (statusCounts.hasOwnProperty(payout.status)) {
+          statusCounts[payout.status]++
+        }
+      })
+
+      return {
+        userId,
+        statusCounts,
+        payouts
+      }
+    } catch (err) {
+      return null
+    }
+  }
 
   const fetchAllPartnerUsers = async () => {
     try {
@@ -61,22 +119,28 @@ export default function PartnerCommissionPayout() {
         }
       }
       
-      const formattedData = allPartnerUsers.map((user, index) => ({
-        id: user.id || '-',
-        name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : '-',
-        firstName: user.firstName || '-',
-        lastName: user.lastName || '-',
-        email: user.email || '-',
-        userType: user.userType || '-',
-        partnerId: user.id ? user.id.slice(0, 8).toUpperCase() : '-',
-        invoiceId: '-',
-        totalCommission: '-',
-        date: user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-GB').replace(/\//g, '-') : '-',
-        status: user.isActive ? "Completed" : "Pending",
-        isActive: user.isActive,
-        createdAt: user.createdAt || '-',
-        updatedAt: user.updatedAt || '-'
-      }))
+      const formattedData = await Promise.all(
+        allPartnerUsers.map(async (user, index) => {
+          const payoutData = await fetchUserPayoutStatus(user.email)
+          
+          return {
+            id: user.id || '-',
+            name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : '-',
+            firstName: user.firstName || '-',
+            lastName: user.lastName || '-',
+            email: user.email || '-',
+            userType: user.userType || '-',
+            date: user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-GB').replace(/\//g, '-') : '-',
+            status: user.isActive ? "Completed" : "Pending",
+            isActive: user.isActive,
+            createdAt: user.createdAt || '-',
+            updatedAt: user.updatedAt || '-',
+            payoutStatus: payoutData ? payoutData.statusCounts : null,
+            userId: payoutData ? payoutData.userId : user.id,
+            payouts: payoutData ? payoutData.payouts : []
+          }
+        })
+      )
 
       setPartnerData(formattedData)
       setFilteredData(formattedData)
@@ -87,54 +151,65 @@ export default function PartnerCommissionPayout() {
     }
   }
 
-  const fetchUserDetails = async (email) => {
-    try {
-      setFetchingDetails(true)
-      const authToken = localStorage.getItem('authToken')
-      
-      const response = await fetch(
-        `https://services.dcarbon.solutions/api/user/${email}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authToken}`
-          }
+  const updatePartnerPayoutStatus = (userId, updatedPayout) => {
+    const updatedPartnerData = partnerData.map(partner => {
+      if (partner.userId === userId || partner.id === userId) {
+        const currentPayouts = partner.payouts || []
+        const updatedPayouts = currentPayouts.map(p => 
+          p.id === updatedPayout.id ? updatedPayout : p
+        )
+        
+        const statusCounts = {
+          PENDING: 0,
+          PAID: 0,
+          REJECTED: 0
         }
-      )
+        
+        updatedPayouts.forEach(payout => {
+          if (statusCounts.hasOwnProperty(payout.status)) {
+            statusCounts[payout.status]++
+          }
+        })
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch user details')
+        return {
+          ...partner,
+          payoutStatus: statusCounts,
+          payouts: updatedPayouts
+        }
       }
+      return partner
+    })
 
-      const result = await response.json()
-      
-      if (result.status === 'success') {
-        return result.data
-      } else {
-        throw new Error('Failed to get user details')
-      }
-    } catch (err) {
-      console.error('Error fetching user details:', err)
-      return null
-    } finally {
-      setFetchingDetails(false)
-    }
+    setPartnerData(updatedPartnerData)
+    setFilteredData(updatedPartnerData)
   }
 
-  const StatusBadge = ({ status }) => {
-    const getStatusStyles = () => {
-      switch (status) {
-        case "Completed":
-          return "text-[#039994]"
-        case "Pending":
-          return "text-[#F59E0B]"
-        default:
-          return "text-gray-500"
-      }
+  const StatusBadge = ({ payoutStatus }) => {
+    if (!payoutStatus) {
+      return <span className="text-gray-500 font-medium font-sfpro">No Payouts</span>
     }
 
-    return <span className={`font-medium font-sfpro ${getStatusStyles()}`}>{status}</span>
+    const getStatusText = () => {
+      const parts = []
+      if (payoutStatus.PENDING > 0) parts.push(`PENDING (${payoutStatus.PENDING})`)
+      if (payoutStatus.PAID > 0) parts.push(`PAID (${payoutStatus.PAID})`)
+      if (payoutStatus.REJECTED > 0) parts.push(`REJECTED (${payoutStatus.REJECTED})`)
+      
+      return parts.length > 0 ? parts.join(', ') : 'No Payouts'
+    }
+
+    const getStatusColor = () => {
+      if (payoutStatus.PENDING > 0) return "text-[#F59E0B]"
+      if (payoutStatus.PAID > 0) return "text-[#039994]"
+      if (payoutStatus.REJECTED > 0) return "text-[#FF0000]"
+      return "text-gray-500"
+    }
+
+    return (
+      <span className={`font-medium font-sfpro ${getStatusColor()}`}>
+        {getStatusText()}
+      </span>
+    )
   }
 
   const handleFilterApply = (filters) => {
@@ -145,18 +220,13 @@ export default function PartnerCommissionPayout() {
         item.name.toLowerCase().includes(filters.name.toLowerCase())
       )
     }
-    if (filters.partnerId) {
+    if (filters.email) {
       results = results.filter(item => 
-        item.partnerId.toLowerCase().includes(filters.partnerId.toLowerCase())
+        item.email.toLowerCase().includes(filters.email.toLowerCase())
       )
     }
-    if (filters.invoiceId) {
-      results = results.filter(item => 
-        item.invoiceId.toLowerCase().includes(filters.invoiceId.toLowerCase())
-      )
-    }
-    if (filters.status && filters.status !== "All") {
-      results = results.filter(item => item.status === filters.status)
+    if (filters.userType && filters.userType !== "All") {
+      results = results.filter(item => item.userType === filters.userType)
     }
     if (filters.dateFrom && filters.dateTo) {
       results = results.filter(item => {
@@ -178,19 +248,38 @@ export default function PartnerCommissionPayout() {
   const totalPages = Math.ceil(filteredData.length / itemsPerPage)
 
   const handleRowClick = async (item) => {
-    const userDetails = await fetchUserDetails(item.email)
-    if (userDetails) {
-      setSelectedPayout({
-        ...item,
-        detailedInfo: userDetails
-      })
-    } else {
-      setSelectedPayout(item)
+    try {
+      const authToken = localStorage.getItem('authToken')
+      const response = await fetch(
+        `https://services.dcarbon.solutions/api/user/${item.email}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          }
+        }
+      )
+      if (!response.ok) throw new Error('Failed to fetch user details')
+      const result = await response.json()
+      if (result.status === "success") {
+        setSelectedPayout({
+          ...item,
+          ...result.data,
+          payouts: item.payouts
+        })
+      }
+    } catch (err) {
+      console.error(err)
     }
   }
 
   const handleBackToList = () => {
     setSelectedPayout(null)
+  }
+
+  const handlePayoutUpdate = (userId, updatedPayout) => {
+    updatePartnerPayoutStatus(userId, updatedPayout)
   }
 
   if (loading) {
@@ -216,7 +305,7 @@ export default function PartnerCommissionPayout() {
       <PartnerCommissionPayoutDetails 
         payoutDetails={selectedPayout} 
         onBack={handleBackToList}
-        isLoading={fetchingDetails}
+        onPayoutUpdate={handlePayoutUpdate}
       />
     )
   }
@@ -242,11 +331,7 @@ export default function PartnerCommissionPayout() {
               <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Name</th>
               <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Email</th>
               <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">User Type</th>
-              <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Partner ID</th>
-              <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Invoice ID</th>
-              <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Total Comm. Payable</th>
-              <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Date</th>
-              <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Payout status</th>
+              <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Payout Status</th>
             </tr>
           </thead>
           <tbody>
@@ -262,12 +347,8 @@ export default function PartnerCommissionPayout() {
                 </td>
                 <td className="py-3 px-4 font-sfpro text-[#1E1E1E]">{item.email}</td>
                 <td className="py-3 px-4 font-sfpro text-[#1E1E1E]">{item.userType}</td>
-                <td className="py-3 px-4 font-sfpro text-[#1E1E1E]">{item.partnerId}</td>
-                <td className="py-3 px-4 font-sfpro text-[#1E1E1E]">{item.invoiceId}</td>
-                <td className="py-3 px-4 font-sfpro text-[#1E1E1E]">{item.totalCommission}</td>
-                <td className="py-3 px-4 font-sfpro text-[#1E1E1E]">{item.date}</td>
                 <td className="py-3 px-4">
-                  <StatusBadge status={item.status} />
+                  <StatusBadge payoutStatus={item.payoutStatus} />
                 </td>
               </tr>
             ))}

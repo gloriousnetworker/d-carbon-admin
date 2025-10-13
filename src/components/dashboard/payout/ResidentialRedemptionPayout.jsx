@@ -21,6 +21,65 @@ export default function ResidentialRedemptionPayout() {
     fetchAllResidentialUsers()
   }, [])
 
+  const fetchUserPayoutStatus = async (email) => {
+    try {
+      const authToken = localStorage.getItem('authToken')
+      const userResponse = await fetch(
+        `https://services.dcarbon.solutions/api/user/${email}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          }
+        }
+      )
+
+      if (!userResponse.ok) return null
+
+      const userResult = await userResponse.json()
+      if (userResult.status !== 'success') return null
+
+      const userId = userResult.data.id
+      
+      const payoutResponse = await fetch(
+        `https://services.dcarbon.solutions/api/payout-request?userId=${userId}&userType=RESIDENTIAL`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        }
+      )
+
+      if (!payoutResponse.ok) return null
+
+      const payoutResult = await payoutResponse.json()
+      if (payoutResult.status !== 'success') return null
+
+      const payouts = payoutResult.data
+      const statusCounts = {
+        PENDING: 0,
+        PAID: 0,
+        REJECTED: 0
+      }
+
+      payouts.forEach(payout => {
+        if (statusCounts.hasOwnProperty(payout.status)) {
+          statusCounts[payout.status]++
+        }
+      })
+
+      return {
+        userId,
+        statusCounts,
+        payouts
+      }
+    } catch (err) {
+      return null
+    }
+  }
+
   const fetchAllResidentialUsers = async () => {
     try {
       setLoading(true)
@@ -60,23 +119,28 @@ export default function ResidentialRedemptionPayout() {
         }
       }
       
-      const formattedData = allResidentialUsers.map((user, index) => ({
-        id: user.id || '-',
-        name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : '-',
-        firstName: user.firstName || '-',
-        lastName: user.lastName || '-',
-        email: user.email || '-',
-        userType: user.userType || '-',
-        residentId: user.id ? user.id.slice(0, 8).toUpperCase() : '-',
-        paymentId: '-',
-        pointRedeemed: '-',
-        totalAmount: '-',
-        date: user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-GB').replace(/\//g, '-') : '-',
-        status: user.isActive ? "Completed" : "Pending",
-        isActive: user.isActive,
-        createdAt: user.createdAt || '-',
-        updatedAt: user.updatedAt || '-'
-      }))
+      const formattedData = await Promise.all(
+        allResidentialUsers.map(async (user, index) => {
+          const payoutData = await fetchUserPayoutStatus(user.email)
+          
+          return {
+            id: user.id || '-',
+            name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : '-',
+            firstName: user.firstName || '-',
+            lastName: user.lastName || '-',
+            email: user.email || '-',
+            userType: user.userType || '-',
+            date: user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-GB').replace(/\//g, '-') : '-',
+            status: user.isActive ? "Completed" : "Pending",
+            isActive: user.isActive,
+            createdAt: user.createdAt || '-',
+            updatedAt: user.updatedAt || '-',
+            payoutStatus: payoutData ? payoutData.statusCounts : null,
+            userId: payoutData ? payoutData.userId : user.id,
+            payouts: payoutData ? payoutData.payouts : []
+          }
+        })
+      )
 
       setResidentialData(formattedData)
       setFilteredData(formattedData)
@@ -87,19 +151,65 @@ export default function ResidentialRedemptionPayout() {
     }
   }
 
-  const StatusBadge = ({ status }) => {
-    const getStatusStyles = () => {
-      switch (status) {
-        case "Completed":
-          return "text-[#039994]"
-        case "Pending":
-          return "text-[#F59E0B]"
-        default:
-          return "text-gray-500"
+  const updateResidentialPayoutStatus = (userId, updatedPayout) => {
+    const updatedResidentialData = residentialData.map(residential => {
+      if (residential.userId === userId || residential.id === userId) {
+        const currentPayouts = residential.payouts || []
+        const updatedPayouts = currentPayouts.map(p => 
+          p.id === updatedPayout.id ? updatedPayout : p
+        )
+        
+        const statusCounts = {
+          PENDING: 0,
+          PAID: 0,
+          REJECTED: 0
+        }
+        
+        updatedPayouts.forEach(payout => {
+          if (statusCounts.hasOwnProperty(payout.status)) {
+            statusCounts[payout.status]++
+          }
+        })
+
+        return {
+          ...residential,
+          payoutStatus: statusCounts,
+          payouts: updatedPayouts
+        }
       }
+      return residential
+    })
+
+    setResidentialData(updatedResidentialData)
+    setFilteredData(updatedResidentialData)
+  }
+
+  const StatusBadge = ({ payoutStatus }) => {
+    if (!payoutStatus) {
+      return <span className="text-gray-500 font-medium font-sfpro">No Payouts</span>
     }
 
-    return <span className={`font-medium font-sfpro ${getStatusStyles()}`}>{status}</span>
+    const getStatusText = () => {
+      const parts = []
+      if (payoutStatus.PENDING > 0) parts.push(`PENDING (${payoutStatus.PENDING})`)
+      if (payoutStatus.PAID > 0) parts.push(`PAID (${payoutStatus.PAID})`)
+      if (payoutStatus.REJECTED > 0) parts.push(`REJECTED (${payoutStatus.REJECTED})`)
+      
+      return parts.length > 0 ? parts.join(', ') : 'No Payouts'
+    }
+
+    const getStatusColor = () => {
+      if (payoutStatus.PENDING > 0) return "text-[#F59E0B]"
+      if (payoutStatus.PAID > 0) return "text-[#039994]"
+      if (payoutStatus.REJECTED > 0) return "text-[#FF0000]"
+      return "text-gray-500"
+    }
+
+    return (
+      <span className={`font-medium font-sfpro ${getStatusColor()}`}>
+        {getStatusText()}
+      </span>
+    )
   }
 
   const handleFilterApply = (filters) => {
@@ -110,23 +220,13 @@ export default function ResidentialRedemptionPayout() {
         item.name.toLowerCase().includes(filters.name.toLowerCase())
       )
     }
-    if (filters.residentId) {
+    if (filters.email) {
       results = results.filter(item => 
-        item.residentId.toLowerCase().includes(filters.residentId.toLowerCase())
+        item.email.toLowerCase().includes(filters.email.toLowerCase())
       )
     }
-    if (filters.paymentId) {
-      results = results.filter(item => 
-        item.paymentId.toLowerCase().includes(filters.paymentId.toLowerCase())
-      )
-    }
-    if (filters.pointRedeemed) {
-      results = results.filter(item => 
-        item.pointRedeemed === filters.pointRedeemed
-      )
-    }
-    if (filters.status && filters.status !== "All") {
-      results = results.filter(item => item.status === filters.status)
+    if (filters.userType && filters.userType !== "All") {
+      results = results.filter(item => item.userType === filters.userType)
     }
     if (filters.dateFrom && filters.dateTo) {
       results = results.filter(item => {
@@ -165,7 +265,8 @@ export default function ResidentialRedemptionPayout() {
       if (result.status === "success") {
         setSelectedPayout({
           ...item,
-          ...result.data
+          ...result.data,
+          payouts: item.payouts
         })
       }
     } catch (err) {
@@ -175,6 +276,10 @@ export default function ResidentialRedemptionPayout() {
 
   const handleBackToList = () => {
     setSelectedPayout(null)
+  }
+
+  const handlePayoutUpdate = (userId, updatedPayout) => {
+    updateResidentialPayoutStatus(userId, updatedPayout)
   }
 
   if (loading) {
@@ -200,6 +305,7 @@ export default function ResidentialRedemptionPayout() {
       <ResidentialPayoutDetails 
         payoutDetails={selectedPayout} 
         onBack={handleBackToList}
+        onPayoutUpdate={handlePayoutUpdate}
       />
     )
   }
@@ -225,12 +331,7 @@ export default function ResidentialRedemptionPayout() {
               <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Name</th>
               <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Email</th>
               <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">User Type</th>
-              <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Resident ID</th>
-              <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Payment ID</th>
-              <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Point Redeemed</th>
-              <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Total Amount</th>
-              <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Date</th>
-              <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Payout status</th>
+              <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Payout Status</th>
             </tr>
           </thead>
           <tbody>
@@ -246,13 +347,8 @@ export default function ResidentialRedemptionPayout() {
                 </td>
                 <td className="py-3 px-4 font-sfpro text-[#1E1E1E]">{item.email}</td>
                 <td className="py-3 px-4 font-sfpro text-[#1E1E1E]">{item.userType}</td>
-                <td className="py-3 px-4 font-sfpro text-[#1E1E1E]">{item.residentId}</td>
-                <td className="py-3 px-4 font-sfpro text-[#1E1E1E]">{item.paymentId}</td>
-                <td className="py-3 px-4 font-sfpro text-[#1E1E1E]">{item.pointRedeemed}</td>
-                <td className="py-3 px-4 font-sfpro text-[#1E1E1E]">{item.totalAmount}</td>
-                <td className="py-3 px-4 font-sfpro text-[#1E1E1E]">{item.date}</td>
                 <td className="py-3 px-4">
-                  <StatusBadge status={item.status} />
+                  <StatusBadge payoutStatus={item.payoutStatus} />
                 </td>
               </tr>
             ))}

@@ -5,7 +5,7 @@ import { ChevronLeft } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import toast from 'react-hot-toast'
 
-export default function ResidentialPayoutDetails({ payoutDetails, onBack }) {
+export default function ResidentialPayoutDetails({ payoutDetails, onBack, onPayoutUpdate }) {
   const [userPayouts, setUserPayouts] = useState([])
   const [loading, setLoading] = useState(false)
   const [processingAction, setProcessingAction] = useState(null)
@@ -61,7 +61,9 @@ export default function ResidentialPayoutDetails({ payoutDetails, onBack }) {
       
       if (result.status === "success") {
         toast.success('Payout approved successfully')
-        fetchUserPayouts()
+        const updatedPayout = { id: payoutId, status: "PAID" }
+        setUserPayouts(prev => prev.map(p => p.id === payoutId ? { ...p, status: "PAID" } : p))
+        onPayoutUpdate(payoutDetails.id, updatedPayout)
       } else {
         toast.error('Failed to approve payout')
       }
@@ -85,13 +87,15 @@ export default function ResidentialPayoutDetails({ payoutDetails, onBack }) {
           payoutId: payoutId,
           adminId: getAdminId()
         })
-      })
+    })
 
       const result = await response.json()
       
       if (result.status === "success") {
         toast.success('Payout rejected successfully')
-        fetchUserPayouts()
+        const updatedPayout = { id: payoutId, status: "REJECTED" }
+        setUserPayouts(prev => prev.map(p => p.id === payoutId ? { ...p, status: "REJECTED" } : p))
+        onPayoutUpdate(payoutDetails.id, updatedPayout)
       } else {
         toast.error('Failed to reject payout')
       }
@@ -119,10 +123,6 @@ export default function ResidentialPayoutDetails({ payoutDetails, onBack }) {
     return new Date(dateString).toLocaleDateString('en-GB')
   }
 
-  const formatId = (id) => {
-    return `${id.substring(0, 8)}...`
-  }
-
   useEffect(() => {
     if (payoutDetails.id) {
       fetchUserPayouts()
@@ -144,7 +144,7 @@ export default function ResidentialPayoutDetails({ payoutDetails, onBack }) {
           <div className="flex items-center gap-2">
             <span className="font-sfpro text-[14px] text-[#1E1E1E]">User ID:</span>
             <span className="font-sfpro text-[14px] text-[#626060]">
-              {formatId(payoutDetails.id)}
+              {payoutDetails.id}
             </span>
           </div>
         </div>
@@ -154,7 +154,7 @@ export default function ResidentialPayoutDetails({ payoutDetails, onBack }) {
         <div className="space-y-4">
           <div className="flex justify-between items-center py-3 border-b">
             <span className="font-sfpro text-[14px] text-[#1E1E1E]">User ID</span>
-            <span className="font-sfpro text-[14px] text-[#626060]">{formatId(payoutDetails.id)}</span>
+            <span className="font-sfpro text-[14px] text-[#626060]">{payoutDetails.id}</span>
           </div>
           <div className="flex justify-between items-center py-3 border-b">
             <span className="font-sfpro text-[14px] text-[#1E1E1E]">First Name</span>
@@ -202,7 +202,7 @@ export default function ResidentialPayoutDetails({ payoutDetails, onBack }) {
                 {userPayouts.map((payout) => (
                   <tr key={payout.id} className="border-t">
                     <td className="py-3 font-sfpro p-3" title={payout.id}>
-                      {formatId(payout.id)}
+                      {payout.id}
                     </td>
                     <td className="py-3 font-sfpro p-3">
                       ${payout.amountRequested.toFixed(2)}
