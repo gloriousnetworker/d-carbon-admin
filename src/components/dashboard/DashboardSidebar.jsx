@@ -196,7 +196,7 @@ const DashboardSidebar = ({
           className={`${menuItemBase} ${isActive('faq') ? menuItemActive : menuItemInactive}`}
         >
           <FiHeadphones className={iconBase} color={isActive('faq') ? '#FFFFFF' : '#039994'} />
-          <span>FAQ</span>
+          <span>Help & Tutorials</span>
         </button>
         <button
           onClick={() => onSectionChange('feedback')}
