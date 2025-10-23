@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { Eye, Download, Loader2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
-import { toast } from "react-hot-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
@@ -27,8 +26,8 @@ const DOCUMENT_TYPES = {
     name: "Solar Installation Contract", 
     type: "solarInstallationContract",
     urlField: "solarInstallationContractUrl",
-    statusField: "solarInstallationContractStatus",
-    rejectionField: "solarInstallationContractRejectionReason",
+    statusField: "solarInstallationStatus",
+    rejectionField: "solarInstallationRejectionReason",
     mandatory: true
   },
   nemAgreement: { 
@@ -300,6 +299,7 @@ export default function DocumentsModal({ facility, documents, onVerifyFacility, 
     setStatusModalOpen(false);
     setRejectionReason("");
     setActionType("");
+    setCurrentDocument(null);
   };
 
   const handleDownload = (e) => {
@@ -347,17 +347,35 @@ export default function DocumentsModal({ facility, documents, onVerifyFacility, 
       }
 
       const data = await response.json();
-      if (data.status === 'success') {
-        toast.success(data.message);
-        closeStatusModal();
-        fetchFacilityDocuments(facility.id);
-      } else {
-        throw new Error(data.message || 'Failed to update document status');
+      
+      closeStatusModal();
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      await fetchFacilityDocuments(facility.id);
+      
+      if (data.status === 'success' || response.ok) {
+        const successMessage = actionType === "APPROVE" 
+          ? `${currentDocument.name} approved successfully` 
+          : `${currentDocument.name} rejected successfully`;
+        
+        if (window.toast && typeof window.toast.success === 'function') {
+          window.toast.success(successMessage);
+        } else {
+          console.log(successMessage);
+        }
       }
     } catch (err) {
       console.error('Error updating document status:', err);
-      toast.error(err.message || 'Failed to update document status');
-      fetchFacilityDocuments(facility.id);
+      
+      const errorMessage = err.message || 'Failed to update document status';
+      if (window.toast && typeof window.toast.error === 'function') {
+        window.toast.error(errorMessage);
+      } else {
+        console.error(errorMessage);
+      }
+      
+      await fetchFacilityDocuments(facility.id);
     } finally {
       setApprovingDoc(null);
     }
@@ -399,8 +417,8 @@ export default function DocumentsModal({ facility, documents, onVerifyFacility, 
             </DialogTitle>
             <DialogDescription>
               {actionType === "APPROVE" 
-                ? "Are you sure you want to approve this document?"
-                : "Please provide a reason for rejecting this document"}
+                ? `Are you sure you want to approve ${currentDocument?.name}?`
+                : `Please provide a reason for rejecting ${currentDocument?.name}`}
             </DialogDescription>
           </DialogHeader>
           
