@@ -7,29 +7,29 @@ import { toast } from "react-hot-toast";
 const CommercialCommissionSetup = ({ onClose, onSuccess }) => {
   const [formValues, setFormValues] = useState({
     facilityShareWithReferral: {
-      lessThan500k: 0,
-      between500kTo2_5m: 0,
-      moreThan2_5m: 0,
+      lessThan500k: "",
+      between500kTo2_5m: "",
+      moreThan2_5m: "",
     },
     installerEPC: {
-      lessThan500k: 0,
-      between500kTo2_5m: 0,
-      moreThan2_5m: 0,
+      lessThan500k: "",
+      between500kTo2_5m: "",
+      moreThan2_5m: "",
     },
     financeCompany: {
-      lessThan500k: 0,
-      between500kTo2_5m: 0,
-      moreThan2_5m: 0,
+      lessThan500k: "",
+      between500kTo2_5m: "",
+      moreThan2_5m: "",
     },
     facilityShareNoReferral: {
-      lessThan500k: 0,
-      between500kTo2_5m: 0,
-      moreThan2_5m: 0,
+      lessThan500k: "",
+      between500kTo2_5m: "",
+      moreThan2_5m: "",
     },
     durations: {
-      maxDuration: 0,
-      agreementDuration: 0,
-      cancellationFee: 0,
+      maxDuration: "",
+      agreementDuration: "",
+      cancellationFee: "",
     },
   });
 
@@ -67,29 +67,29 @@ const CommercialCommissionSetup = ({ onClose, onSuccess }) => {
         
         setFormValues({
           facilityShareWithReferral: {
-            lessThan500k: partnerInstaller.customerShareLessThan500k || 0,
-            between500kTo2_5m: partnerInstaller.customerShareBetween500kTo2_5m || 0,
-            moreThan2_5m: partnerInstaller.customerShareMoreThan2_5m || 0,
+            lessThan500k: partnerInstaller.customerShareLessThan500k || "",
+            between500kTo2_5m: partnerInstaller.customerShareBetween500kTo2_5m || "",
+            moreThan2_5m: partnerInstaller.customerShareMoreThan2_5m || "",
           },
           installerEPC: {
-            lessThan500k: partnerInstaller.partnerShareLessThan500k || 0,
-            between500kTo2_5m: partnerInstaller.partnerShareBetween500kTo2_5m || 0,
-            moreThan2_5m: partnerInstaller.partnerShareMoreThan2_5m || 0,
+            lessThan500k: partnerInstaller.partnerShareLessThan500k || "",
+            between500kTo2_5m: partnerInstaller.partnerShareBetween500kTo2_5m || "",
+            moreThan2_5m: partnerInstaller.partnerShareMoreThan2_5m || "",
           },
           financeCompany: {
-            lessThan500k: partnerFinance.partnerShareLessThan500k || 0,
-            between500kTo2_5m: partnerFinance.partnerShareBetween500kTo2_5m || 0,
-            moreThan2_5m: partnerFinance.partnerShareMoreThan2_5m || 0,
+            lessThan500k: partnerFinance.partnerShareLessThan500k || "",
+            between500kTo2_5m: partnerFinance.partnerShareBetween500kTo2_5m || "",
+            moreThan2_5m: partnerFinance.partnerShareMoreThan2_5m || "",
           },
           facilityShareNoReferral: {
-            lessThan500k: direct.lessThan500k || 0,
-            between500kTo2_5m: direct.between500kTo2_5m || 0,
-            moreThan2_5m: direct.moreThan2_5m || 0,
+            lessThan500k: direct.lessThan500k || "",
+            between500kTo2_5m: direct.between500kTo2_5m || "",
+            moreThan2_5m: direct.moreThan2_5m || "",
           },
           durations: {
-            maxDuration: terms.maxDuration || 0,
-            agreementDuration: terms.agreementDuration || 0,
-            cancellationFee: terms.cancellationFee || 0,
+            maxDuration: terms.maxDuration || "",
+            agreementDuration: terms.agreementDuration || "",
+            cancellationFee: terms.cancellationFee || "",
           },
         });
       } else {
@@ -111,28 +111,30 @@ const CommercialCommissionSetup = ({ onClose, onSuccess }) => {
   }, []);
 
   const calculateRemainderWithInstaller = (tier) => {
-    const facility = formValues.facilityShareWithReferral[tier];
-    const installer = formValues.installerEPC[tier];
+    const facility = parseFloat(formValues.facilityShareWithReferral[tier]) || 0;
+    const installer = parseFloat(formValues.installerEPC[tier]) || 0;
     const remainder = (100 - facility - installer).toFixed(1);
     return formatNumber(parseFloat(remainder));
   };
 
   const calculateRemainderWithFinance = (tier) => {
-    const facility = formValues.facilityShareWithReferral[tier];
-    const finance = formValues.financeCompany[tier];
+    const facility = parseFloat(formValues.facilityShareWithReferral[tier]) || 0;
+    const finance = parseFloat(formValues.financeCompany[tier]) || 0;
     const remainder = (100 - facility - finance).toFixed(1);
     return formatNumber(parseFloat(remainder));
   };
 
   const calculateNoReferralRemainder = (tier) => {
-    const remainder = (100 - formValues.facilityShareNoReferral[tier]).toFixed(1);
+    const facility = parseFloat(formValues.facilityShareNoReferral[tier]) || 0;
+    const remainder = (100 - facility).toFixed(1);
     return formatNumber(parseFloat(remainder));
   };
 
   const handleInputChange = (section, field, value) => {
+    const cleanedValue = value === "" ? "" : parseFloat(value) || 0;
     setFormValues(prev => ({
       ...prev,
-      [section]: { ...prev[section], [field]: parseFloat(value) || 0 },
+      [section]: { ...prev[section], [field]: cleanedValue },
     }));
   };
 
@@ -146,12 +148,12 @@ const CommercialCommissionSetup = ({ onClose, onSuccess }) => {
         'Authorization': `Bearer ${authToken}`,
       },
       body: JSON.stringify({
-        customerShareLessThan500k: formValues.facilityShareWithReferral.lessThan500k,
-        partnerShareLessThan500k: formValues.installerEPC.lessThan500k,
-        customerShareBetween500kTo2_5m: formValues.facilityShareWithReferral.between500kTo2_5m,
-        partnerShareBetween500kTo2_5m: formValues.installerEPC.between500kTo2_5m,
-        customerShareMoreThan2_5m: formValues.facilityShareWithReferral.moreThan2_5m,
-        partnerShareMoreThan2_5m: formValues.installerEPC.moreThan2_5m,
+        customerShareLessThan500k: parseFloat(formValues.facilityShareWithReferral.lessThan500k) || 0,
+        partnerShareLessThan500k: parseFloat(formValues.installerEPC.lessThan500k) || 0,
+        customerShareBetween500kTo2_5m: parseFloat(formValues.facilityShareWithReferral.between500kTo2_5m) || 0,
+        partnerShareBetween500kTo2_5m: parseFloat(formValues.installerEPC.between500kTo2_5m) || 0,
+        customerShareMoreThan2_5m: parseFloat(formValues.facilityShareWithReferral.moreThan2_5m) || 0,
+        partnerShareMoreThan2_5m: parseFloat(formValues.installerEPC.moreThan2_5m) || 0,
       }),
     });
 
@@ -173,12 +175,12 @@ const CommercialCommissionSetup = ({ onClose, onSuccess }) => {
         'Authorization': `Bearer ${authToken}`,
       },
       body: JSON.stringify({
-        customerShareLessThan500k: formValues.facilityShareWithReferral.lessThan500k,
-        partnerShareLessThan500k: formValues.financeCompany.lessThan500k,
-        customerShareBetween500kTo2_5m: formValues.facilityShareWithReferral.between500kTo2_5m,
-        partnerShareBetween500kTo2_5m: formValues.financeCompany.between500kTo2_5m,
-        customerShareMoreThan2_5m: formValues.facilityShareWithReferral.moreThan2_5m,
-        partnerShareMoreThan2_5m: formValues.financeCompany.moreThan2_5m,
+        customerShareLessThan500k: parseFloat(formValues.facilityShareWithReferral.lessThan500k) || 0,
+        partnerShareLessThan500k: parseFloat(formValues.financeCompany.lessThan500k) || 0,
+        customerShareBetween500kTo2_5m: parseFloat(formValues.facilityShareWithReferral.between500kTo2_5m) || 0,
+        partnerShareBetween500kTo2_5m: parseFloat(formValues.financeCompany.between500kTo2_5m) || 0,
+        customerShareMoreThan2_5m: parseFloat(formValues.facilityShareWithReferral.moreThan2_5m) || 0,
+        partnerShareMoreThan2_5m: parseFloat(formValues.financeCompany.moreThan2_5m) || 0,
       }),
     });
 
@@ -200,9 +202,9 @@ const CommercialCommissionSetup = ({ onClose, onSuccess }) => {
         'Authorization': `Bearer ${authToken}`,
       },
       body: JSON.stringify({
-        lessThan500k: formValues.facilityShareNoReferral.lessThan500k,
-        between500kTo2_5m: formValues.facilityShareNoReferral.between500kTo2_5m,
-        moreThan2_5m: formValues.facilityShareNoReferral.moreThan2_5m,
+        lessThan500k: parseFloat(formValues.facilityShareNoReferral.lessThan500k) || 0,
+        between500kTo2_5m: parseFloat(formValues.facilityShareNoReferral.between500kTo2_5m) || 0,
+        moreThan2_5m: parseFloat(formValues.facilityShareNoReferral.moreThan2_5m) || 0,
       }),
     });
 
@@ -224,9 +226,9 @@ const CommercialCommissionSetup = ({ onClose, onSuccess }) => {
         'Authorization': `Bearer ${authToken}`,
       },
       body: JSON.stringify({
-        maxDuration: formValues.durations.maxDuration,
-        agreementDuration: formValues.durations.agreementDuration,
-        cancellationFee: formValues.durations.cancellationFee,
+        maxDuration: parseFloat(formValues.durations.maxDuration) || 0,
+        agreementDuration: parseFloat(formValues.durations.agreementDuration) || 0,
+        cancellationFee: parseFloat(formValues.durations.cancellationFee) || 0,
       }),
     });
 
