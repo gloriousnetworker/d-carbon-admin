@@ -11,36 +11,36 @@ const PartnerCommissionSetup = ({ onClose, onSuccess }) => {
   const [epcAssistedData, setEpcAssistedData] = useState(null);
 
   const [salesAgentForm, setSalesAgentForm] = useState({
-    salesAgentUnder500k: 0,
-    salesAgent500kTo2_5m: 0,
-    salesAgentOver2_5m: 0,
-    salesAgentAnnualCap: 0,
-    installerUnder500k: 0,
-    installer500kTo2_5m: 0,
-    installerOver2_5m: 0,
-    installerAnnualCap: 0,
-    financeUnder500k: 0,
-    finance500kTo2_5m: 0,
-    financeOver2_5m: 0,
-    financeAnnualCap: 0,
+    salesAgentUnder500k: "",
+    salesAgent500kTo2_5m: "",
+    salesAgentOver2_5m: "",
+    salesAgentAnnualCap: "",
+    installerUnder500k: "",
+    installer500kTo2_5m: "",
+    installerOver2_5m: "",
+    installerAnnualCap: "",
+    financeUnder500k: "",
+    finance500kTo2_5m: "",
+    financeOver2_5m: "",
+    financeAnnualCap: "",
     notes: ""
   });
 
   const [epcForm, setEpcForm] = useState({
-    financeShareLessThan500k: 0,
-    financeShare500kTo2_5m: 0,
-    financeShareMoreThan2_5m: 0,
-    installerShareLessThan500k: 0,
-    installerShare500kTo2_5m: 0,
-    installerShareMoreThan2_5m: 0,
-    residentialFinanceShareLessThan500k: 0,
-    residentialFinanceShare500kTo2_5m: 0,
-    residentialFinanceShareMoreThan2_5m: 0,
-    residentialInstallerShareLessThan500k: 0,
-    residentialInstallerShare500kTo2_5m: 0,
-    residentialInstallerShareMoreThan2_5m: 0,
-    maxDuration: 0,
-    agreementDuration: 0,
+    financeShareLessThan500k: "",
+    financeShare500kTo2_5m: "",
+    financeShareMoreThan2_5m: "",
+    installerShareLessThan500k: "",
+    installerShare500kTo2_5m: "",
+    installerShareMoreThan2_5m: "",
+    residentialFinanceShareLessThan500k: "",
+    residentialFinanceShare500kTo2_5m: "",
+    residentialFinanceShareMoreThan2_5m: "",
+    residentialInstallerShareLessThan500k: "",
+    residentialInstallerShare500kTo2_5m: "",
+    residentialInstallerShareMoreThan2_5m: "",
+    maxDuration: "",
+    agreementDuration: "",
     notes: ""
   });
 
@@ -60,18 +60,18 @@ const PartnerCommissionSetup = ({ onClose, onSuccess }) => {
         if (result.status === 'success') {
           setSalesAgentData(result.data);
           setSalesAgentForm({
-            salesAgentUnder500k: result.data.salesAgentUnder500k,
-            salesAgent500kTo2_5m: result.data.salesAgent500kTo2_5m,
-            salesAgentOver2_5m: result.data.salesAgentOver2_5m,
-            salesAgentAnnualCap: result.data.salesAgentAnnualCap,
-            installerUnder500k: result.data.installerUnder500k,
-            installer500kTo2_5m: result.data.installer500kTo2_5m,
-            installerOver2_5m: result.data.installerOver2_5m,
-            installerAnnualCap: result.data.installerAnnualCap,
-            financeUnder500k: result.data.financeUnder500k,
-            finance500kTo2_5m: result.data.finance500kTo2_5m,
-            financeOver2_5m: result.data.financeOver2_5m,
-            financeAnnualCap: result.data.financeAnnualCap,
+            salesAgentUnder500k: result.data.salesAgentUnder500k || "",
+            salesAgent500kTo2_5m: result.data.salesAgent500kTo2_5m || "",
+            salesAgentOver2_5m: result.data.salesAgentOver2_5m || "",
+            salesAgentAnnualCap: result.data.salesAgentAnnualCap || "",
+            installerUnder500k: result.data.installerUnder500k || "",
+            installer500kTo2_5m: result.data.installer500kTo2_5m || "",
+            installerOver2_5m: result.data.installerOver2_5m || "",
+            installerAnnualCap: result.data.installerAnnualCap || "",
+            financeUnder500k: result.data.financeUnder500k || "",
+            finance500kTo2_5m: result.data.finance500kTo2_5m || "",
+            financeOver2_5m: result.data.financeOver2_5m || "",
+            financeAnnualCap: result.data.financeAnnualCap || "",
             notes: ""
           });
         }
@@ -97,20 +97,20 @@ const PartnerCommissionSetup = ({ onClose, onSuccess }) => {
         if (result.status === 'success') {
           setEpcAssistedData(result.data);
           setEpcForm({
-            financeShareLessThan500k: result.data.financeShareLessThan500k || 0,
-            financeShare500kTo2_5m: result.data.financeShare500kTo2_5m || 0,
-            financeShareMoreThan2_5m: result.data.financeShareMoreThan2_5m || 0,
-            installerShareLessThan500k: result.data.installerShareLessThan500k || 0,
-            installerShare500kTo2_5m: result.data.installerShare500kTo2_5m || 0,
-            installerShareMoreThan2_5m: result.data.installerShareMoreThan2_5m || 0,
-            residentialFinanceShareLessThan500k: result.data.residentialFinanceShareLessThan500k || 0,
-            residentialFinanceShare500kTo2_5m: result.data.residentialFinanceShare500kTo2_5m || 0,
-            residentialFinanceShareMoreThan2_5m: result.data.residentialFinanceShareMoreThan2_5m || 0,
-            residentialInstallerShareLessThan500k: result.data.residentialInstallerShareLessThan500k || 0,
-            residentialInstallerShare500kTo2_5m: result.data.residentialInstallerShare500kTo2_5m || 0,
-            residentialInstallerShareMoreThan2_5m: result.data.residentialInstallerShareMoreThan2_5m || 0,
-            maxDuration: result.data.maxDuration || 0,
-            agreementDuration: result.data.agreementDuration || 0,
+            financeShareLessThan500k: result.data.financeShareLessThan500k || "",
+            financeShare500kTo2_5m: result.data.financeShare500kTo2_5m || "",
+            financeShareMoreThan2_5m: result.data.financeShareMoreThan2_5m || "",
+            installerShareLessThan500k: result.data.installerShareLessThan500k || "",
+            installerShare500kTo2_5m: result.data.installerShare500kTo2_5m || "",
+            installerShareMoreThan2_5m: result.data.installerShareMoreThan2_5m || "",
+            residentialFinanceShareLessThan500k: result.data.residentialFinanceShareLessThan500k || "",
+            residentialFinanceShare500kTo2_5m: result.data.residentialFinanceShare500kTo2_5m || "",
+            residentialFinanceShareMoreThan2_5m: result.data.residentialFinanceShareMoreThan2_5m || "",
+            residentialInstallerShareLessThan500k: result.data.residentialInstallerShareLessThan500k || "",
+            residentialInstallerShare500kTo2_5m: result.data.residentialInstallerShare500kTo2_5m || "",
+            residentialInstallerShareMoreThan2_5m: result.data.residentialInstallerShareMoreThan2_5m || "",
+            maxDuration: result.data.maxDuration || "",
+            agreementDuration: result.data.agreementDuration || "",
             notes: result.data.notes || ""
           });
         }
@@ -126,24 +126,29 @@ const PartnerCommissionSetup = ({ onClose, onSuccess }) => {
   }, []);
 
   const handleSalesAgentInput = (field, value) => {
+    const cleanedValue = value === "" ? "" : parseFloat(value) || 0;
     setSalesAgentForm(prev => ({
       ...prev,
-      [field]: parseFloat(value) || 0,
+      [field]: cleanedValue,
     }));
   };
 
   const handleEpcInput = (field, value, isCommercial = true, isFinance = true) => {
-    const numValue = parseFloat(value) || 0;
+    const numValue = value === "" ? "" : parseFloat(value) || 0;
     
     setEpcForm(prev => {
       const newForm = { ...prev, [field]: numValue };
       
-      if (isFinance) {
-        const counterpartField = field.replace('Finance', 'Installer').replace('finance', 'installer');
-        newForm[counterpartField] = 100 - numValue;
-      } else {
-        const counterpartField = field.replace('Installer', 'Finance').replace('installer', 'finance');
-        newForm[counterpartField] = 100 - numValue;
+      if (numValue !== "") {
+        if (isFinance) {
+          const counterpartField = field.replace('Finance', 'Installer').replace('finance', 'installer');
+          const counterpartValue = 100 - parseFloat(numValue);
+          newForm[counterpartField] = counterpartValue;
+        } else {
+          const counterpartField = field.replace('Installer', 'Finance').replace('installer', 'finance');
+          const counterpartValue = 100 - parseFloat(numValue);
+          newForm[counterpartField] = counterpartValue;
+        }
       }
       
       return newForm;
@@ -151,17 +156,21 @@ const PartnerCommissionSetup = ({ onClose, onSuccess }) => {
   };
 
   const handleResidentialEpcInput = (field, value, isFinance = true) => {
-    const numValue = parseFloat(value) || 0;
+    const numValue = value === "" ? "" : parseFloat(value) || 0;
     
     setEpcForm(prev => {
       const newForm = { ...prev, [field]: numValue };
       
-      if (isFinance) {
-        const counterpartField = field.replace('Finance', 'Installer').replace('finance', 'installer');
-        newForm[counterpartField] = 100 - numValue;
-      } else {
-        const counterpartField = field.replace('Installer', 'Finance').replace('installer', 'finance');
-        newForm[counterpartField] = 100 - numValue;
+      if (numValue !== "") {
+        if (isFinance) {
+          const counterpartField = field.replace('Finance', 'Installer').replace('finance', 'installer');
+          const counterpartValue = 100 - parseFloat(numValue);
+          newForm[counterpartField] = counterpartValue;
+        } else {
+          const counterpartField = field.replace('Installer', 'Finance').replace('installer', 'finance');
+          const counterpartValue = 100 - parseFloat(numValue);
+          newForm[counterpartField] = counterpartValue;
+        }
       }
       
       return newForm;
@@ -186,18 +195,18 @@ const PartnerCommissionSetup = ({ onClose, onSuccess }) => {
           'Authorization': `Bearer ${authToken}`,
         },
         body: JSON.stringify({
-          salesAgentUnder500k: salesAgentForm.salesAgentUnder500k,
-          salesAgent500kTo2_5m: salesAgentForm.salesAgent500kTo2_5m,
-          salesAgentOver2_5m: salesAgentForm.salesAgentOver2_5m,
-          salesAgentAnnualCap: salesAgentForm.salesAgentAnnualCap,
-          installerUnder500k: salesAgentForm.installerUnder500k,
-          installer500kTo2_5m: salesAgentForm.installer500kTo2_5m,
-          installerOver2_5m: salesAgentForm.installerOver2_5m,
-          installerAnnualCap: salesAgentForm.installerAnnualCap,
-          financeUnder500k: salesAgentForm.financeUnder500k,
-          finance500kTo2_5m: salesAgentForm.finance500kTo2_5m,
-          financeOver2_5m: salesAgentForm.financeOver2_5m,
-          financeAnnualCap: salesAgentForm.financeAnnualCap
+          salesAgentUnder500k: parseFloat(salesAgentForm.salesAgentUnder500k) || 0,
+          salesAgent500kTo2_5m: parseFloat(salesAgentForm.salesAgent500kTo2_5m) || 0,
+          salesAgentOver2_5m: parseFloat(salesAgentForm.salesAgentOver2_5m) || 0,
+          salesAgentAnnualCap: parseFloat(salesAgentForm.salesAgentAnnualCap) || 0,
+          installerUnder500k: parseFloat(salesAgentForm.installerUnder500k) || 0,
+          installer500kTo2_5m: parseFloat(salesAgentForm.installer500kTo2_5m) || 0,
+          installerOver2_5m: parseFloat(salesAgentForm.installerOver2_5m) || 0,
+          installerAnnualCap: parseFloat(salesAgentForm.installerAnnualCap) || 0,
+          financeUnder500k: parseFloat(salesAgentForm.financeUnder500k) || 0,
+          finance500kTo2_5m: parseFloat(salesAgentForm.finance500kTo2_5m) || 0,
+          financeOver2_5m: parseFloat(salesAgentForm.financeOver2_5m) || 0,
+          financeAnnualCap: parseFloat(salesAgentForm.financeAnnualCap) || 0
         })
       });
 
@@ -235,20 +244,20 @@ const PartnerCommissionSetup = ({ onClose, onSuccess }) => {
           'Authorization': `Bearer ${authToken}`,
         },
         body: JSON.stringify({
-          financeShareLessThan500k: epcForm.financeShareLessThan500k,
-          financeShare500kTo2_5m: epcForm.financeShare500kTo2_5m,
-          financeShareMoreThan2_5m: epcForm.financeShareMoreThan2_5m,
-          installerShareLessThan500k: epcForm.installerShareLessThan500k,
-          installerShare500kTo2_5m: epcForm.installerShare500kTo2_5m,
-          installerShareMoreThan2_5m: epcForm.installerShareMoreThan2_5m,
-          residentialFinanceShareLessThan500k: epcForm.residentialFinanceShareLessThan500k,
-          residentialFinanceShare500kTo2_5m: epcForm.residentialFinanceShare500kTo2_5m,
-          residentialFinanceShareMoreThan2_5m: epcForm.residentialFinanceShareMoreThan2_5m,
-          residentialInstallerShareLessThan500k: epcForm.residentialInstallerShareLessThan500k,
-          residentialInstallerShare500kTo2_5m: epcForm.residentialInstallerShare500kTo2_5m,
-          residentialInstallerShareMoreThan2_5m: epcForm.residentialInstallerShareMoreThan2_5m,
-          maxDuration: epcForm.maxDuration,
-          agreementDuration: epcForm.agreementDuration,
+          financeShareLessThan500k: parseFloat(epcForm.financeShareLessThan500k) || 0,
+          financeShare500kTo2_5m: parseFloat(epcForm.financeShare500kTo2_5m) || 0,
+          financeShareMoreThan2_5m: parseFloat(epcForm.financeShareMoreThan2_5m) || 0,
+          installerShareLessThan500k: parseFloat(epcForm.installerShareLessThan500k) || 0,
+          installerShare500kTo2_5m: parseFloat(epcForm.installerShare500kTo2_5m) || 0,
+          installerShareMoreThan2_5m: parseFloat(epcForm.installerShareMoreThan2_5m) || 0,
+          residentialFinanceShareLessThan500k: parseFloat(epcForm.residentialFinanceShareLessThan500k) || 0,
+          residentialFinanceShare500kTo2_5m: parseFloat(epcForm.residentialFinanceShare500kTo2_5m) || 0,
+          residentialFinanceShareMoreThan2_5m: parseFloat(epcForm.residentialFinanceShareMoreThan2_5m) || 0,
+          residentialInstallerShareLessThan500k: parseFloat(epcForm.residentialInstallerShareLessThan500k) || 0,
+          residentialInstallerShare500kTo2_5m: parseFloat(epcForm.residentialInstallerShare500kTo2_5m) || 0,
+          residentialInstallerShareMoreThan2_5m: parseFloat(epcForm.residentialInstallerShareMoreThan2_5m) || 0,
+          maxDuration: parseFloat(epcForm.maxDuration) || 0,
+          agreementDuration: parseFloat(epcForm.agreementDuration) || 0,
           notes: epcForm.notes
         })
       });
