@@ -146,13 +146,13 @@ const ResidentialCommissionStructure = ({ onSetupStructure, refreshData }) => {
   const { headers, rows } = tableData;
 
   return (
-    <div className="w-full">
+    <div className="w-full relative group">
       <div className="flex items-center justify-between pb-4">
         <h2 className="text-[#039994] font-semibold text-lg">
           Residential Commission Structure
         </h2>
         <button
-          className="flex items-center bg[#039994] text-white px-4 py-2 rounded-full text-sm hover:bg-[#028B86] transition-colors"
+          className="flex items-center bg-[#039994] text-white px-4 py-2 rounded-full text-sm hover:bg-[#028B86] transition-colors opacity-0 group-hover:opacity-100"
           onClick={onSetupStructure}
         >
           <IoSettingsSharp className="mr-2" size={16} />
