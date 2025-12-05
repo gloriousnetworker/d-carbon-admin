@@ -66,12 +66,7 @@ const CommissionStructure = () => {
       )}
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-end mb-4">
-          <button
-            className="bg-[#1E1E1E] text-white px-6 py-3 rounded-md text-sm hover:bg-[#333333] transition-colors font-medium"
-            onClick={handleInitiateCommission}
-          >
-            Initiate Commission
-          </button>
+          
         </div>
         <div className="bg-white rounded-2xl shadow-sm border border-[#E8E8E8]">
           <div className="border-b border-gray-200">
