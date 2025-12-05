@@ -98,6 +98,8 @@ const DashboardNavbar = ({
               type="text"
               placeholder="Search"
               className="w-full pl-12 pr-3 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#039994]"
+              disabled
+              readOnly
             />
           </div>
         </div>
