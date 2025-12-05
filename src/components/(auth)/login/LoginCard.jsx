@@ -17,8 +17,10 @@ export default function AdminLoginCard() {
   };
 
   const handleLogin = async () => {
-    // Basic validation
-    if (!email.trim() || !password.trim()) {
+    const trimmedEmail = email.trim().toLowerCase();
+    const trimmedPassword = password.trim();
+    
+    if (!trimmedEmail || !trimmedPassword) {
       setError('Please enter both email and password');
       return;
     }
@@ -32,11 +34,10 @@ export default function AdminLoginCard() {
 
       const response = await axios.post(
         url,
-        { email, password },
+        { email: trimmedEmail, password: trimmedPassword },
         { headers: { 'Content-Type': 'application/json' } }
       );
 
-      // Store the entire response in localStorage like the normal login
       localStorage.setItem('loginResponse', JSON.stringify(response.data));
 
       const { status, message, data } = response.data;
@@ -47,12 +48,10 @@ export default function AdminLoginCard() {
 
       const { admin, token } = data;
 
-      // Verify admin role
       if (admin.role !== 'ADMIN') {
         throw new Error('Access denied. Admin privileges required.');
       }
 
-      // Store token and essential admin info
       localStorage.setItem('authToken', token);
       localStorage.setItem('userId', admin.id);
       localStorage.setItem('userFirstName', admin.firstName);
@@ -61,8 +60,6 @@ export default function AdminLoginCard() {
       }
       
       toast.success('Admin login successful');
-      
-      // Redirect to admin dashboard
       window.location.href = '/admin-dashboard';
       
     } catch (err) {
@@ -75,16 +72,20 @@ export default function AdminLoginCard() {
     }
   };
 
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleLogin();
+    }
+  };
+
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center py-8 px-8">
-      {/* Loader Overlay */}
       {loading && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-20">
           <Loader />
         </div>
       )}
 
-      {/* Glass-Effect Card Container */}
       <div
         className="w-full max-w-md space-y-6 p-8 rounded-xl shadow-lg"
         style={{
@@ -94,7 +95,6 @@ export default function AdminLoginCard() {
           border: '1px solid rgba(255, 255, 255, 0.2)'
         }}
       >
-        {/* Logo */}
         <div className="relative w-full flex flex-col items-center mb-2">
           <img
             src="/auth_images/Login_logo.png"
@@ -103,22 +103,18 @@ export default function AdminLoginCard() {
           />
         </div>
 
-        {/* Heading */}
         <h2 className="mb-4 font-[600] text-[36px] leading-[100%] tracking-[-0.05em] text-[#FFFFFF] font-sfpro text-center">
           DCarbon Admin
         </h2>
 
-        {/* Horizontal Line */}
         <hr className="border-t-2 border-gray-200 mb-4 opacity-70" />
 
-        {/* Error Message */}
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
             <span className="block sm:inline font-sfpro text-[14px] font-[400]">{error}</span>
           </div>
         )}
 
-        {/* Email Field */}
         <div className="space-y-6">
           <div>
             <label
@@ -133,11 +129,11 @@ export default function AdminLoginCard() {
               placeholder="@ e.g name@domain.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onKeyPress={handleKeyPress}
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro text-[14px] leading-[100%] tracking-[-0.05em] font-[400] text-[#1E1E1E] bg-white bg-opacity-70"
             />
           </div>
 
-          {/* Password Field with Forgot Password Link */}
           <div className="relative">
             <label
               htmlFor="password"
@@ -151,6 +147,7 @@ export default function AdminLoginCard() {
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              onKeyPress={handleKeyPress}
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro text-[14px] leading-[100%] tracking-[-0.05em] font-[400] text-[#1E1E1E] mb-2 bg-white bg-opacity-70 pr-8"
             />
             <button
@@ -204,7 +201,6 @@ export default function AdminLoginCard() {
           </div>
         </div>
 
-        {/* Sign In Button */}
         <button
           type="button"
           onClick={handleLogin}
@@ -213,7 +209,6 @@ export default function AdminLoginCard() {
           Sign in
         </button>
 
-        {/* Create Account Link */}
         <p className="mt-6 text-center font-sfpro font-[400] text-[14px] leading-[100%] tracking-[-0.05em] text-[#FFFFFF]">
           Don't have an account?{' '}
           <a
@@ -224,10 +219,8 @@ export default function AdminLoginCard() {
           </a>
         </p>
 
-        {/* Horizontal Line */}
         <hr className="border-t-2 border-gray-200 my-4 opacity-70" />
 
-        {/* Disclaimer */}
         <p className="font-sfpro font-[400] text-[10px] leading-[100%] tracking-[-0.05em] text-center text-[#FFFFFF] mb-0">
           By clicking on <strong>Sign in</strong>, you agree to our{' '}
           <a
