@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Eye, Download, Loader2, AlertTriangle } from "lucide-react";
+import { Eye, Download, Loader2, AlertTriangle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -28,14 +28,6 @@ const DOCUMENT_TYPES = {
     urlField: "solarInstallationContractUrl",
     statusField: "solarInstallationStatus",
     rejectionField: "solarInstallationRejectionReason",
-    mandatory: true
-  },
-  nemAgreement: { 
-    name: "NEM Agreement", 
-    type: "nemAgreement",
-    urlField: "nemAgreementUrl",
-    statusField: "nemAgreementStatus",
-    rejectionField: "nemAgreementRejectionReason",
     mandatory: true
   },
   utilityPtoLetter: { 
@@ -384,26 +376,33 @@ export default function DocumentsModal({ facility, documents, onVerifyFacility, 
   return (
     <>
       <Dialog open={pdfModalOpen} onOpenChange={closePdfModal}>
-        <DialogContent className="max-w-5xl h-[95vh] flex flex-col">
-          <DialogHeader className="flex-shrink-0 bg-gray-50 p-4 -m-6 mb-4 rounded-t-lg">
-            <DialogTitle className="flex justify-between items-center">
-              <span className="truncate">
-                {currentDocument?.name} - {facility.facilityName}
-              </span>
-              <div className="flex items-center gap-2 ml-4">
+        <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0 [&>button]:hidden">
+          <DialogHeader className="flex-shrink-0 bg-gray-50 px-6 py-4 border-b">
+            <div className="flex justify-between items-center gap-4">
+              <DialogTitle className="truncate text-base pr-4 flex-1">
+                {currentDocument?.name}
+              </DialogTitle>
+              <div className="flex items-center gap-3 flex-shrink-0">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleDownload}
-                  className="text-xs"
+                  className="text-xs h-9 px-3"
                 >
-                  <Download className="h-3 w-3 mr-1" />
+                  <Download className="h-4 w-4 mr-2" />
                   Download
                 </Button>
+                <button
+                  onClick={closePdfModal}
+                  className="rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:pointer-events-none p-1.5 hover:bg-gray-200"
+                >
+                  <X className="h-5 w-5" />
+                  <span className="sr-only">Close</span>
+                </button>
               </div>
-            </DialogTitle>
+            </div>
           </DialogHeader>
-          <div className="flex-1 overflow-hidden bg-gray-100 -mx-6 -mb-6 rounded-b-lg">
+          <div className="flex-1 overflow-hidden">
             {renderFileContent()}
           </div>
         </DialogContent>
@@ -454,195 +453,196 @@ export default function DocumentsModal({ facility, documents, onVerifyFacility, 
         </DialogContent>
       </Dialog>
 
-      <div className="space-y-6">
-        <div className="flex justify-between items-start">
-          <div>
-            <h4 className="text-lg font-semibold text-[#039994]">{facility.facilityName}</h4>
-            <p className="text-sm text-gray-600">{facility.address}</p>
-            <p className="text-xs text-gray-500 mt-1">Facility ID: {facility.id}</p>
-          </div>
-          <StatusBadge status={facility.status} />
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-3">
+      {!pdfModalOpen && (
+        <div className="space-y-6">
+          <div className="flex justify-between items-start">
             <div>
-              <p className="text-sm text-gray-500">Utility Provider</p>
-              <p className="font-medium">{facility.utilityProvider}</p>
+              <h4 className="text-lg font-semibold text-[#039994]">{facility.facilityName}</h4>
+              <p className="text-sm text-gray-600">{facility.address}</p>
             </div>
-            <div>
-              <p className="text-sm text-gray-500">Meter ID</p>
-              <p className="font-medium">{facility.meterId || 'Not specified'}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Finance Type</p>
-              <p className="font-medium capitalize">{facility.financeType}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Installer</p>
-              <p className="font-medium capitalize">{facility.installer}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">WREGIS ID</p>
-              <p className="font-medium">{facility.wregisId || 'Not specified'}</p>
-            </div>
+            <StatusBadge status={facility.status} />
           </div>
           
-          <div className="space-y-3">
-            <div>
-              <p className="text-sm text-gray-500">System Capacity</p>
-              <p className="font-medium">{facility.systemCapacity}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Total RECs</p>
-              <p className="font-medium">{facility.totalRecs}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Last REC Calculation</p>
-              <p className="font-medium">{formatDate(facility.lastRecCalculation)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">WREGIS Eligibility Date</p>
-              <p className="font-medium">{formatDate(facility.wregisEligibilityDate)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">RPS ID</p>
-              <p className="font-medium">{facility.rpsId || 'Not specified'}</p>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <h5 className="text-md font-semibold text-[#039994] mb-3">Facility Documents</h5>
-          <div className="border rounded-lg overflow-hidden">
-            <div className="grid grid-cols-12 bg-gray-50 p-3 border-b text-sm">
-              <div className="col-span-5 font-medium">Document Name</div>
-              <div className="col-span-3 font-medium">File</div>
-              <div className="col-span-2 font-medium">Status</div>
-              <div className="col-span-2 font-medium">Actions</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm text-gray-500">Utility Provider</p>
+                <p className="font-medium">{facility.utilityProvider}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Meter ID</p>
+                <p className="font-medium">{facility.meterId || 'Not specified'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Finance Type</p>
+                <p className="font-medium capitalize">{facility.financeType}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Installer</p>
+                <p className="font-medium capitalize">{facility.installer}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">WREGIS ID</p>
+                <p className="font-medium">{facility.wregisId || 'Not specified'}</p>
+              </div>
             </div>
             
-            {docList.map((doc, index) => {
-              const docKey = `${facility.id}-${doc.type}`;
-              const isApproving = approvingDoc === docKey;
-              
-              return (
-                <div key={index} className="grid grid-cols-12 p-3 border-b last:border-b-0 items-center text-sm">
-                  <div className="col-span-5">
-                    <p className="font-medium">{doc.name}</p>
-                    {doc.status === "REJECTED" && doc.rejectionReason && (
-                      <p className="text-xs text-red-500 mt-1">Reason: {doc.rejectionReason}</p>
-                    )}
-                  </div>
-                  
-                  <div className="col-span-3">
-                    {doc.url ? (
-                      <div className="flex items-center gap-2">
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-6 w-6" 
-                                onClick={() => openPdfModal(doc.url, doc)}
-                                disabled={isApproving}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>View document</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-6 w-6" 
-                                onClick={() => {
-                                  const link = document.createElement('a');
-                                  link.href = doc.url;
-                                  link.download = doc.name;
-                                  document.body.appendChild(link);
-                                  link.click();
-                                  document.body.removeChild(link);
-                                }}
-                                disabled={isApproving}
-                              >
-                                <Download className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Download document</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-gray-400">No document uploaded</span>
-                    )}
-                  </div>
-                  
-                  <div className="col-span-2">
-                    <span className={`text-xs font-semibold px-3 py-1 rounded-full ${getStatusColor(doc.status)}`}>
-                      {isApproving ? (
-                        <span className="flex items-center gap-1">
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                          Processing...
-                        </span>
-                      ) : (
-                        doc.status
-                      )}
-                    </span>
-                  </div>
-                  
-                  <div className="col-span-2 flex gap-2">
-                    {doc.url && (doc.status === "SUBMITTED" || doc.status === "REJECTED") && (
-                      <>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="h-8 text-xs" 
-                          onClick={() => openStatusModal("APPROVE", doc)} 
-                          disabled={isApproving}
-                        >
-                          Approve
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="h-8 text-xs bg-red-50 text-red-600 hover:bg-red-100" 
-                          onClick={() => openStatusModal("REJECT", doc)}
-                          disabled={isApproving}
-                        >
-                          Reject
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm text-gray-500">System Capacity</p>
+                <p className="font-medium">{facility.systemCapacity}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Total RECs</p>
+                <p className="font-medium">{facility.totalRecs}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Last REC Calculation</p>
+                <p className="font-medium">{formatDate(facility.lastRecCalculation)}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">WREGIS Eligibility Date</p>
+                <p className="font-medium">{formatDate(facility.wregisEligibilityDate)}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">RPS ID</p>
+                <p className="font-medium">{facility.rpsId || 'Not specified'}</p>
+              </div>
+            </div>
           </div>
-        </div>
 
-        {canVerifyFacility && (
-          <div className="mt-4 flex justify-end">
-            <Button 
-              onClick={() => onVerifyFacility(facility)} 
-              disabled={verifyingFacility === facility.id} 
-              className="bg-[#039994] hover:bg-[#02857f]"
-            >
-              {verifyingFacility === facility.id ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              {verifyingFacility === facility.id ? "Processing..." : "Verify Facility"}
-            </Button>
+          <div>
+            <h5 className="text-md font-semibold text-[#039994] mb-3">Facility Documents</h5>
+            <div className="border rounded-lg overflow-hidden">
+              <div className="grid grid-cols-12 bg-gray-50 p-3 border-b text-sm">
+                <div className="col-span-5 font-medium">Document Name</div>
+                <div className="col-span-3 font-medium">File</div>
+                <div className="col-span-2 font-medium">Status</div>
+                <div className="col-span-2 font-medium">Actions</div>
+              </div>
+              
+              {docList.map((doc, index) => {
+                const docKey = `${facility.id}-${doc.type}`;
+                const isApproving = approvingDoc === docKey;
+                
+                return (
+                  <div key={index} className="grid grid-cols-12 p-3 border-b last:border-b-0 items-center text-sm">
+                    <div className="col-span-5">
+                      <p className="font-medium">{doc.name}</p>
+                      {doc.status === "REJECTED" && doc.rejectionReason && (
+                        <p className="text-xs text-red-500 mt-1">Reason: {doc.rejectionReason}</p>
+                      )}
+                    </div>
+                    
+                    <div className="col-span-3">
+                      {doc.url ? (
+                        <div className="flex items-center gap-2">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-6 w-6" 
+                                  onClick={() => openPdfModal(doc.url, doc)}
+                                  disabled={isApproving}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>View document</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-6 w-6" 
+                                  onClick={() => {
+                                    const link = document.createElement('a');
+                                    link.href = doc.url;
+                                    link.download = doc.name;
+                                    document.body.appendChild(link);
+                                    link.click();
+                                    document.body.removeChild(link);
+                                  }}
+                                  disabled={isApproving}
+                                >
+                                  <Download className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Download document</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-gray-400">No document uploaded</span>
+                      )}
+                    </div>
+                    
+                    <div className="col-span-2">
+                      <span className={`text-xs font-semibold px-3 py-1 rounded-full ${getStatusColor(doc.status)}`}>
+                        {isApproving ? (
+                          <span className="flex items-center gap-1">
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            Processing...
+                          </span>
+                        ) : (
+                          doc.status
+                        )}
+                      </span>
+                    </div>
+                    
+                    <div className="col-span-2 flex gap-2">
+                      {doc.url && (doc.status === "SUBMITTED" || doc.status === "REJECTED") && (
+                        <>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-8 text-xs" 
+                            onClick={() => openStatusModal("APPROVE", doc)} 
+                            disabled={isApproving}
+                          >
+                            Approve
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-8 text-xs bg-red-50 text-red-600 hover:bg-red-100" 
+                            onClick={() => openStatusModal("REJECT", doc)}
+                            disabled={isApproving}
+                          >
+                            Reject
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        )}
-      </div>
+
+          {canVerifyFacility && (
+            <div className="mt-4 flex justify-end">
+              <Button 
+                onClick={() => onVerifyFacility(facility)} 
+                disabled={verifyingFacility === facility.id} 
+                className="bg-[#039994] hover:bg-[#02857f]"
+              >
+                {verifyingFacility === facility.id ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                {verifyingFacility === facility.id ? "Processing..." : "Verify Facility"}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
     </>
   );
 }

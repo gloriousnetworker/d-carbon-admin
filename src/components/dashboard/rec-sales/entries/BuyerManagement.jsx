@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
-import { Filter, ChevronDown, ChevronLeft, ChevronRight, X } from "lucide-react"
+import { Filter, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -22,6 +22,7 @@ export default function BuyerManagement({ onBack }) {
     email: ''
   })
   const [loading, setLoading] = useState(false)
+  const [formErrors, setFormErrors] = useState({})
   
   const [newBuyerData, setNewBuyerData] = useState({
     companyName: '',
@@ -33,6 +34,31 @@ export default function BuyerManagement({ onBack }) {
   useEffect(() => {
     fetchBuyers()
   }, [currentPage])
+
+  const validateForm = () => {
+    const errors = {}
+    
+    if (!newBuyerData.companyName.trim()) {
+      errors.companyName = "Company name is required"
+    }
+    
+    if (!newBuyerData.contactName.trim()) {
+      errors.contactName = "Contact name is required"
+    }
+    
+    if (!newBuyerData.email.trim()) {
+      errors.email = "Email is required"
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newBuyerData.email)) {
+      errors.email = "Please enter a valid email address"
+    }
+    
+    if (!newBuyerData.address.trim()) {
+      errors.address = "Address is required"
+    }
+    
+    setFormErrors(errors)
+    return Object.keys(errors).length === 0
+  }
 
   const fetchBuyers = async () => {
     try {
@@ -76,16 +102,16 @@ export default function BuyerManagement({ onBack }) {
   }
 
   const handleCreateBuyer = async () => {
-    try {
-      if (!newBuyerData.companyName || !newBuyerData.contactName || !newBuyerData.email) {
-        toast({
-          title: "Error",
-          description: "Please fill all required fields",
-          variant: "destructive"
-        })
-        return
-      }
+    if (!validateForm()) {
+      toast({
+        title: "Error",
+        description: "Please fill all required fields correctly",
+        variant: "destructive"
+      })
+      return
+    }
 
+    try {
       const token = localStorage.getItem('authToken')
       const response = await fetch(`${API_URL}/api/rec/buyers`, {
         method: 'POST',
@@ -115,6 +141,7 @@ export default function BuyerManagement({ onBack }) {
           email: '',
           address: ''
         })
+        setFormErrors({})
       } else {
         toast({
           title: "Error",
@@ -133,16 +160,16 @@ export default function BuyerManagement({ onBack }) {
   }
 
   const handleUpdateBuyer = async () => {
-    try {
-      if (!selectedBuyer?.id || !newBuyerData.companyName || !newBuyerData.contactName || !newBuyerData.email) {
-        toast({
-          title: "Error",
-          description: "Please fill all required fields",
-          variant: "destructive"
-        })
-        return
-      }
+    if (!validateForm()) {
+      toast({
+        title: "Error",
+        description: "Please fill all required fields correctly",
+        variant: "destructive"
+      })
+      return
+    }
 
+    try {
       const token = localStorage.getItem('authToken')
       const response = await fetch(`${API_URL}/api/rec/buyers/${selectedBuyer.id}`, {
         method: 'PUT',
@@ -166,6 +193,7 @@ export default function BuyerManagement({ onBack }) {
         })
         fetchBuyers()
         setIsEditModalOpen(false)
+        setFormErrors({})
       } else {
         toast({
           title: "Error",
@@ -191,6 +219,7 @@ export default function BuyerManagement({ onBack }) {
       email: buyer.email,
       address: buyer.address
     })
+    setFormErrors({})
     setIsEditModalOpen(true)
   }
 
@@ -225,7 +254,16 @@ export default function BuyerManagement({ onBack }) {
           </Button>
           <Button 
             className="bg-[#039994] hover:bg-[#028a85] text-white"
-            onClick={() => setIsNewBuyerModalOpen(true)}
+            onClick={() => {
+              setNewBuyerData({
+                companyName: '',
+                contactName: '',
+                email: '',
+                address: ''
+              })
+              setFormErrors({})
+              setIsNewBuyerModalOpen(true)
+            }}
           >
             New Buyer
           </Button>
@@ -334,64 +372,84 @@ export default function BuyerManagement({ onBack }) {
         )}
       </div>
 
-      {/* New Buyer Modal */}
       <Dialog open={isNewBuyerModalOpen} onOpenChange={setIsNewBuyerModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Add New Buyer</DialogTitle>
-            <button 
-              onClick={() => setIsNewBuyerModalOpen(false)}
-              className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100"
-            >
-              <X className="h-4 w-4" />
-            </button>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                Company Name *
+                Company Name <span className="text-red-500">*</span>
               </label>
               <Input
                 placeholder="Enter company name"
                 value={newBuyerData.companyName}
-                onChange={(e) => setNewBuyerData({...newBuyerData, companyName: e.target.value})}
+                onChange={(e) => {
+                  setNewBuyerData({...newBuyerData, companyName: e.target.value})
+                  if (formErrors.companyName) setFormErrors({...formErrors, companyName: ''})
+                }}
               />
+              {formErrors.companyName && (
+                <p className="text-sm text-red-500">{formErrors.companyName}</p>
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                Contact Name *
+                Contact Name <span className="text-red-500">*</span>
               </label>
               <Input
                 placeholder="Enter contact name"
                 value={newBuyerData.contactName}
-                onChange={(e) => setNewBuyerData({...newBuyerData, contactName: e.target.value})}
+                onChange={(e) => {
+                  setNewBuyerData({...newBuyerData, contactName: e.target.value})
+                  if (formErrors.contactName) setFormErrors({...formErrors, contactName: ''})
+                }}
               />
+              {formErrors.contactName && (
+                <p className="text-sm text-red-500">{formErrors.contactName}</p>
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                Email *
+                Email <span className="text-red-500">*</span>
               </label>
               <Input
                 type="email"
                 placeholder="Enter email"
                 value={newBuyerData.email}
-                onChange={(e) => setNewBuyerData({...newBuyerData, email: e.target.value})}
+                onChange={(e) => {
+                  setNewBuyerData({...newBuyerData, email: e.target.value})
+                  if (formErrors.email) setFormErrors({...formErrors, email: ''})
+                }}
               />
+              {formErrors.email && (
+                <p className="text-sm text-red-500">{formErrors.email}</p>
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                Address
+                Address <span className="text-red-500">*</span>
               </label>
               <Input
                 placeholder="Enter address"
                 value={newBuyerData.address}
-                onChange={(e) => setNewBuyerData({...newBuyerData, address: e.target.value})}
+                onChange={(e) => {
+                  setNewBuyerData({...newBuyerData, address: e.target.value})
+                  if (formErrors.address) setFormErrors({...formErrors, address: ''})
+                }}
               />
+              {formErrors.address && (
+                <p className="text-sm text-red-500">{formErrors.address}</p>
+              )}
             </div>
             <div className="flex justify-end space-x-2 pt-4">
               <Button 
                 variant="outline" 
-                onClick={() => setIsNewBuyerModalOpen(false)}
+                onClick={() => {
+                  setIsNewBuyerModalOpen(false)
+                  setFormErrors({})
+                }}
               >
                 Cancel
               </Button>
@@ -406,64 +464,84 @@ export default function BuyerManagement({ onBack }) {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Buyer Modal */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Edit Buyer</DialogTitle>
-            <button 
-              onClick={() => setIsEditModalOpen(false)}
-              className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100"
-            >
-              <X className="h-4 w-4" />
-            </button>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                Company Name *
+                Company Name <span className="text-red-500">*</span>
               </label>
               <Input
                 placeholder="Enter company name"
                 value={newBuyerData.companyName}
-                onChange={(e) => setNewBuyerData({...newBuyerData, companyName: e.target.value})}
+                onChange={(e) => {
+                  setNewBuyerData({...newBuyerData, companyName: e.target.value})
+                  if (formErrors.companyName) setFormErrors({...formErrors, companyName: ''})
+                }}
               />
+              {formErrors.companyName && (
+                <p className="text-sm text-red-500">{formErrors.companyName}</p>
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                Contact Name *
+                Contact Name <span className="text-red-500">*</span>
               </label>
               <Input
                 placeholder="Enter contact name"
                 value={newBuyerData.contactName}
-                onChange={(e) => setNewBuyerData({...newBuyerData, contactName: e.target.value})}
+                onChange={(e) => {
+                  setNewBuyerData({...newBuyerData, contactName: e.target.value})
+                  if (formErrors.contactName) setFormErrors({...formErrors, contactName: ''})
+                }}
               />
+              {formErrors.contactName && (
+                <p className="text-sm text-red-500">{formErrors.contactName}</p>
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                Email *
+                Email <span className="text-red-500">*</span>
               </label>
               <Input
                 type="email"
                 placeholder="Enter email"
                 value={newBuyerData.email}
-                onChange={(e) => setNewBuyerData({...newBuyerData, email: e.target.value})}
+                onChange={(e) => {
+                  setNewBuyerData({...newBuyerData, email: e.target.value})
+                  if (formErrors.email) setFormErrors({...formErrors, email: ''})
+                }}
               />
+              {formErrors.email && (
+                <p className="text-sm text-red-500">{formErrors.email}</p>
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                Address
+                Address <span className="text-red-500">*</span>
               </label>
               <Input
                 placeholder="Enter address"
                 value={newBuyerData.address}
-                onChange={(e) => setNewBuyerData({...newBuyerData, address: e.target.value})}
+                onChange={(e) => {
+                  setNewBuyerData({...newBuyerData, address: e.target.value})
+                  if (formErrors.address) setFormErrors({...formErrors, address: ''})
+                }}
               />
+              {formErrors.address && (
+                <p className="text-sm text-red-500">{formErrors.address}</p>
+              )}
             </div>
             <div className="flex justify-end space-x-2 pt-4">
               <Button 
                 variant="outline" 
-                onClick={() => setIsEditModalOpen(false)}
+                onClick={() => {
+                  setIsEditModalOpen(false)
+                  setFormErrors({})
+                }}
               >
                 Cancel
               </Button>

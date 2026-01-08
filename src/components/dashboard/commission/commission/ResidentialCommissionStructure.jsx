@@ -6,6 +6,7 @@ import { toast } from "react-hot-toast";
 const ResidentialCommissionStructure = ({ onSetupStructure, refreshData }) => {
   const [tableData, setTableData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [hoveredCell, setHoveredCell] = useState(null);
 
   const fetchCommissionData = async () => {
     try {
@@ -146,13 +147,13 @@ const ResidentialCommissionStructure = ({ onSetupStructure, refreshData }) => {
   const { headers, rows } = tableData;
 
   return (
-    <div className="w-full relative group">
+    <div className="w-full relative">
       <div className="flex items-center justify-between pb-4">
         <h2 className="text-[#039994] font-semibold text-lg">
           Residential Commission Structure
         </h2>
         <button
-          className="flex items-center bg-[#039994] text-white px-4 py-2 rounded-full text-sm hover:bg-[#028B86] transition-colors opacity-0 group-hover:opacity-100"
+          className="flex items-center bg-[#039994] text-white px-4 py-2 rounded-full text-sm hover:bg-[#028B86] transition-colors"
           onClick={onSetupStructure}
         >
           <IoSettingsSharp className="mr-2" size={16} />
@@ -186,14 +187,18 @@ const ResidentialCommissionStructure = ({ onSetupStructure, refreshData }) => {
                     className={`py-3 px-4 text-sm border-b border-gray-200 ${
                       cellIndex === 0 ? "font-medium" : ""
                     }`}
+                    onMouseEnter={() => cell.includes(":") && setHoveredCell(`${rowIndex}-${cellIndex}`)}
+                    onMouseLeave={() => setHoveredCell(null)}
                   >
                     {cell.includes(":") ? (
-                      <div className="group relative inline-block">
+                      <div className="relative inline-block">
                         <span className="cursor-help">{cell}</span>
-                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap z-10">
-                          Installer: {cell.split(':')[0]}<br/>
-                          Finance: {cell.split(':')[1]}
-                        </div>
+                        {hoveredCell === `${rowIndex}-${cellIndex}` && (
+                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 bg-gray-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap z-10">
+                            Installer: {cell.split(':')[0]}<br/>
+                            Finance: {cell.split(':')[1]}
+                          </div>
+                        )}
                       </div>
                     ) : (
                       cell

@@ -158,9 +158,6 @@ export default function AdminLoginCard() {
               }}
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro text-[14px] leading-[100%] tracking-[-0.05em] font-[400] text-[#1E1E1E] bg-white bg-opacity-70"
             />
-            <div className="text-xs text-gray-400 mt-1">
-              Email will be automatically converted to lowercase
-            </div>
           </div>
 
           <div className="relative">
