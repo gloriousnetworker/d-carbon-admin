@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, Loader2, Trash2, RefreshCw, Key } from "lucide-react";
+import { ChevronLeft, Loader2, Trash2, RefreshCw, Key, CheckCircle, XCircle } from "lucide-react";
 import toast from "react-hot-toast";
 import InstapullAuthorizationModal from "./InstapullAuthorizationModal";
 
@@ -51,6 +51,8 @@ export default function UtilityAuthManagement({ onBack }) {
     totalPages: 1
   });
   const [instapullOpened, setInstapullOpened] = useState(false);
+  const [meterStatuses, setMeterStatuses] = useState({});
+  const [loadingMeters, setLoadingMeters] = useState({});
 
   const fetchAuths = async (page = 1) => {
     setIsLoading(true);
@@ -81,6 +83,13 @@ export default function UtilityAuthManagement({ onBack }) {
           total: result.data?.length || 0,
           totalPages: 1
         });
+        
+        result.data.forEach(auth => {
+          if (auth.userId && auth.status === 'completed') {
+            checkUserMeters(auth.userId);
+          }
+        });
+        
         toast.success(`Loaded ${result.data.length} authorizations`);
       } else {
         throw new Error(result.message || "Failed to fetch utility authorizations");
@@ -91,6 +100,60 @@ export default function UtilityAuthManagement({ onBack }) {
       console.error("Error fetching utility authorizations:", err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const checkUserMeters = async (userId) => {
+    if (!userId || meterStatuses[userId] !== undefined) return;
+    
+    setLoadingMeters(prev => ({ ...prev, [userId]: true }));
+    
+    try {
+      const authToken = localStorage.getItem("authToken");
+      if (!authToken) return;
+      
+      const response = await fetch(
+        `https://services.dcarbon.solutions/api/auth/user-meters/${userId}`,
+        {
+          method: "GET",
+          headers: { 
+            "Authorization": `Bearer ${authToken}`, 
+            "Content-Type": "application/json" 
+          }
+        }
+      );
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.status === 'success' && result.data && result.data.length > 0) {
+          const hasMeters = result.data.some(authData => 
+            authData.meters && authData.meters.length > 0 && 
+            authData.meters.some(meter => meter.uid && meter.meterNumbers && meter.meterNumbers.length > 0)
+          );
+          
+          setMeterStatuses(prev => ({
+            ...prev,
+            [userId]: hasMeters ? 'fetched' : 'pending'
+          }));
+        } else {
+          setMeterStatuses(prev => ({
+            ...prev,
+            [userId]: 'pending'
+          }));
+        }
+      } else {
+        setMeterStatuses(prev => ({
+          ...prev,
+          [userId]: 'error'
+        }));
+      }
+    } catch (err) {
+      setMeterStatuses(prev => ({
+        ...prev,
+        [userId]: 'error'
+      }));
+    } finally {
+      setLoadingMeters(prev => ({ ...prev, [userId]: false }));
     }
   };
   
@@ -162,12 +225,63 @@ export default function UtilityAuthManagement({ onBack }) {
     setSelectedAuth(null);
     setReinitiatingId(null);
     setInstapullOpened(false);
+    fetchAuths(pagination.page);
   };
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
       fetchAuths(newPage);
     }
+  };
+
+  const getMeterStatusBadge = (auth) => {
+    if (!auth.userId) return null;
+    
+    const status = meterStatuses[auth.userId];
+    const isLoading = loadingMeters[auth.userId];
+    
+    if (isLoading) {
+      return (
+        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-sfpro font-[500] bg-gray-100 text-gray-800">
+          <Loader2 className="h-3 w-3 animate-spin mr-1" />
+          Checking
+        </span>
+      );
+    }
+    
+    if (status === 'fetched') {
+      return (
+        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-sfpro font-[500] bg-green-100 text-green-800">
+          <CheckCircle className="h-3 w-3 mr-1" />
+          Meters Fetched
+        </span>
+      );
+    } else if (status === 'pending') {
+      return (
+        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-sfpro font-[500] bg-yellow-100 text-yellow-800">
+          <XCircle className="h-3 w-3 mr-1" />
+          No Meters
+        </span>
+      );
+    } else if (status === 'error') {
+      return (
+        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-sfpro font-[500] bg-red-100 text-red-800">
+          <XCircle className="h-3 w-3 mr-1" />
+          Error
+        </span>
+      );
+    }
+    
+    if (auth.status === 'completed' && auth.userId) {
+      return (
+        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-sfpro font-[500] bg-blue-100 text-blue-800">
+          <Loader2 className="h-3 w-3 animate-spin mr-1" />
+          Checking...
+        </span>
+      );
+    }
+    
+    return null;
   };
 
   return (
@@ -298,6 +412,7 @@ export default function UtilityAuthManagement({ onBack }) {
                     <th className="py-4 px-4 text-left font-medium text-gray-700 font-sfpro">Utility Type</th>
                     <th className="py-4 px-4 text-left font-medium text-gray-700 font-sfpro">Auth Email</th>
                     <th className="py-4 px-4 text-left font-medium text-gray-700 font-sfpro">Status</th>
+                    <th className="py-4 px-4 text-left font-medium text-gray-700 font-sfpro">Meters</th>
                     <th className="py-4 px-4 text-left font-medium text-gray-700 font-sfpro">Created</th>
                     <th className="py-4 px-4 text-left font-medium text-gray-700 font-sfpro">Updated</th>
                     <th className="py-4 px-4 text-left font-medium text-gray-700 font-sfpro">Actions</th>
@@ -321,7 +436,7 @@ export default function UtilityAuthManagement({ onBack }) {
                           {auth.userType}
                         </span>
                       </td>
-                      <td className="py-3 px-4 max-w-[180px] truncate font-sfpro text-gray-700" title={auth.utilityType}>
+                      <td className="py-3 px-4 max-w-[150px] truncate font-sfpro text-gray-700" title={auth.utilityType}>
                         {auth.utilityType}
                       </td>
                       <td className="py-3 px-4 font-sfpro text-gray-700">
@@ -336,6 +451,9 @@ export default function UtilityAuthManagement({ onBack }) {
                         }`}>
                           {auth.status}
                         </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        {getMeterStatusBadge(auth)}
                       </td>
                       <td className="py-3 px-4 whitespace-nowrap font-sfpro text-gray-600">
                         {new Date(auth.createdAt).toLocaleDateString()} {new Date(auth.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}

@@ -34,7 +34,6 @@ const styles = {
 
 export default function InstapullAuthorizationModal({ isOpen, onClose, utilityProvider, instapullOpened, openInstapullTab, userId, authorizationData, isAdminReinitiate }) {
   const [submitting, setSubmitting] = useState(false);
-  const [checkingMeters, setCheckingMeters] = useState(false);
   const [sameEmail, setSameEmail] = useState(true);
   const [utilityProviders, setUtilityProviders] = useState([]);
   const [loadingProviders, setLoadingProviders] = useState(false);
@@ -62,7 +61,7 @@ export default function InstapullAuthorizationModal({ isOpen, onClose, utilityPr
       );
 
       if (response.data.status === 'success') {
-        setUtilityProviders(response.data.data.utilityProviders || []);
+        setUtilityProviders(response.data.data || []);
       } else {
         throw new Error(response.data.message || "Failed to fetch utility providers");
       }
@@ -119,48 +118,6 @@ export default function InstapullAuthorizationModal({ isOpen, onClose, utilityPr
         ...prev, 
         authorizationEmail: "" 
       }));
-    }
-  };
-
-  const checkMeterStatus = async () => {
-    if (!userId) return;
-    
-    setCheckingMeters(true);
-    try {
-      const authToken = localStorage.getItem("authToken");
-      
-      const response = await axios.get(
-        `https://services.dcarbon.solutions/api/auth/utility-auth/${userId}`,
-        { 
-          headers: { 
-            'Authorization': `Bearer ${authToken}`
-          } 
-        }
-      );
-      
-      if (response.data.status === 'success' && response.data.data.length > 0) {
-        const authData = response.data.data[0];
-        
-        if (authData.hasMeter) {
-          toast.success('Meters fetched successfully! You can now add them to your facilities.', {
-            duration: 5000,
-            icon: '✓'
-          });
-          setTimeout(() => {
-            onClose();
-            window.location.reload();
-          }, 1500);
-        } else {
-          toast.loading('Meters are being fetched. This takes 3-5 minutes.', {
-            duration: 4000,
-            icon: '⏳'
-          });
-        }
-      }
-    } catch (err) {
-      toast.error('Failed to check meter status. Please try again.');
-    } finally {
-      setCheckingMeters(false);
     }
   };
 
@@ -371,13 +328,13 @@ export default function InstapullAuthorizationModal({ isOpen, onClose, utilityPr
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={submitting || checkingMeters || (!sameEmail && !formData.authorizationEmail.trim()) || !formData.utilityType}
+              disabled={submitting || (!sameEmail && !formData.authorizationEmail.trim()) || !formData.utilityType}
               className={styles.buttonPrimary}
             >
-              {submitting || checkingMeters ? (
+              {submitting ? (
                 <span className="flex items-center justify-center gap-2">
                   <div className={styles.spinner}></div>
-                  <span>{checkingMeters ? 'Checking Status...' : 'Processing...'}</span>
+                  <span>Processing...</span>
                 </span>
               ) : (
                 'Confirm Authorization'
