@@ -2,80 +2,137 @@
 
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, Loader2, Trash2 } from "lucide-react";
+import { ChevronLeft, Loader2, Trash2, RefreshCw, Key } from "lucide-react";
 import toast from "react-hot-toast";
+import InstapullAuthorizationModal from "./InstapullAuthorizationModal";
+
+const styles = {
+  mainContainer: 'min-h-screen w-full flex flex-col items-center justify-center py-8 px-4 bg-white',
+  headingContainer: 'relative w-full flex flex-col items-center mb-2',
+  backArrow: 'absolute left-4 top-0 text-[#039994] cursor-pointer z-10',
+  pageTitle: 'mb-4 font-[600] text-[36px] leading-[100%] tracking-[-0.05em] text-[#039994] font-sfpro text-center',
+  progressContainer: 'w-full max-w-md flex items-center justify-between mb-6',
+  progressBarWrapper: 'flex-1 h-1 bg-gray-200 rounded-full mr-4',
+  progressBarActive: 'h-1 bg-[#039994] w-2/3 rounded-full',
+  progressStepText: 'text-sm font-medium text-gray-500 font-sfpro',
+  formWrapper: 'w-full max-w-md space-y-6',
+  labelClass: 'block mb-2 font-sfpro text-[14px] leading-[100%] tracking-[-0.05em] font-[400] text-[#1E1E1E]',
+  selectClass: 'w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro text-[14px] leading-[100%] tracking-[-0.05em] font-[400] text-[#626060]',
+  inputClass: 'w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro text-[14px] leading-[100%] tracking-[-0.05em] font-[400] text-[#1E1E1E]',
+  fileInputWrapper: 'relative flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-500 bg-gray-50 focus-within:outline-none focus-within:ring-2 focus-within:ring-[#039994] cursor-pointer font-sfpro',
+  noteText: 'mt-2 font-sfpro text-[12px] leading-[100%] tracking-[-0.05em] font-[300] italic text-[#1E1E1E]',
+  rowWrapper: 'flex space-x-4',
+  halfWidth: 'w-1/2',
+  grayPlaceholder: 'bg-[#E8E8E8]',
+  buttonPrimary: 'w-full rounded-md bg-[#039994] text-white font-semibold py-2 hover:bg-[#02857f] focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro',
+  spinnerOverlay: 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-20',
+  spinner: 'h-12 w-12 border-4 border-t-4 border-gray-300 border-t-[#039994] rounded-full animate-spin',
+  termsTextContainer: 'mt-6 text-center font-sfpro text-[10px] font-[800] leading-[100%] tracking-[-0.05em] underline text-[#1E1E1E]',
+  uploadHeading: 'block mb-2 font-sfpro text-[14px] leading-[100%] tracking-[-0.05em] font-[400] text-[#1E1E1E]',
+  uploadFieldWrapper: 'flex items-center space-x-3',
+  uploadInputLabel: 'relative flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-500 bg-gray-50 focus-within:outline-none focus-within:ring-2 focus-within:ring-[#039994] cursor-pointer font-sfpro',
+  uploadIconContainer: 'absolute right-3 top-1/2 -translate-y-1/2 text-gray-400',
+  uploadButtonStyle: 'px-4 py-2 bg-[#039994] text-white rounded-md hover:bg-[#02857f] focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro',
+  uploadNoteStyle: 'mt-2 font-sfpro text-[12px] leading-[100%] tracking-[-0.03em] font-[300] italic text-[#1E1E1E]'
+};
 
 export default function UtilityAuthManagement({ onBack }) {
   const [auths, setAuths] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [reinitiatingId, setReinitiatingId] = useState(null);
+  const [showInstapullModal, setShowInstapullModal] = useState(false);
+  const [selectedAuth, setSelectedAuth] = useState(null);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 1
+  });
+  const [instapullOpened, setInstapullOpened] = useState(false);
 
-  useEffect(() => {
-    const fetchAuths = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const authToken = localStorage.getItem("authToken");
-        if (!authToken) throw new Error("Authentication token not found");
-        
-        const response = await fetch("https://services.dcarbon.solutions/api/auth/utility-auth", {
+  const fetchAuths = async (page = 1) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const authToken = localStorage.getItem("authToken");
+      if (!authToken) throw new Error("Authentication token not found");
+      
+      const response = await fetch(
+        `https://services.dcarbon.solutions/api/utility-auth/list?page=${page}&limit=${pagination.limit}`,
+        {
           method: "GET",
           headers: { 
             "Authorization": `Bearer ${authToken}`, 
             "Content-Type": "application/json" 
           }
-        });
-        
-        if (!response.ok) throw new Error(`Error fetching utility authorizations: ${response.statusText}`);
-        
-        const result = await response.json();
-        if (result.status === "success") {
-          setAuths(result.data || []);
-        } else {
-          throw new Error(result.message || "Failed to fetch utility authorizations");
         }
-      } catch (err) {
-        setError(err.message);
-        console.error("Error fetching utility authorizations:", err);
-      } finally {
-        setIsLoading(false);
+      );
+      
+      if (!response.ok) throw new Error(`Error fetching utility authorizations: ${response.statusText}`);
+      
+      const result = await response.json();
+      if (result.message === "Authorization list fetched successfully") {
+        setAuths(result.data || []);
+        setPagination(result.pagination || {
+          page: page,
+          limit: 20,
+          total: result.data?.length || 0,
+          totalPages: 1
+        });
+        toast.success(`Loaded ${result.data.length} authorizations`);
+      } else {
+        throw new Error(result.message || "Failed to fetch utility authorizations");
       }
-    };
-    
+    } catch (err) {
+      setError(err.message);
+      toast.error(`Failed to load: ${err.message}`);
+      console.error("Error fetching utility authorizations:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  useEffect(() => {
     fetchAuths();
   }, []);
 
-  const handleDeleteAuth = async (authId, userId, utilityAuthEmail) => {
+  const handleDeleteAuth = async (authId) => {
+    if (!confirm("Are you sure you want to delete this authorization?")) {
+      return;
+    }
+    
     try {
       setDeletingId(authId);
       const authToken = localStorage.getItem("authToken");
       if (!authToken) throw new Error("Authentication token not found");
       
+      toast.loading("Deleting authorization...");
+      
       const response = await fetch(
-        `https://services.dcarbon.solutions/api/auth/utility-auth/${userId}`,
+        `https://services.dcarbon.solutions/api/utility-auth/delete/${authId}`,
         {
           method: "DELETE",
           headers: { 
             "Authorization": `Bearer ${authToken}`, 
             "Content-Type": "application/json" 
-          },
-          body: JSON.stringify({
-            utilityAuthEmail: utilityAuthEmail
-          })
+          }
         }
       );
       
       if (!response.ok) throw new Error(`Error deleting utility authorization: ${response.statusText}`);
       
       const result = await response.json();
-      if (result.status === "success") {
+      if (result.message === "Record deleted successfully") {
+        toast.dismiss();
         toast.success("Utility authorization deleted successfully");
         setAuths(prev => prev.filter(auth => auth.id !== authId));
       } else {
         throw new Error(result.message || "Failed to delete utility authorization");
       }
     } catch (err) {
+      toast.dismiss();
       toast.error(err.message);
       console.error("Error deleting utility authorization:", err);
     } finally {
@@ -83,96 +140,278 @@ export default function UtilityAuthManagement({ onBack }) {
     }
   };
 
+  const openInstapullTab = () => {
+    const newTab = window.open('https://main.instapull.io/authorize/dcarbonsolutions/', '_blank');
+    if (newTab) {
+      setInstapullOpened(true);
+      toast.success("Instapull opened in new tab. Complete authorization there, then return here to submit details.");
+    } else {
+      toast.error("Please allow pop-ups for this site to open Instapull");
+    }
+  };
+
+  const handleReinitiateAuth = (auth) => {
+    setReinitiatingId(auth.id);
+    setSelectedAuth(auth);
+    openInstapullTab();
+    setShowInstapullModal(true);
+  };
+
+  const handleCloseInstapullModal = () => {
+    setShowInstapullModal(false);
+    setSelectedAuth(null);
+    setReinitiatingId(null);
+    setInstapullOpened(false);
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= pagination.totalPages) {
+      fetchAuths(newPage);
+    }
+  };
+
   return (
     <div className="w-full">
-      <div className="flex justify-between items-center mb-6">
-        <button onClick={onBack} className="flex items-center text-[#039994] font-medium">
-          <ChevronLeft className="h-5 w-5 mr-1" />
-          Utility Authorization Management
+      {showInstapullModal && selectedAuth && (
+        <InstapullAuthorizationModal
+          isOpen={showInstapullModal}
+          onClose={handleCloseInstapullModal}
+          utilityProvider={selectedAuth.utilityType}
+          instapullOpened={instapullOpened}
+          openInstapullTab={openInstapullTab}
+          userId={selectedAuth.userId}
+          authorizationData={selectedAuth}
+          isAdminReinitiate={true}
+        />
+      )}
+
+      <div className="flex justify-between items-center mb-8">
+        <button onClick={onBack} className="flex items-center text-[#039994] font-medium hover:text-[#02857f] transition-colors">
+          <ChevronLeft className="h-6 w-6 mr-2" />
+          <span className="text-lg font-sfpro font-[500]">Back</span>
         </button>
         
-        <Button variant="outline" onClick={() => window.location.reload()}>
-          Refresh Data
-        </Button>
+        <div className="flex gap-3">
+          <Button 
+            onClick={() => {
+              const newAuth = {
+                email: "",
+                userType: "COMMERCIAL",
+                utilityType: "",
+                authorizationEmail: "",
+                userId: null
+              };
+              setSelectedAuth(newAuth);
+              openInstapullTab();
+              setShowInstapullModal(true);
+            }}
+            className="flex items-center gap-2 bg-[#039994] hover:bg-[#02857f] text-white font-sfpro font-[500]"
+          >
+            <Key className="h-4 w-4" />
+            New Authorization
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={() => fetchAuths(pagination.page)}
+            className="flex items-center gap-2 border-[#039994] text-[#039994] hover:bg-[#039994] hover:text-white font-sfpro font-[500] transition-colors"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </Button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-100">
+        <h1 className={styles.pageTitle}>Utility Authorization Management</h1>
+        <p className="text-gray-600 text-center font-sfpro text-sm mb-2">
+          Admin panel for managing user utility authorizations
+        </p>
       </div>
 
       {isLoading && (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-[#039994]" />
-          <span className="ml-3 text-lg text-gray-600">Loading utility authorizations...</span>
+        <div className="flex flex-col items-center justify-center py-16 bg-white rounded-xl shadow-sm border border-gray-100">
+          <Loader2 className="h-12 w-12 animate-spin text-[#039994]" />
+          <span className="ml-3 text-lg text-gray-600 font-sfpro mt-4">Loading utility authorizations...</span>
         </div>
       )}
 
       {error && (
-        <div className="py-8 px-4 bg-red-50 border border-red-200 rounded-md text-center">
-          <p className="text-red-600">{error}</p>
+        <div className="py-8 px-6 bg-red-50 border border-red-200 rounded-xl text-center max-w-2xl mx-auto">
+          <p className="text-red-600 font-sfpro text-lg mb-4">{error}</p>
           <Button 
-            className="mt-4 bg-red-600 hover:bg-red-700 text-white" 
-            onClick={() => window.location.reload()}
+            className="mt-4 bg-red-600 hover:bg-red-700 text-white font-sfpro font-[500] px-6 py-2 rounded-lg"
+            onClick={() => fetchAuths(pagination.page)}
           >
-            Retry
+            Retry Loading
           </Button>
         </div>
       )}
 
       {!isLoading && !error && auths.length === 0 && (
-        <div className="py-12 text-center">
-          <p className="text-gray-500 text-lg">No utility authorizations found</p>
+        <div className="py-16 text-center bg-white rounded-xl shadow-sm border border-gray-100">
+          <div className="text-gray-400 mb-4">
+            <Key className="h-16 w-16 mx-auto" />
+          </div>
+          <p className="text-gray-500 text-lg font-sfpro mb-6">No utility authorizations found</p>
+          <Button 
+            onClick={() => {
+              const newAuth = {
+                email: "",
+                userType: "COMMERCIAL",
+                utilityType: "",
+                authorizationEmail: "",
+                userId: null
+              };
+              setSelectedAuth(newAuth);
+              openInstapullTab();
+              setShowInstapullModal(true);
+            }}
+            className="bg-[#039994] hover:bg-[#02857f] text-white font-sfpro font-[500]"
+          >
+            <Key className="h-4 w-4 mr-2" />
+            Create New Authorization
+          </Button>
         </div>
       )}
 
       {!isLoading && !error && auths.length > 0 && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-y">
-                <th className="py-3 px-4 text-left font-medium">S/N</th>
-                <th className="py-3 px-4 text-left font-medium">User Email</th>
-                <th className="py-3 px-4 text-left font-medium">Utility Auth Email</th>
-                <th className="py-3 px-4 text-left font-medium">Status</th>
-                <th className="py-3 px-4 text-left font-medium">Authorization UID</th>
-                <th className="py-3 px-4 text-left font-medium">Created Date</th>
-                <th className="py-3 px-4 text-left font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {auths.map((auth, index) => (
-                <tr key={auth.id} className="border-b">
-                  <td className="py-3 px-4">{index + 1}</td>
-                  <td className="py-3 px-4">{auth.user?.email || "N/A"}</td>
-                  <td className="py-3 px-4">{auth.utilityAuthEmail}</td>
-                  <td className="py-3 px-4">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      auth.status === 'UPDATED' ? 'bg-green-100 text-green-800' :
-                      auth.status === 'UPDATE_ERROR' ? 'bg-red-100 text-red-800' :
-                      'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {auth.status}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4">{auth.authorization_uid || "N/A"}</td>
-                  <td className="py-3 px-4">{new Date(auth.createdAt).toLocaleDateString()}</td>
-                  <td className="py-3 px-4">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-8 text-red-600 border-red-200 hover:bg-red-50"
-                      onClick={() => handleDeleteAuth(auth.id, auth.userId, auth.utilityAuthEmail)}
-                      disabled={deletingId === auth.id}
-                    >
-                      {deletingId === auth.id ? (
-                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-3 w-3 mr-1" />
-                      )}
-                      Delete
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <>
+          <div className="overflow-hidden border border-gray-200 rounded-xl shadow-sm">
+            <div className="bg-gradient-to-r from-[#039994] to-[#02857f] px-6 py-4">
+              <div className="flex justify-between items-center">
+                <h3 className="text-white font-sfpro font-[600] text-lg">
+                  Authorization Records ({pagination.total})
+                </h3>
+                <div className="text-white text-sm font-sfpro">
+                  Page {pagination.page} of {pagination.totalPages}
+                </div>
+              </div>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead className="bg-gray-50">
+                  <tr className="border-b">
+                    <th className="py-4 px-4 text-left font-medium text-gray-700 font-sfpro">S/N</th>
+                    <th className="py-4 px-4 text-left font-medium text-gray-700 font-sfpro">Email</th>
+                    <th className="py-4 px-4 text-left font-medium text-gray-700 font-sfpro">User Type</th>
+                    <th className="py-4 px-4 text-left font-medium text-gray-700 font-sfpro">Utility Type</th>
+                    <th className="py-4 px-4 text-left font-medium text-gray-700 font-sfpro">Auth Email</th>
+                    <th className="py-4 px-4 text-left font-medium text-gray-700 font-sfpro">Status</th>
+                    <th className="py-4 px-4 text-left font-medium text-gray-700 font-sfpro">Created</th>
+                    <th className="py-4 px-4 text-left font-medium text-gray-700 font-sfpro">Updated</th>
+                    <th className="py-4 px-4 text-left font-medium text-gray-700 font-sfpro">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {auths.map((auth, index) => (
+                    <tr key={auth.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="py-3 px-4 font-sfpro text-gray-800">
+                        {(pagination.page - 1) * pagination.limit + index + 1}
+                      </td>
+                      <td className="py-3 px-4 font-medium font-sfpro text-gray-900">
+                        {auth.email || "N/A"}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-sfpro font-[500] ${
+                          auth.userType === 'COMMERCIAL' 
+                            ? 'bg-blue-100 text-blue-800' 
+                            : 'bg-green-100 text-green-800'
+                        }`}>
+                          {auth.userType}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 max-w-[180px] truncate font-sfpro text-gray-700" title={auth.utilityType}>
+                        {auth.utilityType}
+                      </td>
+                      <td className="py-3 px-4 font-sfpro text-gray-700">
+                        {auth.authorizationEmail}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium font-sfpro ${
+                          auth.status === 'completed' ? 'bg-green-100 text-green-800' :
+                          auth.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                          auth.status === 'failed' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {auth.status}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 whitespace-nowrap font-sfpro text-gray-600">
+                        {new Date(auth.createdAt).toLocaleDateString()} {new Date(auth.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                      </td>
+                      <td className="py-3 px-4 whitespace-nowrap font-sfpro text-gray-600">
+                        {new Date(auth.updatedAt).toLocaleDateString()} {new Date(auth.updatedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            className="h-8 px-3 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:text-blue-800 text-xs font-sfpro font-[500]"
+                            onClick={() => handleReinitiateAuth(auth)}
+                            disabled={reinitiatingId === auth.id || deletingId === auth.id}
+                          >
+                            {reinitiatingId === auth.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                            ) : (
+                              <RefreshCw className="h-3 w-3 mr-1" />
+                            )}
+                            Reinitiate
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 px-3 text-red-700 border-red-200 hover:bg-red-50 hover:text-red-800 text-xs font-sfpro font-[500]"
+                            onClick={() => handleDeleteAuth(auth.id)}
+                            disabled={deletingId === auth.id || reinitiatingId === auth.id}
+                          >
+                            {deletingId === auth.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                            ) : (
+                              <Trash2 className="h-3 w-3 mr-1" />
+                            )}
+                            Delete
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {pagination.totalPages > 1 && (
+            <div className="flex items-center justify-between mt-6 px-2 py-4 bg-white rounded-xl border border-gray-200">
+              <div className="text-sm text-gray-600 font-sfpro">
+                Showing {(pagination.page - 1) * pagination.limit + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} entries
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(pagination.page - 1)}
+                  disabled={pagination.page === 1}
+                  className="font-sfpro border-[#039994] text-[#039994] hover:bg-[#039994] hover:text-white"
+                >
+                  Previous
+                </Button>
+                <span className="flex items-center px-4 text-sm font-sfpro text-gray-700">
+                  Page {pagination.page} of {pagination.totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(pagination.page + 1)}
+                  disabled={pagination.page === pagination.totalPages}
+                  className="font-sfpro border-[#039994] text-[#039994] hover:bg-[#039994] hover:text-white"
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
