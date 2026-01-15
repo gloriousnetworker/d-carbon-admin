@@ -11,7 +11,7 @@ import {
   Plus,
   Users,
   ChevronDown,
-  X
+  Check,
 } from "lucide-react";
 import PartnerDetails from "./PartnerDetails";
 import FilterByModal from "./partnerManagementModal/FilterBy";
@@ -19,6 +19,7 @@ import AddPartnerModal from "./partnerManagementModal/AddPartner";
 import GetAllInstallers from "./GetAllInstallers";
 import UtilityProviderManagement from "../utility-provider-management/UtilityProviderManagement";
 import FinanceTypes from "./finance-types/FinanceType";
+import UtilityAuthManagement from "../utility-provider-management/UtilityAuthManagement";
 import * as styles from "../styles";
 
 export default function PartnerManagement({ onViewChange }) {
@@ -35,12 +36,53 @@ export default function PartnerManagement({ onViewChange }) {
   const [activeFilters, setActiveFilters] = useState({});
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [authsCount, setAuthsCount] = useState(0);
+  const [previousAuthsCount, setPreviousAuthsCount] = useState(0);
+  const [showAuthsNotification, setShowAuthsNotification] = useState(false);
 
   useEffect(() => {
     if (currentView === "management") {
       fetchPartners(currentPage, 50);
     }
   }, [currentView, currentPage]);
+
+  useEffect(() => {
+    const fetchAuthsCount = async () => {
+      try {
+        const authToken = localStorage.getItem("authToken");
+        if (!authToken) return;
+        const response = await fetch("https://services.dcarbon.solutions/api/auth/utility-auth", {
+          method: "GET",
+          headers: { 
+            "Authorization": `Bearer ${authToken}`, 
+            "Content-Type": "application/json" 
+          }
+        });
+        if (response.ok) {
+          const result = await response.json();
+          if (result.status === "success") {
+            const newCount = result.data?.length || 0;
+            if (newCount > previousAuthsCount && previousAuthsCount > 0) {
+              setShowAuthsNotification(true);
+            }
+            setAuthsCount(newCount);
+            setPreviousAuthsCount(newCount);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching auths count:", err);
+      }
+    };
+
+    const initializeCounts = async () => {
+      await fetchAuthsCount();
+    };
+    initializeCounts();
+    const interval = setInterval(() => {
+      fetchAuthsCount();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [previousAuthsCount]);
 
   const fetchPartners = async (page = 1, limit = 50) => {
     try {
@@ -192,6 +234,15 @@ export default function PartnerManagement({ onViewChange }) {
     );
   };
 
+  const NotificationBadge = ({ count, show }) => {
+    if (!show || count === 0) return null;
+    return (
+      <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+        {count > 99 ? '99+' : count}
+      </span>
+    );
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-white">
       <div className="flex-1 overflow-hidden p-8">
@@ -212,6 +263,10 @@ export default function PartnerManagement({ onViewChange }) {
 
         {currentView === "finance" && (
           <FinanceTypes onBack={handleBackToList} />
+        )}
+
+        {currentView === "auth-management" && (
+          <UtilityAuthManagement onBack={() => handleViewChange("management")} />
         )}
         
         {currentView === "management" && (
@@ -282,6 +337,16 @@ export default function PartnerManagement({ onViewChange }) {
                         onClick={() => handleViewChange("finance")}
                       >
                         Finance Types
+                      </button>
+                      <button
+                        className="w-full px-3 py-2 text-left text-xs hover:bg-gray-50 relative"
+                        onClick={() => {
+                          setShowAuthsNotification(false);
+                          handleViewChange("auth-management");
+                        }}
+                      >
+                        Manage Authorizations
+                        <NotificationBadge count={authsCount} show={showAuthsNotification} />
                       </button>
                     </div>
                   </div>

@@ -14,11 +14,13 @@ import {
   XCircle,
   Clock,
   ChevronDown,
-  Info
+  Info,
+  Check,
 } from "lucide-react";
 import CustomerManagement from "../../UserManagement";
 import PartnerManagement from "../PartnerManagement";
 import UtilityProviderManagement from "../../utility-provider-management/UtilityProviderManagement";
+import UtilityAuthManagement from "../../utility-provider-management/UtilityAuthManagement";
 import {
   mainContainer,
   headingContainer,
@@ -311,6 +313,9 @@ export default function FinanceTypes({ onBack, onViewChange }) {
   const [updatingStatus, setUpdatingStatus] = useState(null);
   const [showMainDropdown, setShowMainDropdown] = useState(false);
   const [currentView, setCurrentView] = useState("finance-types");
+  const [authsCount, setAuthsCount] = useState(0);
+  const [previousAuthsCount, setPreviousAuthsCount] = useState(0);
+  const [showAuthsNotification, setShowAuthsNotification] = useState(false);
 
   const fetchFinanceTypes = async () => {
     try {
@@ -341,6 +346,44 @@ export default function FinanceTypes({ onBack, onViewChange }) {
   useEffect(() => {
     fetchFinanceTypes();
   }, []);
+
+  useEffect(() => {
+    const fetchAuthsCount = async () => {
+      try {
+        const authToken = localStorage.getItem("authToken");
+        if (!authToken) return;
+        const response = await fetch("https://services.dcarbon.solutions/api/auth/utility-auth", {
+          method: "GET",
+          headers: { 
+            "Authorization": `Bearer ${authToken}`, 
+            "Content-Type": "application/json" 
+          }
+        });
+        if (response.ok) {
+          const result = await response.json();
+          if (result.status === "success") {
+            const newCount = result.data?.length || 0;
+            if (newCount > previousAuthsCount && previousAuthsCount > 0) {
+              setShowAuthsNotification(true);
+            }
+            setAuthsCount(newCount);
+            setPreviousAuthsCount(newCount);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching auths count:", err);
+      }
+    };
+
+    const initializeCounts = async () => {
+      await fetchAuthsCount();
+    };
+    initializeCounts();
+    const interval = setInterval(() => {
+      fetchAuthsCount();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [previousAuthsCount]);
 
   const handleApprove = async (id) => {
     try {
@@ -498,6 +541,15 @@ export default function FinanceTypes({ onBack, onViewChange }) {
     setShowMainDropdown(false);
   };
 
+  const NotificationBadge = ({ count, show }) => {
+    if (!show || count === 0) return null;
+    return (
+      <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+        {count > 99 ? '99+' : count}
+      </span>
+    );
+  };
+
   if (loading) {
     return (
       <div className={mainContainer}>
@@ -566,6 +618,16 @@ export default function FinanceTypes({ onBack, onViewChange }) {
                             onClick={() => handleViewChange("finance-types")}
                           >
                             Finance Types
+                          </button>
+                          <button
+                            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 relative"
+                            onClick={() => {
+                              setShowAuthsNotification(false);
+                              handleViewChange("auth-management");
+                            }}
+                          >
+                            Manage Authorizations
+                            <NotificationBadge count={authsCount} show={showAuthsNotification} />
                           </button>
                         </div>
                       </div>
@@ -866,6 +928,10 @@ export default function FinanceTypes({ onBack, onViewChange }) {
       ) : currentView === "utility-management" ? (
         <div className="w-full">
           <UtilityProviderManagement onViewChange={handleViewChange} />
+        </div>
+      ) : currentView === "auth-management" ? (
+        <div className="w-full">
+          <UtilityAuthManagement onBack={() => handleViewChange("finance-types")} />
         </div>
       ) : null}
 

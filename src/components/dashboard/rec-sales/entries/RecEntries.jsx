@@ -198,6 +198,7 @@ export default function RecEntries() {
   const [newRecData, setNewRecData] = useState({
     transferDate: new Date(),
     vintageDate: new Date(),
+    salesDate: new Date(),
     amountOfRecs: 0,
     cec: false,
     recBuyer: ''
@@ -327,7 +328,8 @@ export default function RecEntries() {
         body: JSON.stringify({
           ...newRecData,
           transferDate: newRecData.transferDate.toISOString(),
-          vintageDate: newRecData.vintageDate.toISOString()
+          vintageDate: newRecData.vintageDate.toISOString(),
+          createdAt: newRecData.salesDate.toISOString()
         })
       })
       
@@ -344,6 +346,7 @@ export default function RecEntries() {
         setNewRecData({
           transferDate: new Date(),
           vintageDate: new Date(),
+          salesDate: new Date(),
           amountOfRecs: 0,
           cec: false,
           recBuyer: ''
@@ -642,20 +645,31 @@ function NewRecSaleModal({
               />
             </div>
           </div>
-          
-          <div>
-            <label className={styles.labelClass}>
-              Amount of RECs *
-            </label>
-            <Input 
-              placeholder="200" 
-              type="number"
-              min="0"
-              step="0.01"
-              value={newRecData.amountOfRecs || ''}
-              onChange={(e) => setNewRecData({...newRecData, amountOfRecs: parseFloat(e.target.value) || 0})}
-              className={styles.inputClass}
-            />
+
+          <div className={styles.rowWrapper}>
+            <div className={styles.halfWidth}>
+              <label className={styles.labelClass}>
+                Sales Date
+              </label>
+              <CustomDatePicker
+                selected={newRecData.salesDate}
+                onChange={(date) => setNewRecData({...newRecData, salesDate: date})}
+              />
+            </div>
+            <div className={styles.halfWidth}>
+              <label className={styles.labelClass}>
+                Amount of RECs *
+              </label>
+              <Input 
+                placeholder="200" 
+                type="number"
+                min="0"
+                step="0.01"
+                value={newRecData.amountOfRecs || ''}
+                onChange={(e) => setNewRecData({...newRecData, amountOfRecs: parseFloat(e.target.value) || 0})}
+                className={styles.inputClass}
+              />
+            </div>
           </div>
           
           <div>
