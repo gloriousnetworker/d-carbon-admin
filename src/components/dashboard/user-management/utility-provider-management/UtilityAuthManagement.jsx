@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, Loader2, Trash2, RefreshCw, Key, CheckCircle, XCircle, Search, Filter, X } from "lucide-react";
+import { ChevronLeft, Loader2, Trash2, RefreshCw, Key, CheckCircle, XCircle, Search, Filter, X, CheckSquare, Square } from "lucide-react";
 import toast from "react-hot-toast";
 import InstapullAuthorizationModal from "./InstapullAuthorizationModal";
 
@@ -66,6 +66,8 @@ export default function UtilityAuthManagement({ onBack }) {
     limit: ''
   });
   const [activeFilters, setActiveFilters] = useState([]);
+  const [selectedAuths, setSelectedAuths] = useState(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const fetchUtilityProviders = async () => {
     setLoadingProviders(true);
@@ -167,6 +169,7 @@ export default function UtilityAuthManagement({ onBack }) {
         if (filters.limit) newActiveFilters.push({ key: 'limit', label: 'Limit', value: filters.limit });
         setActiveFilters(newActiveFilters);
         
+        setSelectedAuths(new Set());
         toast.success(`Loaded ${result.data.length} authorizations`);
       } else {
         throw new Error(result.message || "Failed to fetch utility authorizations");
@@ -239,16 +242,10 @@ export default function UtilityAuthManagement({ onBack }) {
   }, []);
 
   const handleDeleteAuth = async (authId) => {
-    if (!confirm("Are you sure you want to delete this authorization?")) {
-      return;
-    }
-    
     try {
       setDeletingId(authId);
       const authToken = localStorage.getItem("authToken");
       if (!authToken) throw new Error("Authentication token not found");
-      
-      toast.loading("Deleting authorization...");
       
       const response = await fetch(
         `https://services.dcarbon.solutions/api/utility-auth/delete/${authId}`,
@@ -265,19 +262,66 @@ export default function UtilityAuthManagement({ onBack }) {
       
       const result = await response.json();
       if (result.message === "Record deleted successfully") {
-        toast.dismiss();
-        toast.success("Utility authorization deleted successfully");
         setAuths(prev => prev.filter(auth => auth.id !== authId));
+        setSelectedAuths(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(authId);
+          return newSet;
+        });
+        return true;
       } else {
         throw new Error(result.message || "Failed to delete utility authorization");
       }
     } catch (err) {
-      toast.dismiss();
-      toast.error(err.message);
       console.error("Error deleting utility authorization:", err);
+      return false;
     } finally {
       setDeletingId(null);
     }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedAuths.size === 0) {
+      toast.error("Please select at least one authorization to delete");
+      return;
+    }
+    
+    if (!confirm(`Are you sure you want to delete ${selectedAuths.size} authorization(s)? This action cannot be undone.`)) {
+      return;
+    }
+    
+    setBulkDeleting(true);
+    const authIds = Array.from(selectedAuths);
+    let successCount = 0;
+    let errorCount = 0;
+    
+    toast.loading(`Deleting ${selectedAuths.size} authorization(s)...`);
+    
+    for (const authId of authIds) {
+      try {
+        const success = await handleDeleteAuth(authId);
+        if (success) {
+          successCount++;
+        } else {
+          errorCount++;
+        }
+      } catch (err) {
+        errorCount++;
+      }
+    }
+    
+    toast.dismiss();
+    
+    if (successCount > 0) {
+      toast.success(`Successfully deleted ${successCount} authorization(s)`);
+    }
+    
+    if (errorCount > 0) {
+      toast.error(`Failed to delete ${errorCount} authorization(s)`);
+    }
+    
+    setSelectedAuths(new Set());
+    setBulkDeleting(false);
   };
 
   const openInstapullTab = () => {
@@ -392,6 +436,57 @@ export default function UtilityAuthManagement({ onBack }) {
     setActiveFilters(newActiveFilters);
     
     fetchAuths(1);
+  };
+
+  const toggleSelectAuth = (authId) => {
+    setSelectedAuths(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(authId)) {
+        newSet.delete(authId);
+      } else {
+        newSet.add(authId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedAuths.size === auths.length) {
+      setSelectedAuths(new Set());
+    } else {
+      const allIds = new Set(auths.map(auth => auth.id));
+      setSelectedAuths(allIds);
+    }
+  };
+
+  const handleSingleDelete = async (authId) => {
+    if (!confirm("Are you sure you want to delete this authorization?")) {
+      return;
+    }
+    
+    setDeletingId(authId);
+    const authToken = localStorage.getItem("authToken");
+    if (!authToken) {
+      toast.error("Authentication token not found");
+      setDeletingId(null);
+      return;
+    }
+    
+    toast.loading("Deleting authorization...");
+    
+    try {
+      const success = await handleDeleteAuth(authId);
+      if (success) {
+        toast.dismiss();
+        toast.success("Utility authorization deleted successfully");
+      } else {
+        toast.dismiss();
+        toast.error("Failed to delete authorization");
+      }
+    } catch (err) {
+      toast.dismiss();
+      toast.error(err.message);
+    }
   };
 
   return (
@@ -624,6 +719,38 @@ export default function UtilityAuthManagement({ onBack }) {
         </div>
       )}
 
+      {selectedAuths.size > 0 && (
+        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-6">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <span className="text-orange-800 font-sfpro font-[500]">
+                {selectedAuths.size} authorization(s) selected
+              </span>
+              <Button 
+                variant="outline" 
+                onClick={toggleSelectAll}
+                className="border-orange-300 text-orange-700 hover:bg-orange-100 text-xs font-sfpro font-[500]"
+                size="sm"
+              >
+                {selectedAuths.size === auths.length ? 'Deselect All' : 'Select All'}
+              </Button>
+            </div>
+            <Button 
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting}
+              className="bg-red-600 hover:bg-red-700 text-white font-sfpro font-[500] flex items-center gap-2"
+            >
+              {bulkDeleting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+              Delete Selected ({selectedAuths.size})
+            </Button>
+          </div>
+        </div>
+      )}
+
       {isLoading && (
         <div className="flex flex-col items-center justify-center py-16 bg-white rounded-xl shadow-sm border border-gray-100">
           <Loader2 className="h-12 w-12 animate-spin text-[#039994]" />
@@ -684,10 +811,23 @@ export default function UtilityAuthManagement({ onBack }) {
           <div className="overflow-hidden border border-gray-200 rounded-xl shadow-sm">
             <div className="bg-gradient-to-r from-[#039994] to-[#02857f] px-6 py-4">
               <div className="flex justify-between items-center">
-                <h3 className="text-white font-sfpro font-[600] text-lg">
-                  Authorization Records ({pagination.total})
-                  {activeFilters.length > 0 && ' (Filtered)'}
-                </h3>
+                <div className="flex items-center gap-4">
+                  <h3 className="text-white font-sfpro font-[600] text-lg">
+                    Authorization Records ({pagination.total})
+                    {activeFilters.length > 0 && ' (Filtered)'}
+                  </h3>
+                  <button 
+                    onClick={toggleSelectAll}
+                    className="flex items-center gap-2 text-white text-sm font-sfpro hover:text-gray-200 transition-colors"
+                  >
+                    {selectedAuths.size === auths.length ? (
+                      <CheckSquare className="h-4 w-4" />
+                    ) : (
+                      <Square className="h-4 w-4" />
+                    )}
+                    {selectedAuths.size === auths.length ? 'Deselect All' : 'Select All'}
+                  </button>
+                </div>
                 <div className="text-white text-sm font-sfpro">
                   Page {pagination.page} of {pagination.totalPages}
                 </div>
@@ -698,6 +838,14 @@ export default function UtilityAuthManagement({ onBack }) {
               <table className="w-full text-xs">
                 <thead className="bg-gray-50">
                   <tr className="border-b">
+                    <th className="py-4 px-4 text-left font-medium text-gray-700 font-sfpro w-12">
+                      <input
+                        type="checkbox"
+                        checked={selectedAuths.size === auths.length && auths.length > 0}
+                        onChange={toggleSelectAll}
+                        className="h-4 w-4 rounded border-gray-300 text-[#039994] focus:ring-[#039994]"
+                      />
+                    </th>
                     <th className="py-4 px-4 text-left font-medium text-gray-700 font-sfpro">S/N</th>
                     <th className="py-4 px-4 text-left font-medium text-gray-700 font-sfpro">Email</th>
                     <th className="py-4 px-4 text-left font-medium text-gray-700 font-sfpro">User Type</th>
@@ -713,6 +861,14 @@ export default function UtilityAuthManagement({ onBack }) {
                 <tbody className="divide-y">
                   {auths.map((auth, index) => (
                     <tr key={auth.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="py-3 px-4">
+                        <input
+                          type="checkbox"
+                          checked={selectedAuths.has(auth.id)}
+                          onChange={() => toggleSelectAuth(auth.id)}
+                          className="h-4 w-4 rounded border-gray-300 text-[#039994] focus:ring-[#039994]"
+                        />
+                      </td>
                       <td className="py-3 px-4 font-sfpro text-gray-800">
                         {(pagination.page - 1) * pagination.limit + index + 1}
                       </td>
@@ -759,7 +915,7 @@ export default function UtilityAuthManagement({ onBack }) {
                             size="sm"
                             className="h-8 px-3 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:text-blue-800 text-xs font-sfpro font-[500]"
                             onClick={() => handleReinitiateAuth(auth)}
-                            disabled={reinitiatingId === auth.id || deletingId === auth.id}
+                            disabled={reinitiatingId === auth.id || deletingId === auth.id || bulkDeleting}
                           >
                             {reinitiatingId === auth.id ? (
                               <Loader2 className="h-3 w-3 animate-spin mr-1" />
@@ -772,8 +928,8 @@ export default function UtilityAuthManagement({ onBack }) {
                             size="sm"
                             variant="outline"
                             className="h-8 px-3 text-red-700 border-red-200 hover:bg-red-50 hover:text-red-800 text-xs font-sfpro font-[500]"
-                            onClick={() => handleDeleteAuth(auth.id)}
-                            disabled={deletingId === auth.id || reinitiatingId === auth.id}
+                            onClick={() => handleSingleDelete(auth.id)}
+                            disabled={deletingId === auth.id || reinitiatingId === auth.id || bulkDeleting}
                           >
                             {deletingId === auth.id ? (
                               <Loader2 className="h-3 w-3 animate-spin mr-1" />
