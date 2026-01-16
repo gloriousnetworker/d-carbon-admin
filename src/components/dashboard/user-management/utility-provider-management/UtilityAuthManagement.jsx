@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, Loader2, Trash2, RefreshCw, Key, CheckCircle, XCircle } from "lucide-react";
+import { ChevronLeft, Loader2, Trash2, RefreshCw, Key, CheckCircle, XCircle, Search, Filter, X } from "lucide-react";
 import toast from "react-hot-toast";
 import InstapullAuthorizationModal from "./InstapullAuthorizationModal";
 
@@ -53,6 +53,72 @@ export default function UtilityAuthManagement({ onBack }) {
   const [instapullOpened, setInstapullOpened] = useState(false);
   const [meterStatuses, setMeterStatuses] = useState({});
   const [loadingMeters, setLoadingMeters] = useState({});
+  const [showFilters, setShowFilters] = useState(false);
+  const [utilityProviders, setUtilityProviders] = useState([]);
+  const [loadingProviders, setLoadingProviders] = useState(false);
+  const [filters, setFilters] = useState({
+    id: '',
+    userId: '',
+    email: '',
+    utilityType: '',
+    userType: '',
+    status: '',
+    limit: ''
+  });
+  const [activeFilters, setActiveFilters] = useState([]);
+
+  const fetchUtilityProviders = async () => {
+    setLoadingProviders(true);
+    try {
+      const authToken = localStorage.getItem("authToken");
+      if (!authToken) throw new Error("Authentication token not found");
+      
+      const response = await fetch(
+        "https://services.dcarbon.solutions/api/auth/utility-providers",
+        {
+          method: "GET",
+          headers: { 
+            "Authorization": `Bearer ${authToken}`, 
+            "Content-Type": "application/json" 
+          }
+        }
+      );
+      
+      if (!response.ok) throw new Error(`Error fetching utility providers: ${response.statusText}`);
+      
+      const result = await response.json();
+      if (result.status === 'success') {
+        setUtilityProviders(result.data || []);
+      } else {
+        throw new Error(result.message || "Failed to fetch utility providers");
+      }
+    } catch (err) {
+      console.error("Error fetching utility providers:", err);
+    } finally {
+      setLoadingProviders(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUtilityProviders();
+  }, []);
+
+  const buildQueryString = (page = 1) => {
+    const queryParams = new URLSearchParams();
+    
+    if (page) queryParams.set('page', page);
+    if (filters.id) queryParams.set('id', filters.id);
+    if (filters.userId) queryParams.set('userId', filters.userId);
+    if (filters.email) queryParams.set('email', filters.email);
+    if (filters.utilityType) queryParams.set('utilityType', filters.utilityType);
+    if (filters.userType) queryParams.set('userType', filters.userType);
+    if (filters.status) queryParams.set('status', filters.status);
+    
+    const limitValue = filters.limit || pagination.limit;
+    queryParams.set('limit', limitValue);
+    
+    return queryParams.toString();
+  };
 
   const fetchAuths = async (page = 1) => {
     setIsLoading(true);
@@ -61,8 +127,9 @@ export default function UtilityAuthManagement({ onBack }) {
       const authToken = localStorage.getItem("authToken");
       if (!authToken) throw new Error("Authentication token not found");
       
+      const queryString = buildQueryString(page);
       const response = await fetch(
-        `https://services.dcarbon.solutions/api/utility-auth/list?page=${page}&limit=${pagination.limit}`,
+        `https://services.dcarbon.solutions/api/utility-auth/list?${queryString}`,
         {
           method: "GET",
           headers: { 
@@ -79,7 +146,7 @@ export default function UtilityAuthManagement({ onBack }) {
         setAuths(result.data || []);
         setPagination(result.pagination || {
           page: page,
-          limit: 20,
+          limit: filters.limit ? parseInt(filters.limit) : 20,
           total: result.data?.length || 0,
           totalPages: 1
         });
@@ -89,6 +156,16 @@ export default function UtilityAuthManagement({ onBack }) {
             checkUserMeters(auth.userId);
           }
         });
+        
+        const newActiveFilters = [];
+        if (filters.id) newActiveFilters.push({ key: 'id', label: 'ID', value: filters.id });
+        if (filters.userId) newActiveFilters.push({ key: 'userId', label: 'User ID', value: filters.userId });
+        if (filters.email) newActiveFilters.push({ key: 'email', label: 'Email', value: filters.email });
+        if (filters.utilityType) newActiveFilters.push({ key: 'utilityType', label: 'Utility Type', value: filters.utilityType });
+        if (filters.userType) newActiveFilters.push({ key: 'userType', label: 'User Type', value: filters.userType });
+        if (filters.status) newActiveFilters.push({ key: 'status', label: 'Status', value: filters.status });
+        if (filters.limit) newActiveFilters.push({ key: 'limit', label: 'Limit', value: filters.limit });
+        setActiveFilters(newActiveFilters);
         
         toast.success(`Loaded ${result.data.length} authorizations`);
       } else {
@@ -284,6 +361,60 @@ export default function UtilityAuthManagement({ onBack }) {
     return null;
   };
 
+  const handleFilterChange = (key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleApplyFilters = () => {
+    setShowFilters(false);
+    fetchAuths(1);
+  };
+
+  const handleClearFilters = () => {
+    setFilters({
+      id: '',
+      userId: '',
+      email: '',
+      utilityType: '',
+      userType: '',
+      status: '',
+      limit: ''
+    });
+    setActiveFilters([]);
+    fetchAuths(1);
+  };
+
+  const removeActiveFilter = (key) => {
+    const newFilters = { ...filters, [key]: '' };
+    setFilters(newFilters);
+    
+    const newActiveFilters = activeFilters.filter(filter => filter.key !== key);
+    setActiveFilters(newActiveFilters);
+    
+    const hasAnyFilter = Object.values(newFilters).some(value => value !== '');
+    if (hasAnyFilter) {
+      fetchAuths(1);
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (!confirm("Are you sure you want to delete ALL filtered authorizations? This action cannot be undone.")) {
+      return;
+    }
+    
+    const deletePromises = auths.map(auth => 
+      handleDeleteAuth(auth.id).catch(err => {
+        console.error(`Failed to delete authorization ${auth.id}:`, err);
+        return null;
+      })
+    );
+    
+    Promise.all(deletePromises).then(() => {
+      toast.success("Bulk deletion initiated. Refreshing list...");
+      setTimeout(() => fetchAuths(1), 2000);
+    });
+  };
+
   return (
     <div className="w-full">
       {showInstapullModal && selectedAuth && (
@@ -326,6 +457,14 @@ export default function UtilityAuthManagement({ onBack }) {
           </Button>
           <Button 
             variant="outline" 
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-2 border-[#039994] text-[#039994] hover:bg-[#039994] hover:text-white font-sfpro font-[500] transition-colors"
+          >
+            <Filter className="h-4 w-4" />
+            {showFilters ? 'Hide Filters' : 'Show Filters'}
+          </Button>
+          <Button 
+            variant="outline" 
             onClick={() => fetchAuths(pagination.page)}
             className="flex items-center gap-2 border-[#039994] text-[#039994] hover:bg-[#039994] hover:text-white font-sfpro font-[500] transition-colors"
           >
@@ -341,6 +480,180 @@ export default function UtilityAuthManagement({ onBack }) {
           Admin panel for managing user utility authorizations
         </p>
       </div>
+
+      {showFilters && (
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-100">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-sfpro font-[600] text-[#039994]">Filter Authorizations</h2>
+            <Button 
+              variant="outline" 
+              onClick={handleClearFilters}
+              className="flex items-center gap-2 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 font-sfpro font-[500]"
+            >
+              <X className="h-4 w-4" />
+              Clear All
+            </Button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            <div>
+              <label className={styles.labelClass}>Authorization ID</label>
+              <input
+                type="text"
+                value={filters.id}
+                onChange={(e) => handleFilterChange('id', e.target.value)}
+                placeholder="Enter authorization ID"
+                className={styles.inputClass}
+              />
+            </div>
+            
+            <div>
+              <label className={styles.labelClass}>User ID</label>
+              <input
+                type="text"
+                value={filters.userId}
+                onChange={(e) => handleFilterChange('userId', e.target.value)}
+                placeholder="Enter user ID"
+                className={styles.inputClass}
+              />
+            </div>
+            
+            <div>
+              <label className={styles.labelClass}>Email</label>
+              <input
+                type="email"
+                value={filters.email}
+                onChange={(e) => handleFilterChange('email', e.target.value)}
+                placeholder="Enter email"
+                className={styles.inputClass}
+              />
+            </div>
+            
+            <div>
+              <label className={styles.labelClass}>Utility Type</label>
+              <div className="relative">
+                <select
+                  value={filters.utilityType}
+                  onChange={(e) => handleFilterChange('utilityType', e.target.value)}
+                  className={styles.selectClass}
+                >
+                  <option value="">Select or type</option>
+                  {loadingProviders ? (
+                    <option disabled>Loading providers...</option>
+                  ) : (
+                    utilityProviders.map(provider => (
+                      <option key={provider.id} value={provider.name}>
+                        {provider.name}
+                      </option>
+                    ))
+                  )}
+                </select>
+                {filters.utilityType && (
+                  <input
+                    type="text"
+                    value={filters.utilityType}
+                    onChange={(e) => handleFilterChange('utilityType', e.target.value)}
+                    placeholder="Or type utility provider"
+                    className={`${styles.inputClass} mt-2`}
+                  />
+                )}
+              </div>
+            </div>
+            
+            <div>
+              <label className={styles.labelClass}>User Type</label>
+              <select
+                value={filters.userType}
+                onChange={(e) => handleFilterChange('userType', e.target.value)}
+                className={styles.selectClass}
+              >
+                <option value="">All Types</option>
+                <option value="RESIDENTIAL">RESIDENTIAL</option>
+                <option value="COMMERCIAL">COMMERCIAL</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className={styles.labelClass}>Status</label>
+              <select
+                value={filters.status}
+                onChange={(e) => handleFilterChange('status', e.target.value)}
+                className={styles.selectClass}
+              >
+                <option value="">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="completed">Completed</option>
+                <option value="failed">Failed</option>
+                <option value="duplicate">Duplicate</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className={styles.labelClass}>Records Limit</label>
+              <input
+                type="number"
+                value={filters.limit}
+                onChange={(e) => handleFilterChange('limit', e.target.value)}
+                placeholder="Leave empty for no limit"
+                className={styles.inputClass}
+                min="1"
+              />
+              <p className="text-xs text-gray-500 mt-1">Empty = all records, 0 = default (20)</p>
+            </div>
+          </div>
+          
+          <div className="flex justify-end gap-3">
+            <Button 
+              variant="outline"
+              onClick={() => setShowFilters(false)}
+              className="border-gray-300 text-gray-700 hover:bg-gray-50 font-sfpro font-[500]"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleApplyFilters}
+              className="bg-[#039994] hover:bg-[#02857f] text-white font-sfpro font-[500] flex items-center gap-2"
+            >
+              <Search className="h-4 w-4" />
+              Apply Filters
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {activeFilters.length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+          <div className="flex justify-between items-center mb-3">
+            <span className="text-blue-800 font-sfpro font-[500]">Active Filters ({activeFilters.length})</span>
+            {auths.length > 0 && (
+              <Button 
+                onClick={handleBulkDelete}
+                className="bg-red-600 hover:bg-red-700 text-white font-sfpro font-[500] text-sm py-1 px-3"
+                size="sm"
+              >
+                <Trash2 className="h-3 w-3 mr-1" />
+                Delete All Filtered ({auths.length})
+              </Button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {activeFilters.map(filter => (
+              <span 
+                key={filter.key}
+                className="inline-flex items-center bg-white border border-blue-200 rounded-full px-3 py-1 text-sm font-sfpro text-blue-800"
+              >
+                <span className="font-[600] mr-1">{filter.label}:</span> {filter.value}
+                <button 
+                  onClick={() => removeActiveFilter(filter.key)}
+                  className="ml-2 text-red-500 hover:text-red-700"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {isLoading && (
         <div className="flex flex-col items-center justify-center py-16 bg-white rounded-xl shadow-sm border border-gray-100">
@@ -367,24 +680,33 @@ export default function UtilityAuthManagement({ onBack }) {
             <Key className="h-16 w-16 mx-auto" />
           </div>
           <p className="text-gray-500 text-lg font-sfpro mb-6">No utility authorizations found</p>
-          <Button 
-            onClick={() => {
-              const newAuth = {
-                email: "",
-                userType: "COMMERCIAL",
-                utilityType: "",
-                authorizationEmail: "",
-                userId: null
-              };
-              setSelectedAuth(newAuth);
-              openInstapullTab();
-              setShowInstapullModal(true);
-            }}
-            className="bg-[#039994] hover:bg-[#02857f] text-white font-sfpro font-[500]"
-          >
-            <Key className="h-4 w-4 mr-2" />
-            Create New Authorization
-          </Button>
+          {activeFilters.length > 0 ? (
+            <Button 
+              onClick={handleClearFilters}
+              className="bg-[#039994] hover:bg-[#02857f] text-white font-sfpro font-[500]"
+            >
+              Clear Filters
+            </Button>
+          ) : (
+            <Button 
+              onClick={() => {
+                const newAuth = {
+                  email: "",
+                  userType: "COMMERCIAL",
+                  utilityType: "",
+                  authorizationEmail: "",
+                  userId: null
+                };
+                setSelectedAuth(newAuth);
+                openInstapullTab();
+                setShowInstapullModal(true);
+              }}
+              className="bg-[#039994] hover:bg-[#02857f] text-white font-sfpro font-[500]"
+            >
+              <Key className="h-4 w-4 mr-2" />
+              Create New Authorization
+            </Button>
+          )}
         </div>
       )}
 
@@ -395,6 +717,7 @@ export default function UtilityAuthManagement({ onBack }) {
               <div className="flex justify-between items-center">
                 <h3 className="text-white font-sfpro font-[600] text-lg">
                   Authorization Records ({pagination.total})
+                  {activeFilters.length > 0 && ' (Filtered)'}
                 </h3>
                 <div className="text-white text-sm font-sfpro">
                   Page {pagination.page} of {pagination.totalPages}
