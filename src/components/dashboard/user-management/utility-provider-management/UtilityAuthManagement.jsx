@@ -391,28 +391,7 @@ export default function UtilityAuthManagement({ onBack }) {
     const newActiveFilters = activeFilters.filter(filter => filter.key !== key);
     setActiveFilters(newActiveFilters);
     
-    const hasAnyFilter = Object.values(newFilters).some(value => value !== '');
-    if (hasAnyFilter) {
-      fetchAuths(1);
-    }
-  };
-
-  const handleBulkDelete = () => {
-    if (!confirm("Are you sure you want to delete ALL filtered authorizations? This action cannot be undone.")) {
-      return;
-    }
-    
-    const deletePromises = auths.map(auth => 
-      handleDeleteAuth(auth.id).catch(err => {
-        console.error(`Failed to delete authorization ${auth.id}:`, err);
-        return null;
-      })
-    );
-    
-    Promise.all(deletePromises).then(() => {
-      toast.success("Bulk deletion initiated. Refreshing list...");
-      setTimeout(() => fetchAuths(1), 2000);
-    });
+    fetchAuths(1);
   };
 
   return (
@@ -625,16 +604,6 @@ export default function UtilityAuthManagement({ onBack }) {
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
           <div className="flex justify-between items-center mb-3">
             <span className="text-blue-800 font-sfpro font-[500]">Active Filters ({activeFilters.length})</span>
-            {auths.length > 0 && (
-              <Button 
-                onClick={handleBulkDelete}
-                className="bg-red-600 hover:bg-red-700 text-white font-sfpro font-[500] text-sm py-1 px-3"
-                size="sm"
-              >
-                <Trash2 className="h-3 w-3 mr-1" />
-                Delete All Filtered ({auths.length})
-              </Button>
-            )}
           </div>
           <div className="flex flex-wrap gap-2">
             {activeFilters.map(filter => (
