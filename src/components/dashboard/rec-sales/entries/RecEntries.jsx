@@ -183,8 +183,15 @@ function CustomDropdownMenu({ trigger, children }) {
 export default function RecEntries() {
   const [activeTab, setActiveTab] = useState("rec-entries")
   const [isNewRecModalOpen, setIsNewRecModalOpen] = useState(false)
-  const [currentPage, setCurrentPage] = useState(1)
   const [recEntries, setRecEntries] = useState([])
+  const [metadata, setMetadata] = useState({
+    total: 0,
+    page: 1,
+    limit: 10,
+    totalPages: 1,
+    hasNextPage: false,
+    hasPrevPage: false
+  })
   const [buyers, setBuyers] = useState([])
   const [currentPrice, setCurrentPrice] = useState(0)
   const [filters, setFilters] = useState({
@@ -194,6 +201,7 @@ export default function RecEntries() {
   })
   const [loading, setLoading] = useState(true)
   const [buyersLoading, setBuyersLoading] = useState(true)
+  const [buyerNames, setBuyerNames] = useState({})
   
   const [newRecData, setNewRecData] = useState({
     transferDate: new Date(),
@@ -214,8 +222,9 @@ export default function RecEntries() {
         }
         
         await Promise.all([
-          fetchRecEntries(),
-          fetchCurrentPrice()
+          fetchRecEntries(1),
+          fetchCurrentPrice(),
+          fetchBuyers()
         ])
       } catch (error) {
         console.error('Fetch error:', error)
@@ -233,10 +242,18 @@ export default function RecEntries() {
     }
   }, [isNewRecModalOpen])
 
-  const fetchRecEntries = async () => {
+  useEffect(() => {
+    const names = {}
+    buyers.forEach(buyer => {
+      names[buyer.id] = buyer.companyName
+    })
+    setBuyerNames(names)
+  }, [buyers])
+
+  const fetchRecEntries = async (page = 1) => {
     try {
       const token = localStorage.getItem('authToken')
-      const response = await fetch(`${API_URL}/api/rec`, {
+      const response = await fetch(`${API_URL}/api/rec?page=${page}&limit=10`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -246,9 +263,25 @@ export default function RecEntries() {
       }
       const data = await response.json()
       if (data.status === 'success') {
-        setRecEntries(data.data?.entries || [])
+        setRecEntries(data.data?.recSales || [])
+        setMetadata(data.data?.metadata || {
+          total: 0,
+          page: page,
+          limit: 10,
+          totalPages: 1,
+          hasNextPage: false,
+          hasPrevPage: false
+        })
       } else {
         setRecEntries([])
+        setMetadata({
+          total: 0,
+          page: page,
+          limit: 10,
+          totalPages: 1,
+          hasNextPage: false,
+          hasPrevPage: false
+        })
         toast.error(data.message || 'Failed to fetch REC entries')
       }
     } catch (error) {
@@ -341,7 +374,7 @@ export default function RecEntries() {
       
       if (data.status === 'success') {
         toast.success('REC sale created successfully')
-        fetchRecEntries()
+        fetchRecEntries(metadata.page)
         setIsNewRecModalOpen(false)
         setNewRecData({
           transferDate: new Date(),
@@ -390,20 +423,18 @@ export default function RecEntries() {
     }
   }
 
+  const handlePageChange = (newPage) => {
+    fetchRecEntries(newPage)
+  }
+
   const filteredEntries = recEntries.filter(entry => {
+    const buyerName = buyerNames[entry.recBuyer] || ''
     return (
-      (filters.type === '' || (entry.type && entry.type.toLowerCase().includes(filters.type.toLowerCase()))) &&
-      (filters.party === '' || (entry.party && entry.party.toLowerCase().includes(filters.party.toLowerCase()))) &&
+      (filters.type === '' || (entry.status && entry.status.toLowerCase().includes(filters.type.toLowerCase()))) &&
+      (filters.party === '' || buyerName.toLowerCase().includes(filters.party.toLowerCase())) &&
       (filters.vintageDate === '' || (entry.vintageDate && entry.vintageDate.includes(filters.vintageDate)))
     )
   })
-
-  const entriesPerPage = 10
-  const totalPages = Math.ceil(filteredEntries.length / entriesPerPage)
-  const paginatedEntries = filteredEntries.slice(
-    (currentPage - 1) * entriesPerPage,
-    currentPage * entriesPerPage
-  )
 
   if (loading) {
     return (
@@ -451,11 +482,10 @@ export default function RecEntries() {
                 <div>
                   <label className={styles.labelClass}>Type</label>
                   <Input 
-                    placeholder="Filter by type" 
+                    placeholder="Filter by status" 
                     value={filters.type}
                     onChange={(e) => {
                       setFilters({...filters, type: e.target.value})
-                      setCurrentPage(1)
                     }}
                     className={styles.inputClass}
                   />
@@ -463,11 +493,10 @@ export default function RecEntries() {
                 <div>
                   <label className={styles.labelClass}>Party</label>
                   <Input 
-                    placeholder="Filter by party" 
+                    placeholder="Filter by buyer" 
                     value={filters.party}
                     onChange={(e) => {
                       setFilters({...filters, party: e.target.value})
-                      setCurrentPage(1)
                     }}
                     className={styles.inputClass}
                   />
@@ -479,7 +508,6 @@ export default function RecEntries() {
                     value={filters.vintageDate}
                     onChange={(e) => {
                       setFilters({...filters, vintageDate: e.target.value})
-                      setCurrentPage(1)
                     }}
                     className={styles.inputClass}
                   />
@@ -494,34 +522,42 @@ export default function RecEntries() {
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Type</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Transfer Date</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Vintage</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">RECs</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">RECs Sold</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">CEC</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Price</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Total</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Party</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Beginning Inventory</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Ending Inventory</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Price per REC</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Total Price</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Buyer</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Balance Before</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Balance After</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">% Sold</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedEntries.length > 0 ? (
-                    paginatedEntries.map((entry, index) => (
-                      <tr key={index} className="border-b hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm">{entry.type || 'N/A'}</td>
+                  {filteredEntries.length > 0 ? (
+                    filteredEntries.map((entry) => (
+                      <tr key={entry.id} className="border-b hover:bg-gray-50">
+                        <td className="px-4 py-3 text-sm">SALE</td>
                         <td className="px-4 py-3 text-sm">{entry.transferDate ? format(new Date(entry.transferDate), 'dd-MM-yyyy') : 'N/A'}</td>
                         <td className="px-4 py-3 text-sm">{entry.vintageDate ? format(new Date(entry.vintageDate), 'dd-MM-yyyy') : 'N/A'}</td>
-                        <td className="px-4 py-3 text-sm">{entry.amountOfRecs?.toLocaleString() || '0'}</td>
+                        <td className="px-4 py-3 text-sm">{entry.totalSoldRecs?.toLocaleString() || '0'}</td>
                         <td className="px-4 py-3 text-sm">{entry.cec ? 'Yes' : 'No'}</td>
+                        <td className="px-4 py-3 text-sm">${entry.pricePerRec?.toFixed(2) || '0.00'}</td>
                         <td className="px-4 py-3 text-sm">${entry.price?.toFixed(2) || '0.00'}</td>
-                        <td className="px-4 py-3 text-sm">${((entry.amountOfRecs || 0) * (entry.price || 0)).toFixed(2)}</td>
-                        <td className="px-4 py-3 text-sm">{entry.party || 'N/A'}</td>
-                        <td className="px-4 py-3 text-sm">{entry.beginningInventory?.toLocaleString() || 'N/A'}</td>
-                        <td className="px-4 py-3 text-sm">{entry.endingInventory?.toLocaleString() || 'N/A'}</td>
+                        <td className="px-4 py-3 text-sm">{buyerNames[entry.recBuyer] || 'N/A'}</td>
+                        <td className="px-4 py-3 text-sm">{entry.recBalanceBeforeSales?.toLocaleString() || '0'}</td>
+                        <td className="px-4 py-3 text-sm">{entry.recBalanceAfterSales?.toLocaleString() || '0'}</td>
+                        <td className="px-4 py-3 text-sm">{entry.percentageSold?.toFixed(2) || '0'}%</td>
+                        <td className="px-4 py-3 text-sm">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${entry.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                            {entry.status || 'PENDING'}
+                          </span>
+                        </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="10" className="px-4 py-6 text-center text-sm text-gray-500">
+                      <td colSpan="12" className="px-4 py-6 text-center text-sm text-gray-500">
                         No REC entries found
                       </td>
                     </tr>
@@ -530,26 +566,29 @@ export default function RecEntries() {
               </table>
             </div>
             
-            {filteredEntries.length > 0 && (
-              <div className="flex items-center justify-center p-4">
+            {metadata.total > 0 && (
+              <div className="flex items-center justify-between p-4 border-t">
+                <div className="text-sm text-gray-600">
+                  Showing {((metadata.page - 1) * metadata.limit) + 1} to {Math.min(metadata.page * metadata.limit, metadata.total)} of {metadata.total} entries
+                </div>
                 <div className="flex items-center space-x-2">
                   <button 
-                    className="p-2 rounded-md hover:bg-gray-100 text-gray-500 flex items-center"
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                    disabled={currentPage === 1}
+                    className="p-2 rounded-md hover:bg-gray-100 text-gray-500 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => handlePageChange(metadata.page - 1)}
+                    disabled={!metadata.hasPrevPage}
                   >
                     <ChevronLeft className="h-4 w-4" />
                     <span className="ml-1">Previous</span>
                   </button>
                   <div className="flex items-center">
-                    <span className="px-3 py-1">{currentPage}</span>
-                    <span className="text-gray-500">of</span>
-                    <span className="px-3 py-1">{totalPages}</span>
+                    <span className="px-3 py-1 text-sm">{metadata.page}</span>
+                    <span className="text-gray-500 text-sm">of</span>
+                    <span className="px-3 py-1 text-sm">{metadata.totalPages}</span>
                   </div>
                   <button 
-                    className="p-2 rounded-md hover:bg-gray-100 text-[#039994] flex items-center"
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                    disabled={currentPage === totalPages}
+                    className="p-2 rounded-md hover:bg-gray-100 text-[#039994] flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => handlePageChange(metadata.page + 1)}
+                    disabled={!metadata.hasNextPage}
                   >
                     <span className="mr-1">Next</span>
                     <ChevronRight className="h-4 w-4" />
