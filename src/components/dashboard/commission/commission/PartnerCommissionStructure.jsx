@@ -10,6 +10,38 @@ const PartnerCommissionStructure = ({ onSetupStructure, refreshData }) => {
   const [commercialData, setCommercialData] = useState(null);
   const [residentialData, setResidentialData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [headers, setHeaders] = useState([]);
+
+  const fetchTiers = async () => {
+    try {
+      const authToken = localStorage.getItem('authToken');
+      const response = await fetch('https://services.dcarbon.solutions/api/commission-tier', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch tiers');
+      }
+
+      const tiers = await response.json();
+      const tierHeaders = [];
+      
+      tiers.sort((a, b) => a.order - b.order);
+      
+      tiers.forEach(tier => {
+        tierHeaders.push(tier.label);
+      });
+      
+      setHeaders(tierHeaders);
+    } catch (error) {
+      console.error('Error fetching tiers:', error);
+      setHeaders(["<$500k", "$500k - $2.5M", ">$2.5M", "Max Duration", "Agreement Duration"]);
+    }
+  };
 
   const fetchSalesAgentData = async () => {
     try {
@@ -107,12 +139,6 @@ const PartnerCommissionStructure = ({ onSetupStructure, refreshData }) => {
     }
   };
 
-  const calculateEpcSplit = (financeCommission, ratio = 0.6) => {
-    const financeShare = Math.round(financeCommission * ratio * 10) / 10;
-    const installerShare = Math.round((financeCommission - financeShare) * 10) / 10;
-    return { finance: financeShare, installer: installerShare };
-  };
-
   const fetchCommissionData = async () => {
     try {
       setLoading(true);
@@ -134,77 +160,214 @@ const PartnerCommissionStructure = ({ onSetupStructure, refreshData }) => {
   };
 
   useEffect(() => {
-    fetchCommissionData();
-  }, [refreshData]);
+    fetchTiers();
+  }, []);
+
+  useEffect(() => {
+    if (headers.length > 0) {
+      fetchCommissionData();
+    }
+  }, [refreshData, headers]);
 
   const getSalesAgentTableData = () => {
+    const salesAgentHeaders = ["Relationship Type"];
+    
+    const filteredTierHeaders = headers.filter(header => 
+      !["Max Duration", "Agreement Duration", "Cancellation Fee"].includes(header)
+    );
+    
+    salesAgentHeaders.push(...filteredTierHeaders.map(header => 
+      header.includes("k") || header.includes("m") ? `${header} (%)` : header
+    ));
+    
+    salesAgentHeaders.push("Annual Cap");
+
     if (!salesAgentData) {
+      const defaultRows = filteredTierHeaders.length === 3 ? [
+        ["Sales Agent → Sales Agent", "0.0", "0.0", "0.0", "$0"],
+        ["Sales Agent → Installer/EPC", "0.0", "0.0", "0.0", "$0"],
+        ["Sales Agent → Finance Company", "0.0", "0.0", "0.0", "$0"],
+      ] : filteredTierHeaders.map(() => "0.0");
+
       return {
-        headers: ["Relationship Type", "<$500k (%)", "$500k - $2.5M (%)", ">$2.5M (%)", "Annual Cap"],
-        rows: [
-          ["Sales Agent → Sales Agent", "0.0", "0.0", "0.0", "$0"],
-          ["Sales Agent → Installer/EPC", "0.0", "0.0", "0.0", "$0"],
-          ["Sales Agent → Finance Company", "0.0", "0.0", "0.0", "$0"],
-        ],
+        headers: salesAgentHeaders,
+        rows: defaultRows
       };
     }
 
+    const formatValue = (value) => {
+      if (typeof value === 'number') {
+        return value % 1 === 0 ? value.toString() : value.toFixed(1);
+      }
+      return value || "0.0";
+    };
+
+    const getSalesAgentValue = (tierLabel) => {
+      switch(tierLabel) {
+        case "<500k":
+        case "<$500k":
+          return formatValue(salesAgentData.salesAgentUnder500k);
+        case "500k-2.5m":
+        case "$500k - $2.5M":
+          return formatValue(salesAgentData.salesAgent500kTo2_5m);
+        case ">2.5m":
+        case ">$2.5M":
+          return formatValue(salesAgentData.salesAgentOver2_5m);
+        default:
+          return "0.0";
+      }
+    };
+
+    const getInstallerValue = (tierLabel) => {
+      switch(tierLabel) {
+        case "<500k":
+        case "<$500k":
+          return formatValue(salesAgentData.installerUnder500k);
+        case "500k-2.5m":
+        case "$500k - $2.5M":
+          return formatValue(salesAgentData.installer500kTo2_5m);
+        case ">2.5m":
+        case ">$2.5M":
+          return formatValue(salesAgentData.installerOver2_5m);
+        default:
+          return "0.0";
+      }
+    };
+
+    const getFinanceValue = (tierLabel) => {
+      switch(tierLabel) {
+        case "<500k":
+        case "<$500k":
+          return formatValue(salesAgentData.financeUnder500k);
+        case "500k-2.5m":
+        case "$500k - $2.5M":
+          return formatValue(salesAgentData.finance500kTo2_5m);
+        case ">2.5m":
+        case ">$2.5M":
+          return formatValue(salesAgentData.financeOver2_5m);
+        default:
+          return "0.0";
+      }
+    };
+
+    const salesAgentValues = filteredTierHeaders.map(tier => getSalesAgentValue(tier));
+    const installerValues = filteredTierHeaders.map(tier => getInstallerValue(tier));
+    const financeValues = filteredTierHeaders.map(tier => getFinanceValue(tier));
+
     return {
-      headers: ["Relationship Type", "<$500k (%)", "$500k - $2.5M (%)", ">$2.5M (%)", "Annual Cap"],
+      headers: salesAgentHeaders,
       rows: [
-        ["Sales Agent → Sales Agent", salesAgentData.salesAgentUnder500k, salesAgentData.salesAgent500kTo2_5m, salesAgentData.salesAgentOver2_5m, `$${salesAgentData.salesAgentAnnualCap.toLocaleString()}`],
-        ["Sales Agent → Installer/EPC", salesAgentData.installerUnder500k, salesAgentData.installer500kTo2_5m, salesAgentData.installerOver2_5m, `$${salesAgentData.installerAnnualCap.toLocaleString()}`],
-        ["Sales Agent → Finance Company", salesAgentData.financeUnder500k, salesAgentData.finance500kTo2_5m, salesAgentData.financeOver2_5m, `$${salesAgentData.financeAnnualCap.toLocaleString()}`],
+        ["Sales Agent → Sales Agent", ...salesAgentValues, `$${salesAgentData.salesAgentAnnualCap.toLocaleString()}`],
+        ["Sales Agent → Installer/EPC", ...installerValues, `$${salesAgentData.installerAnnualCap.toLocaleString()}`],
+        ["Sales Agent → Finance Company", ...financeValues, `$${salesAgentData.financeAnnualCap.toLocaleString()}`],
       ],
     };
   };
 
   const getEpcAssistedTableData = () => {
-    if (!epcAssistedData) {
+    const epcHeaders = ["Stakeholder"];
+    
+    headers.forEach(header => {
+      if (header !== "Cancellation Fee") {
+        epcHeaders.push(header.includes("k") || header.includes("m") ? `${header} (%)` : header);
+      }
+    });
+
+    if (!epcAssistedData || !commercialData || !residentialData) {
+      const rowLength = epcHeaders.length;
+      const emptyRow = Array(rowLength - 1).fill("0.0");
+      
       return {
-        headers: ["Stakeholder", "<$500k (%)", "$500k - $2.5M (%)", ">$2.5M (%)", "Max Duration (Years)", "Agreement Duration (Years)"],
+        headers: epcHeaders,
         rows: [
-          ["Finance Company (Commercial)", "0.0", "0.0", "0.0", "0", "0"],
-          ["Installer/EPC (Commercial)", "0.0", "0.0", "0.0", "0", "0"],
-          ["", "", "", "", "", ""],
-          ["Finance Company (Residential)", "0.0", "0.0", "0.0", "0", "0"],
-          ["Installer/EPC (Residential)", "0.0", "0.0", "0.0", "0", "0"],
+          ["Finance Company (Commercial)", ...emptyRow],
+          ["Installer/EPC (Commercial)", ...emptyRow],
+          ["", ...Array(rowLength - 1).fill("")],
+          ["Finance Company (Residential)", ...emptyRow],
+          ["Installer/EPC (Residential)", ...emptyRow],
         ],
       };
     }
 
-    const commercialFinance = epcAssistedData.financeShareLessThan500k !== null ? {
-      lessThan500k: epcAssistedData.financeShareLessThan500k,
-      between500kTo2_5m: epcAssistedData.financeShare500kTo2_5m,
-      moreThan2_5m: epcAssistedData.financeShareMoreThan2_5m
-    } : { lessThan500k: 0, between500kTo2_5m: 0, moreThan2_5m: 0 };
+    const getEpcValue = (type, header, sector = "commercial") => {
+      const formatNumber = (num) => {
+        if (typeof num === 'number') {
+          return num % 1 === 0 ? num.toString() : num.toFixed(1);
+        }
+        return num || "0.0";
+      };
 
-    const commercialInstaller = epcAssistedData.installerShareLessThan500k !== null ? {
-      lessThan500k: epcAssistedData.installerShareLessThan500k,
-      between500kTo2_5m: epcAssistedData.installerShare500kTo2_5m,
-      moreThan2_5m: epcAssistedData.installerShareMoreThan2_5m
-    } : { lessThan500k: 0, between500kTo2_5m: 0, moreThan2_5m: 0 };
+      if (header === "Max Duration") {
+        return formatNumber(epcAssistedData.maxDuration);
+      }
+      
+      if (header === "Agreement Duration") {
+        return formatNumber(epcAssistedData.agreementDuration);
+      }
 
-    const residentialFinance = epcAssistedData.residentialFinanceShareLessThan500k !== null ? {
-      lessThan500k: epcAssistedData.residentialFinanceShareLessThan500k,
-      between500kTo2_5m: epcAssistedData.residentialFinanceShare500kTo2_5m,
-      moreThan2_5m: epcAssistedData.residentialFinanceShareMoreThan2_5m
-    } : { lessThan500k: 0, between500kTo2_5m: 0, moreThan2_5m: 0 };
+      if (header === "Cancellation Fee") {
+        return "—";
+      }
 
-    const residentialInstaller = epcAssistedData.residentialInstallerShareLessThan500k !== null ? {
-      lessThan500k: epcAssistedData.residentialInstallerShareLessThan500k,
-      between500kTo2_5m: epcAssistedData.residentialInstallerShare500kTo2_5m,
-      moreThan2_5m: epcAssistedData.residentialInstallerShareMoreThan2_5m
-    } : { lessThan500k: 0, between500kTo2_5m: 0, moreThan2_5m: 0 };
+      if (header.includes("500k") || header.includes("k") || header.includes("m")) {
+        const baseValue = sector === "commercial" 
+          ? commercialData[type === "finance" ? "partnerFinance" : "partnerInstaller"]
+          : residentialData[type === "finance" ? "partnerFinance" : "partnerInstaller"];
+
+        let commissionValue;
+        switch(header) {
+          case "<500k":
+          case "<$500k":
+            commissionValue = baseValue[`partnerShareLessThan500k`];
+            break;
+          case "500k-2.5m":
+          case "$500k - $2.5M":
+            commissionValue = baseValue[`partnerShareBetween500kTo2_5m`];
+            break;
+          case ">2.5m":
+          case ">$2.5M":
+            commissionValue = baseValue[`partnerShareMoreThan2_5m`];
+            break;
+          default:
+            commissionValue = 0;
+        }
+
+        const epcValue = type === "finance" 
+          ? epcAssistedData[`${sector === "residential" ? "residential" : ""}financeShare${header.replace(/[^a-zA-Z0-9]/g, '')}`] || 
+            commissionValue * (type === "finance" ? 0.6 : 0.4)
+          : epcAssistedData[`${sector === "residential" ? "residential" : ""}installerShare${header.replace(/[^a-zA-Z0-9]/g, '')}`] || 
+            commissionValue * (type === "finance" ? 0.6 : 0.4);
+
+        return formatNumber(epcValue);
+      }
+
+      return "0.0";
+    };
+
+    const commercialFinanceValues = headers
+      .filter(header => header !== "Cancellation Fee")
+      .map(header => getEpcValue("finance", header, "commercial"));
+    
+    const commercialInstallerValues = headers
+      .filter(header => header !== "Cancellation Fee")
+      .map(header => getEpcValue("installer", header, "commercial"));
+    
+    const residentialFinanceValues = headers
+      .filter(header => header !== "Cancellation Fee")
+      .map(header => getEpcValue("finance", header, "residential"));
+    
+    const residentialInstallerValues = headers
+      .filter(header => header !== "Cancellation Fee")
+      .map(header => getEpcValue("installer", header, "residential"));
 
     return {
-      headers: ["Stakeholder", "<$500k (%)", "$500k - $2.5M (%)", ">$2.5M (%)", "Max Duration (Years)", "Agreement Duration (Years)"],
+      headers: epcHeaders,
       rows: [
-        ["Finance Company (Commercial)", commercialFinance.lessThan500k, commercialFinance.between500kTo2_5m, commercialFinance.moreThan2_5m, epcAssistedData.maxDuration, epcAssistedData.agreementDuration],
-        ["Installer/EPC (Commercial)", commercialInstaller.lessThan500k, commercialInstaller.between500kTo2_5m, commercialInstaller.moreThan2_5m, epcAssistedData.maxDuration, epcAssistedData.agreementDuration],
-        ["", "", "", "", "", ""],
-        ["Finance Company (Residential)", residentialFinance.lessThan500k, residentialFinance.between500kTo2_5m, residentialFinance.moreThan2_5m, epcAssistedData.maxDuration, epcAssistedData.agreementDuration],
-        ["Installer/EPC (Residential)", residentialInstaller.lessThan500k, residentialInstaller.between500kTo2_5m, residentialInstaller.moreThan2_5m, epcAssistedData.maxDuration, epcAssistedData.agreementDuration],
+        ["Finance Company (Commercial)", ...commercialFinanceValues],
+        ["Installer/EPC (Commercial)", ...commercialInstallerValues],
+        ["", ...Array(epcHeaders.length - 1).fill("")],
+        ["Finance Company (Residential)", ...residentialFinanceValues],
+        ["Installer/EPC (Residential)", ...residentialInstallerValues],
       ],
     };
   };

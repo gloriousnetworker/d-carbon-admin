@@ -1,19 +1,187 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { IoSettingsSharp } from "react-icons/io5";
+import { toast } from "react-hot-toast";
 
-const AccountLevelBasedCommissionStructure = ({ onSetupStructure }) => {
+const AccountLevelBasedCommissionStructure = ({ onSetupStructure, refreshData }) => {
   const [activeSubTab, setActiveSubTab] = useState("sales-agent");
+  const [salesAgentData, setSalesAgentData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [headers, setHeaders] = useState([]);
 
-  const SALES_AGENT_DATA = {
-    headers: ["Referrer Type", "<$500k (%)", "$500k - $2.5M (%)", ">$2.5M (%)", "Annual Cap ($)"],
-    rows: [
-      ["Sales Agent → Commercial", "2.0", "2.5", "3.0", "50,000"],
-      ["Sales Agent → Residential", "1.5", "2.0", "2.5", "25,000"],
-    ],
+  const fetchTiers = async () => {
+    try {
+      const authToken = localStorage.getItem('authToken');
+      const response = await fetch('https://services.dcarbon.solutions/api/commission-tier', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch tiers');
+      }
+
+      const tiers = await response.json();
+      const tierHeaders = [];
+      
+      tiers.sort((a, b) => a.order - b.order);
+      
+      tiers.forEach(tier => {
+        tierHeaders.push(tier.label);
+      });
+      
+      setHeaders(tierHeaders);
+    } catch (error) {
+      console.error('Error fetching tiers:', error);
+      setHeaders(["<$500k", "$500k - $2.5M", ">$2.5M", "Max Duration", "Agreement Duration"]);
+    }
   };
 
-  const renderTable = (data, type) => (
+  const fetchSalesAgentData = async () => {
+    try {
+      const authToken = localStorage.getItem('authToken');
+      const response = await fetch('https://services.dcarbon.solutions/api/commission-structure/sales-agent-account-level', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch sales agent data');
+      }
+
+      const result = await response.json();
+      if (result.status === 'success') {
+        setSalesAgentData(result.data);
+      } else {
+        setSalesAgentData({
+          commercialUnder500k: 2.0,
+          commercial500kTo2_5m: 2.5,
+          commercialOver2_5m: 3.0,
+          commercialAnnualCap: 50000,
+          residentialUnder500k: 1.5,
+          residential500kTo2_5m: 2.0,
+          residentialOver2_5m: 2.5,
+          residentialAnnualCap: 25000
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching sales agent data:', error);
+      setSalesAgentData({
+        commercialUnder500k: 2.0,
+        commercial500kTo2_5m: 2.5,
+        commercialOver2_5m: 3.0,
+        commercialAnnualCap: 50000,
+        residentialUnder500k: 1.5,
+        residential500kTo2_5m: 2.0,
+        residentialOver2_5m: 2.5,
+        residentialAnnualCap: 25000
+      });
+    }
+  };
+
+  const fetchCommissionData = async () => {
+    try {
+      setLoading(true);
+      await fetchSalesAgentData();
+    } catch (error) {
+      console.error('Error fetching commission data:', error);
+      toast.error(`Failed to load commission data: ${error.message}`, {
+        position: 'top-center',
+        duration: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTiers();
+  }, []);
+
+  useEffect(() => {
+    if (headers.length > 0) {
+      fetchCommissionData();
+    }
+  }, [refreshData, headers]);
+
+  const getSalesAgentTableData = () => {
+    const tableHeaders = ["Referrer Type"];
+    
+    const filteredTierHeaders = headers.filter(header => 
+      !["Max Duration", "Agreement Duration", "Cancellation Fee"].includes(header)
+    );
+    
+    tableHeaders.push(...filteredTierHeaders.map(header => 
+      header.includes("k") || header.includes("m") ? `${header} (%)` : header
+    ));
+    
+    tableHeaders.push("Annual Cap ($)");
+
+    const formatValue = (value) => {
+      if (typeof value === 'number') {
+        return value % 1 === 0 ? value.toString() : value.toFixed(1);
+      }
+      return value || "0.0";
+    };
+
+    const getCommercialValue = (tierLabel) => {
+      if (!salesAgentData) return "0.0";
+      
+      switch(tierLabel) {
+        case "<500k":
+        case "<$500k":
+          return formatValue(salesAgentData.commercialUnder500k);
+        case "500k-2.5m":
+        case "$500k - $2.5M":
+          return formatValue(salesAgentData.commercial500kTo2_5m);
+        case ">2.5m":
+        case ">$2.5M":
+          return formatValue(salesAgentData.commercialOver2_5m);
+        default:
+          return "0.0";
+      }
+    };
+
+    const getResidentialValue = (tierLabel) => {
+      if (!salesAgentData) return "0.0";
+      
+      switch(tierLabel) {
+        case "<500k":
+        case "<$500k":
+          return formatValue(salesAgentData.residentialUnder500k);
+        case "500k-2.5m":
+        case "$500k - $2.5M":
+          return formatValue(salesAgentData.residential500kTo2_5m);
+        case ">2.5m":
+        case ">$2.5M":
+          return formatValue(salesAgentData.residentialOver2_5m);
+        default:
+          return "0.0";
+      }
+    };
+
+    const commercialValues = filteredTierHeaders.map(tier => getCommercialValue(tier));
+    const residentialValues = filteredTierHeaders.map(tier => getResidentialValue(tier));
+
+    const commercialAnnualCap = salesAgentData ? `$${salesAgentData.commercialAnnualCap.toLocaleString()}` : "$0";
+    const residentialAnnualCap = salesAgentData ? `$${salesAgentData.residentialAnnualCap.toLocaleString()}` : "$0";
+
+    return {
+      headers: tableHeaders,
+      rows: [
+        ["Sales Agent → Commercial", ...commercialValues, commercialAnnualCap],
+        ["Sales Agent → Residential", ...residentialValues, residentialAnnualCap],
+      ],
+    };
+  };
+
+  const renderTable = (data) => (
     <div className="w-full overflow-auto rounded-lg border border-gray-200 mt-4">
       <table className="w-full">
         <thead>
@@ -51,6 +219,14 @@ const AccountLevelBasedCommissionStructure = ({ onSetupStructure }) => {
     </div>
   );
 
+  if (loading) {
+    return (
+      <div className="w-full flex items-center justify-center py-8">
+        <div className="text-[#039994]">Loading commission data...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full">
       <div className="flex items-center justify-between pb-4">
@@ -68,30 +244,6 @@ const AccountLevelBasedCommissionStructure = ({ onSetupStructure }) => {
 
       <div className="border-b border-gray-200 mb-4">
         <div className="flex">
-          {/* Commercial Tab - Commented Out */}
-          {/* <button
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeSubTab === "commercial"
-                ? "text-[#039994] border-[#039994]"
-                : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
-            }`}
-            onClick={() => setActiveSubTab("commercial")}
-          >
-            Commercial Referrals
-          </button> */}
-          
-          {/* Residential Tab - Commented Out */}
-          {/* <button
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeSubTab === "residential"
-                ? "text-[#039994] border-[#039994]"
-                : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
-            }`}
-            onClick={() => setActiveSubTab("residential")}
-          >
-            Residential Referrals
-          </button> */}
-          
           <button
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeSubTab === "sales-agent"
@@ -105,35 +257,13 @@ const AccountLevelBasedCommissionStructure = ({ onSetupStructure }) => {
         </div>
       </div>
 
-      {/* Commercial Content - Commented Out */}
-      {/* {activeSubTab === "commercial" && (
-        <div>
-          <h3 className="text-[#039994] font-medium mb-2">Commercial Account Referrals</h3>
-          <p className="text-xs text-gray-500 mb-4">
-            Commission structure for commercial users who refer other commercial or residential accounts.
-          </p>
-          {renderTable(COMMERCIAL_DATA, "commercial")}
-        </div>
-      )} */}
-
-      {/* Residential Content - Commented Out */}
-      {/* {activeSubTab === "residential" && (
-        <div>
-          <h3 className="text-[#039994] font-medium mb-2">Residential Account Referrals</h3>
-          <p className="text-xs text-gray-500 mb-4">
-            Commission structure for residential users who refer other commercial or residential accounts.
-          </p>
-          {renderTable(RESIDENTIAL_DATA, "residential")}
-        </div>
-      )} */}
-
       {activeSubTab === "sales-agent" && (
         <div>
           <h3 className="text-[#039994] font-medium mb-2">Sales Agent Referrals</h3>
           <p className="text-xs text-gray-500 mb-4">
             Commission structure for sales agents who refer commercial or residential accounts.
           </p>
-          {renderTable(SALES_AGENT_DATA, "sales-agent")}
+          {renderTable(getSalesAgentTableData())}
         </div>
       )}
 
