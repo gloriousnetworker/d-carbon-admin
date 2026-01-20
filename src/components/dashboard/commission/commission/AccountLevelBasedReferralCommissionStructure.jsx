@@ -7,7 +7,7 @@ const AccountLevelBasedCommissionStructure = ({ onSetupStructure, refreshData })
   const [activeSubTab, setActiveSubTab] = useState("sales-agent");
   const [salesAgentData, setSalesAgentData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [headers, setHeaders] = useState([]);
+  const [tiers, setTiers] = useState([]);
 
   const fetchTiers = async () => {
     try {
@@ -24,19 +24,20 @@ const AccountLevelBasedCommissionStructure = ({ onSetupStructure, refreshData })
         throw new Error('Failed to fetch tiers');
       }
 
-      const tiers = await response.json();
-      const tierHeaders = [];
+      const result = await response.json();
       
-      tiers.sort((a, b) => a.order - b.order);
+      const revenueTiers = result.filter(tier => 
+        !["Max Duration", "Agreement Duration", "Cancellation Fee"].includes(tier.label)
+      ).sort((a, b) => a.order - b.order);
       
-      tiers.forEach(tier => {
-        tierHeaders.push(tier.label);
-      });
-      
-      setHeaders(tierHeaders);
+      setTiers(revenueTiers);
     } catch (error) {
       console.error('Error fetching tiers:', error);
-      setHeaders(["<$500k", "$500k - $2.5M", ">$2.5M", "Max Duration", "Agreement Duration"]);
+      setTiers([
+        { label: "<$500k (%)" },
+        { label: "$500k - $2.5M (%)" },
+        { label: ">$2.5M (%)" }
+      ]);
     }
   };
 
@@ -105,69 +106,66 @@ const AccountLevelBasedCommissionStructure = ({ onSetupStructure, refreshData })
   }, []);
 
   useEffect(() => {
-    if (headers.length > 0) {
+    if (tiers.length > 0) {
       fetchCommissionData();
     }
-  }, [refreshData, headers]);
+  }, [refreshData, tiers]);
 
   const getSalesAgentTableData = () => {
-    const tableHeaders = ["Referrer Type"];
-    
-    const filteredTierHeaders = headers.filter(header => 
-      !["Max Duration", "Agreement Duration", "Cancellation Fee"].includes(header)
-    );
-    
-    tableHeaders.push(...filteredTierHeaders.map(header => 
-      header.includes("k") || header.includes("m") ? `${header} (%)` : header
-    ));
-    
-    tableHeaders.push("Annual Cap ($)");
+    const tableHeaders = ["Referrer Type", ...tiers.map(tier => tier.label.includes("k") || tier.label.includes("m") ? `${tier.label} (%)` : tier.label), "Annual Cap ($)"];
 
-    const formatValue = (value) => {
-      if (typeof value === 'number') {
-        return value % 1 === 0 ? value.toString() : value.toFixed(1);
+    const formatNumber = (num) => {
+      if (typeof num === 'number') {
+        return num % 1 === 0 ? num.toString() : num.toFixed(1);
       }
-      return value || "0.0";
+      return num || "0.0";
     };
 
-    const getCommercialValue = (tierLabel) => {
-      if (!salesAgentData) return "0.0";
+    const getTierValue = (tierLabel, sector) => {
+      if (!salesAgentData || !tierLabel) return "0.0";
       
-      switch(tierLabel) {
-        case "<500k":
-        case "<$500k":
-          return formatValue(salesAgentData.commercialUnder500k);
-        case "500k-2.5m":
-        case "$500k - $2.5M":
-          return formatValue(salesAgentData.commercial500kTo2_5m);
-        case ">2.5m":
-        case ">$2.5M":
-          return formatValue(salesAgentData.commercialOver2_5m);
-        default:
-          return "0.0";
+      const tierKey = tierLabel.toLowerCase()
+        .replace(/[^a-z0-9]/g, '')
+        .replace('500k', '500k')
+        .replace('2_5m', '2_5m')
+        .replace('2.5m', '2_5m')
+        .replace('25m', '2_5m');
+
+      if (sector === 'commercial') {
+        switch(tierKey) {
+          case '500k':
+          case 'lessthan500k':
+            return formatNumber(salesAgentData.commercialUnder500k);
+          case '500kto25m':
+          case '500kto2_5m':
+          case 'between500kto2_5m':
+            return formatNumber(salesAgentData.commercial500kTo2_5m);
+          case 'greaterthan25m':
+          case 'morethan2_5m':
+            return formatNumber(salesAgentData.commercialOver2_5m);
+          default:
+            return "0.0";
+        }
+      } else {
+        switch(tierKey) {
+          case '500k':
+          case 'lessthan500k':
+            return formatNumber(salesAgentData.residentialUnder500k);
+          case '500kto25m':
+          case '500kto2_5m':
+          case 'between500kto2_5m':
+            return formatNumber(salesAgentData.residential500kTo2_5m);
+          case 'greaterthan25m':
+          case 'morethan2_5m':
+            return formatNumber(salesAgentData.residentialOver2_5m);
+          default:
+            return "0.0";
+        }
       }
     };
 
-    const getResidentialValue = (tierLabel) => {
-      if (!salesAgentData) return "0.0";
-      
-      switch(tierLabel) {
-        case "<500k":
-        case "<$500k":
-          return formatValue(salesAgentData.residentialUnder500k);
-        case "500k-2.5m":
-        case "$500k - $2.5M":
-          return formatValue(salesAgentData.residential500kTo2_5m);
-        case ">2.5m":
-        case ">$2.5M":
-          return formatValue(salesAgentData.residentialOver2_5m);
-        default:
-          return "0.0";
-      }
-    };
-
-    const commercialValues = filteredTierHeaders.map(tier => getCommercialValue(tier));
-    const residentialValues = filteredTierHeaders.map(tier => getResidentialValue(tier));
+    const commercialValues = tiers.map(tier => getTierValue(tier.label, 'commercial'));
+    const residentialValues = tiers.map(tier => getTierValue(tier.label, 'residential'));
 
     const commercialAnnualCap = salesAgentData ? `$${salesAgentData.commercialAnnualCap.toLocaleString()}` : "$0";
     const residentialAnnualCap = salesAgentData ? `$${salesAgentData.residentialAnnualCap.toLocaleString()}` : "$0";

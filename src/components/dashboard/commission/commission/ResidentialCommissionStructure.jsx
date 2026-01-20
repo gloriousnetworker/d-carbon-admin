@@ -7,7 +7,7 @@ const ResidentialCommissionStructure = ({ onSetupStructure, refreshData }) => {
   const [tableData, setTableData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [hoveredCell, setHoveredCell] = useState(null);
-  const [headers, setHeaders] = useState([]);
+  const [tiers, setTiers] = useState([]);
 
   const fetchTiers = async () => {
     try {
@@ -24,23 +24,20 @@ const ResidentialCommissionStructure = ({ onSetupStructure, refreshData }) => {
         throw new Error('Failed to fetch tiers');
       }
 
-      const tiers = await response.json();
-      const tierHeaders = ["Party Type"];
+      const result = await response.json();
       
-      tiers.sort((a, b) => a.order - b.order);
+      const revenueTiers = result.filter(tier => 
+        !["Max Duration", "Agreement Duration", "Cancellation Fee"].includes(tier.label)
+      ).sort((a, b) => a.order - b.order);
       
-      tiers.forEach(tier => {
-        tierHeaders.push(tier.label);
-      });
-      
-      setHeaders(tierHeaders);
+      setTiers(revenueTiers);
     } catch (error) {
       console.error('Error fetching tiers:', error);
-      toast.error('Failed to load tier headers', {
-        position: 'top-center',
-        duration: 3000,
-      });
-      setHeaders(["Party Type", "<$500k", "$500k - $2.5M", ">$2.5M", "Max Duration", "Agreement Duration"]);
+      setTiers([
+        { label: "<$500k (%)" },
+        { label: "$500k - $2.5M (%)" },
+        { label: ">$2.5M (%)" }
+      ]);
     }
   };
 
@@ -73,116 +70,188 @@ const ResidentialCommissionStructure = ({ onSetupStructure, refreshData }) => {
           return num || "0";
         };
 
-        const getCellValue = (header) => {
-          switch(header) {
-            case "Party Type":
-              return "";
-            case "<500k":
-            case "<$500k":
-              return (partyType) => {
-                switch(partyType) {
-                  case "residentialWithReferral":
-                    return formatNumber(partnerInstaller.customerShareLessThan500k);
-                  case "installerReferral":
+        const headers = ["Party Type", ...tiers.map(tier => tier.label.includes("k") || tier.label.includes("m") ? `${tier.label} (%)` : tier.label), "Max Duration (Years)", "Agreement Duration (Years)", "Cancellation Fee"];
+        
+        const getTierValue = (tierLabel, type, subtype = null) => {
+          if (!tierLabel) return "0";
+          
+          const tierKey = tierLabel.toLowerCase()
+            .replace(/[^a-z0-9]/g, '')
+            .replace('500k', '500k')
+            .replace('2_5m', '2_5m')
+            .replace('2.5m', '2_5m')
+            .replace('25m', '2_5m');
+
+          switch(type) {
+            case 'customerShare':
+              switch(tierKey) {
+                case '500k':
+                case 'lessthan500k':
+                  return formatNumber(partnerInstaller.customerShareLessThan500k);
+                case '500kto25m':
+                case '500kto2_5m':
+                case 'between500kto2_5m':
+                  return formatNumber(partnerInstaller.customerShareBetween500kTo2_5m);
+                case 'greaterthan25m':
+                case 'morethan2_5m':
+                  return formatNumber(partnerInstaller.customerShareMoreThan2_5m);
+                default:
+                  return "0";
+              }
+            case 'partnerShare':
+              if (subtype === 'installer') {
+                switch(tierKey) {
+                  case '500k':
+                  case 'lessthan500k':
                     return formatNumber(partnerInstaller.partnerShareLessThan500k);
-                  case "financeReferral":
-                    return formatNumber(partnerFinance.partnerShareLessThan500k);
-                  case "dcarbonRemainder":
-                    return `${formatNumber(partnerInstaller.dcarbonRemainderLessThan500k)}:${formatNumber(partnerFinance.dcarbonRemainderLessThan500k)}`;
-                  case "residentialNoReferral":
-                    return formatNumber(direct.lessThan500k);
-                  case "dcarbonRemainderNoReferral":
-                    return formatNumber(direct.dcarbonRemainderLessThan500k);
-                  default:
-                    return "0";
-                }
-              };
-            case "500k-2.5m":
-            case "$500k - $2.5M":
-              return (partyType) => {
-                switch(partyType) {
-                  case "residentialWithReferral":
-                    return formatNumber(partnerInstaller.customerShareBetween500kTo2_5m);
-                  case "installerReferral":
+                  case '500kto25m':
+                  case '500kto2_5m':
+                  case 'between500kto2_5m':
                     return formatNumber(partnerInstaller.partnerShareBetween500kTo2_5m);
-                  case "financeReferral":
-                    return formatNumber(partnerFinance.partnerShareBetween500kTo2_5m);
-                  case "dcarbonRemainder":
-                    return `${formatNumber(partnerInstaller.dcarbonRemainderBetween500kTo2_5m)}:${formatNumber(partnerFinance.dcarbonRemainderBetween500kTo2_5m)}`;
-                  case "residentialNoReferral":
-                    return formatNumber(direct.between500kTo2_5m);
-                  case "dcarbonRemainderNoReferral":
-                    return formatNumber(direct.dcarbonRemainderBetween500kTo2_5m);
-                  default:
-                    return "0";
-                }
-              };
-            case ">2.5m":
-            case ">$2.5M":
-              return (partyType) => {
-                switch(partyType) {
-                  case "residentialWithReferral":
-                    return formatNumber(partnerInstaller.customerShareMoreThan2_5m);
-                  case "installerReferral":
+                  case 'greaterthan25m':
+                  case 'morethan2_5m':
                     return formatNumber(partnerInstaller.partnerShareMoreThan2_5m);
-                  case "financeReferral":
-                    return formatNumber(partnerFinance.partnerShareMoreThan2_5m);
-                  case "dcarbonRemainder":
-                    return `${formatNumber(partnerInstaller.dcarbonRemainderMoreThan2_5m)}:${formatNumber(partnerFinance.dcarbonRemainderMoreThan2_5m)}`;
-                  case "residentialNoReferral":
-                    return formatNumber(direct.moreThan2_5m);
-                  case "dcarbonRemainderNoReferral":
-                    return formatNumber(direct.dcarbonRemainderMoreThan2_5m);
                   default:
                     return "0";
                 }
-              };
-            case "Max Duration":
-              return (partyType) => {
-                if (partyType === "separator") return "";
-                return formatNumber(terms.maxDuration);
-              };
-            case "Agreement Duration":
-              return (partyType) => {
-                if (partyType === "separator") return "";
-                return formatNumber(terms.agreementDuration);
-              };
-            case "Cancellation Fee":
-              return (partyType) => {
-                if (partyType === "residentialWithReferral" || partyType === "residentialNoReferral") {
-                  return `$${formatNumber(terms.cancellationFee)}`;
+              } else if (subtype === 'finance') {
+                switch(tierKey) {
+                  case '500k':
+                  case 'lessthan500k':
+                    return formatNumber(partnerFinance.partnerShareLessThan500k);
+                  case '500kto25m':
+                  case '500kto2_5m':
+                  case 'between500kto2_5m':
+                    return formatNumber(partnerFinance.partnerShareBetween500kTo2_5m);
+                  case 'greaterthan25m':
+                  case 'morethan2_5m':
+                    return formatNumber(partnerFinance.partnerShareMoreThan2_5m);
+                  default:
+                    return "0";
                 }
-                if (partyType === "separator") return "";
-                return "—";
-              };
+              }
+              return "0";
+            case 'dcarbonRemainder':
+              if (subtype === 'installer') {
+                switch(tierKey) {
+                  case '500k':
+                  case 'lessthan500k':
+                    return formatNumber(partnerInstaller.dcarbonRemainderLessThan500k);
+                  case '500kto25m':
+                  case '500kto2_5m':
+                  case 'between500kto2_5m':
+                    return formatNumber(partnerInstaller.dcarbonRemainderBetween500kTo2_5m);
+                  case 'greaterthan25m':
+                  case 'morethan2_5m':
+                    return formatNumber(partnerInstaller.dcarbonRemainderMoreThan2_5m);
+                  default:
+                    return "0";
+                }
+              } else if (subtype === 'finance') {
+                switch(tierKey) {
+                  case '500k':
+                  case 'lessthan500k':
+                    return formatNumber(partnerFinance.dcarbonRemainderLessThan500k);
+                  case '500kto25m':
+                  case '500kto2_5m':
+                  case 'between500kto2_5m':
+                    return formatNumber(partnerFinance.dcarbonRemainderBetween500kTo2_5m);
+                  case 'greaterthan25m':
+                  case 'morethan2_5m':
+                    return formatNumber(partnerFinance.dcarbonRemainderMoreThan2_5m);
+                  default:
+                    return "0";
+                }
+              }
+              return "0";
+            case 'directShare':
+              switch(tierKey) {
+                case '500k':
+                case 'lessthan500k':
+                  return formatNumber(direct.lessThan500k);
+                case '500kto25m':
+                case '500kto2_5m':
+                case 'between500kto2_5m':
+                  return formatNumber(direct.between500kTo2_5m);
+                case 'greaterthan25m':
+                case 'morethan2_5m':
+                  return formatNumber(direct.moreThan2_5m);
+                default:
+                  return "0";
+              }
+            case 'directRemainder':
+              switch(tierKey) {
+                case '500k':
+                case 'lessthan500k':
+                  return formatNumber(direct.dcarbonRemainderLessThan500k);
+                case '500kto25m':
+                case '500kto2_5m':
+                case 'between500kto2_5m':
+                  return formatNumber(direct.dcarbonRemainderBetween500kTo2_5m);
+                case 'greaterthan25m':
+                case 'morethan2_5m':
+                  return formatNumber(direct.dcarbonRemainderMoreThan2_5m);
+                default:
+                  return "0";
+              }
             default:
-              return () => "";
+              return "0";
           }
         };
 
-        const partyTypes = [
-          { type: "residentialWithReferral", label: "Residential Facility Share with Partner Referral" },
-          { type: "installerReferral", label: "When referred by Installer/EPC" },
-          { type: "financeReferral", label: "When referred by Finance Company" },
-          { type: "dcarbonRemainder", label: "DCarbon Remainder" },
-          { type: "separator", label: "" },
-          { type: "residentialNoReferral", label: "Residential Facility Share (No Referral)" },
-          { type: "dcarbonRemainderNoReferral", label: "DCarbon Remainder (No Referral)" },
-        ];
+        const tierValues = tiers.map(tier => getTierValue(tier.label, 'customerShare'));
+        const installerPartnerValues = tiers.map(tier => getTierValue(tier.label, 'partnerShare', 'installer'));
+        const financePartnerValues = tiers.map(tier => getTierValue(tier.label, 'partnerShare', 'finance'));
+        const installerRemainderValues = tiers.map(tier => getTierValue(tier.label, 'dcarbonRemainder', 'installer'));
+        const financeRemainderValues = tiers.map(tier => getTierValue(tier.label, 'dcarbonRemainder', 'finance'));
+        const directShareValues = tiers.map(tier => getTierValue(tier.label, 'directShare'));
+        const directRemainderValues = tiers.map(tier => getTierValue(tier.label, 'directRemainder'));
 
-        const rows = partyTypes.map(party => {
-          const row = [party.label];
-          for (let i = 1; i < headers.length; i++) {
-            const header = headers[i];
-            const valueGetter = getCellValue(header);
-            if (typeof valueGetter === 'function') {
-              row.push(valueGetter(party.type));
-            } else {
-              row.push("");
-            }
-          }
-          return row;
-        });
+        const rows = [
+          [
+            "Residential Facility Share with Partner Referral", 
+            ...tierValues,
+            formatNumber(terms.maxDuration), 
+            formatNumber(terms.agreementDuration), 
+            `$${formatNumber(terms.cancellationFee)}`
+          ],
+          [
+            "When referred by Installer/EPC", 
+            ...installerPartnerValues,
+            formatNumber(terms.maxDuration), 
+            formatNumber(terms.agreementDuration), 
+            "—"
+          ],
+          [
+            "When referred by Finance Company", 
+            ...financePartnerValues,
+            formatNumber(terms.maxDuration), 
+            formatNumber(terms.agreementDuration), 
+            "—"
+          ],
+          [
+            "DCarbon Remainder", 
+            ...installerRemainderValues.map((val, idx) => `${val}:${financeRemainderValues[idx]}`),
+            formatNumber(terms.maxDuration), 
+            formatNumber(terms.agreementDuration), 
+            "—"
+          ],
+          ["", ...Array(tiers.length + 3).fill("")],
+          [
+            "Residential Facility Share (No Referral)", 
+            ...directShareValues,
+            formatNumber(terms.maxDuration), 
+            formatNumber(terms.agreementDuration), 
+            `$${formatNumber(terms.cancellationFee)}`
+          ],
+          [
+            "DCarbon Remainder (No Referral)", 
+            ...directRemainderValues,
+            formatNumber(terms.maxDuration), 
+            formatNumber(terms.agreementDuration), 
+            "—"
+          ],
+        ];
 
         setTableData({ headers, rows });
       } else {
@@ -195,17 +264,18 @@ const ResidentialCommissionStructure = ({ onSetupStructure, refreshData }) => {
         duration: 3000,
       });
       
-      const defaultRows = [
-        ["Residential Facility Share with Partner Referral", "0", "0", "0", "0", "0"],
-        ["When referred by Installer/EPC", "0", "0", "0", "0", "0"],
-        ["When referred by Finance Company", "0", "0", "0", "0", "0"],
-        ["DCarbon Remainder", "0:0", "0:0", "0:0", "0", "0"],
-        ["", "", "", "", "", ""],
-        ["Residential Facility Share (No Referral)", "0", "0", "0", "0", "0"],
-        ["DCarbon Remainder (No Referral)", "0", "0", "0", "0", "0"],
-      ].map(row => row.slice(0, headers.length));
+      const defaultHeaders = ["Party Type", ...tiers.map(tier => tier.label.includes("k") || tier.label.includes("m") ? `${tier.label} (%)` : tier.label), "Max Duration (Years)", "Agreement Duration (Years)", "Cancellation Fee"];
       
-      setTableData({ headers, rows: defaultRows });
+      const defaultRows = [
+        ["Residential Facility Share with Partner Referral", ...Array(tiers.length).fill("0"), "0", "0", "$0"],
+        ["When referred by Installer/EPC", ...Array(tiers.length).fill("0"), "0", "0", "—"],
+        ["When referred by Finance Company", ...Array(tiers.length).fill("0"), "0", "0", "—"],
+        ["DCarbon Remainder", ...Array(tiers.length).fill("0:0"), "0", "0", "—"],
+        ["", ...Array(tiers.length + 3).fill("")],
+        ["Residential Facility Share (No Referral)", ...Array(tiers.length).fill("0"), "0", "0", "$0"],
+        ["DCarbon Remainder (No Referral)", ...Array(tiers.length).fill("0"), "0", "0", "—"],
+      ];
+      setTableData({ headers: defaultHeaders, rows: defaultRows });
     } finally {
       setLoading(false);
     }
@@ -216,10 +286,10 @@ const ResidentialCommissionStructure = ({ onSetupStructure, refreshData }) => {
   }, []);
 
   useEffect(() => {
-    if (headers.length > 1) {
+    if (tiers.length > 0) {
       fetchCommissionData();
     }
-  }, [refreshData, headers]);
+  }, [refreshData, tiers]);
 
   if (loading) {
     return (
@@ -237,7 +307,7 @@ const ResidentialCommissionStructure = ({ onSetupStructure, refreshData }) => {
     );
   }
 
-  const { rows } = tableData;
+  const { headers, rows } = tableData;
 
   return (
     <div className="w-full relative">

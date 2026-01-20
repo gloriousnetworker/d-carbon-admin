@@ -10,7 +10,7 @@ const PartnerCommissionStructure = ({ onSetupStructure, refreshData }) => {
   const [commercialData, setCommercialData] = useState(null);
   const [residentialData, setResidentialData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [headers, setHeaders] = useState([]);
+  const [tiers, setTiers] = useState([]);
 
   const fetchTiers = async () => {
     try {
@@ -27,19 +27,20 @@ const PartnerCommissionStructure = ({ onSetupStructure, refreshData }) => {
         throw new Error('Failed to fetch tiers');
       }
 
-      const tiers = await response.json();
-      const tierHeaders = [];
+      const result = await response.json();
       
-      tiers.sort((a, b) => a.order - b.order);
+      const revenueTiers = result.filter(tier => 
+        !["Max Duration", "Agreement Duration", "Cancellation Fee"].includes(tier.label)
+      ).sort((a, b) => a.order - b.order);
       
-      tiers.forEach(tier => {
-        tierHeaders.push(tier.label);
-      });
-      
-      setHeaders(tierHeaders);
+      setTiers(revenueTiers);
     } catch (error) {
       console.error('Error fetching tiers:', error);
-      setHeaders(["<$500k", "$500k - $2.5M", ">$2.5M", "Max Duration", "Agreement Duration"]);
+      setTiers([
+        { label: "<$500k (%)" },
+        { label: "$500k - $2.5M (%)" },
+        { label: ">$2.5M (%)" }
+      ]);
     }
   };
 
@@ -164,95 +165,98 @@ const PartnerCommissionStructure = ({ onSetupStructure, refreshData }) => {
   }, []);
 
   useEffect(() => {
-    if (headers.length > 0) {
+    if (tiers.length > 0) {
       fetchCommissionData();
     }
-  }, [refreshData, headers]);
+  }, [refreshData, tiers]);
 
   const getSalesAgentTableData = () => {
-    const salesAgentHeaders = ["Relationship Type"];
-    
-    const filteredTierHeaders = headers.filter(header => 
-      !["Max Duration", "Agreement Duration", "Cancellation Fee"].includes(header)
-    );
-    
-    salesAgentHeaders.push(...filteredTierHeaders.map(header => 
-      header.includes("k") || header.includes("m") ? `${header} (%)` : header
-    ));
-    
-    salesAgentHeaders.push("Annual Cap");
+    const salesAgentHeaders = ["Relationship Type", ...tiers.map(tier => tier.label.includes("k") || tier.label.includes("m") ? `${tier.label} (%)` : tier.label), "Annual Cap"];
 
     if (!salesAgentData) {
-      const defaultRows = filteredTierHeaders.length === 3 ? [
-        ["Sales Agent → Sales Agent", "0.0", "0.0", "0.0", "$0"],
-        ["Sales Agent → Installer/EPC", "0.0", "0.0", "0.0", "$0"],
-        ["Sales Agent → Finance Company", "0.0", "0.0", "0.0", "$0"],
-      ] : filteredTierHeaders.map(() => "0.0");
+      const defaultRows = [
+        ["Sales Agent → Sales Agent", ...Array(tiers.length).fill("0.0"), "$0"],
+        ["Sales Agent → Installer/EPC", ...Array(tiers.length).fill("0.0"), "$0"],
+        ["Sales Agent → Finance Company", ...Array(tiers.length).fill("0.0"), "$0"],
+      ];
 
       return {
         headers: salesAgentHeaders,
-        rows: defaultRows
+        rows: defaultRows,
       };
     }
 
-    const formatValue = (value) => {
-      if (typeof value === 'number') {
-        return value % 1 === 0 ? value.toString() : value.toFixed(1);
+    const formatNumber = (num) => {
+      if (typeof num === 'number') {
+        return num % 1 === 0 ? num.toString() : num.toFixed(1);
       }
-      return value || "0.0";
+      return num || "0.0";
     };
 
-    const getSalesAgentValue = (tierLabel) => {
-      switch(tierLabel) {
-        case "<500k":
-        case "<$500k":
-          return formatValue(salesAgentData.salesAgentUnder500k);
-        case "500k-2.5m":
-        case "$500k - $2.5M":
-          return formatValue(salesAgentData.salesAgent500kTo2_5m);
-        case ">2.5m":
-        case ">$2.5M":
-          return formatValue(salesAgentData.salesAgentOver2_5m);
+    const getTierValue = (tierLabel, dataType) => {
+      if (!tierLabel) return "0.0";
+      
+      const tierKey = tierLabel.toLowerCase()
+        .replace(/[^a-z0-9]/g, '')
+        .replace('500k', '500k')
+        .replace('2_5m', '2_5m')
+        .replace('2.5m', '2_5m')
+        .replace('25m', '2_5m');
+
+      switch(dataType) {
+        case 'salesAgent':
+          switch(tierKey) {
+            case '500k':
+            case 'lessthan500k':
+              return formatNumber(salesAgentData.salesAgentUnder500k);
+            case '500kto25m':
+            case '500kto2_5m':
+            case 'between500kto2_5m':
+              return formatNumber(salesAgentData.salesAgent500kTo2_5m);
+            case 'greaterthan25m':
+            case 'morethan2_5m':
+              return formatNumber(salesAgentData.salesAgentOver2_5m);
+            default:
+              return "0.0";
+          }
+        case 'installer':
+          switch(tierKey) {
+            case '500k':
+            case 'lessthan500k':
+              return formatNumber(salesAgentData.installerUnder500k);
+            case '500kto25m':
+            case '500kto2_5m':
+            case 'between500kto2_5m':
+              return formatNumber(salesAgentData.installer500kTo2_5m);
+            case 'greaterthan25m':
+            case 'morethan2_5m':
+              return formatNumber(salesAgentData.installerOver2_5m);
+            default:
+              return "0.0";
+          }
+        case 'finance':
+          switch(tierKey) {
+            case '500k':
+            case 'lessthan500k':
+              return formatNumber(salesAgentData.financeUnder500k);
+            case '500kto25m':
+            case '500kto2_5m':
+            case 'between500kto2_5m':
+              return formatNumber(salesAgentData.finance500kTo2_5m);
+            case 'greaterthan25m':
+            case 'morethan2_5m':
+              return formatNumber(salesAgentData.financeOver2_5m);
+            default:
+              return "0.0";
+          }
         default:
           return "0.0";
       }
     };
 
-    const getInstallerValue = (tierLabel) => {
-      switch(tierLabel) {
-        case "<500k":
-        case "<$500k":
-          return formatValue(salesAgentData.installerUnder500k);
-        case "500k-2.5m":
-        case "$500k - $2.5M":
-          return formatValue(salesAgentData.installer500kTo2_5m);
-        case ">2.5m":
-        case ">$2.5M":
-          return formatValue(salesAgentData.installerOver2_5m);
-        default:
-          return "0.0";
-      }
-    };
-
-    const getFinanceValue = (tierLabel) => {
-      switch(tierLabel) {
-        case "<500k":
-        case "<$500k":
-          return formatValue(salesAgentData.financeUnder500k);
-        case "500k-2.5m":
-        case "$500k - $2.5M":
-          return formatValue(salesAgentData.finance500kTo2_5m);
-        case ">2.5m":
-        case ">$2.5M":
-          return formatValue(salesAgentData.financeOver2_5m);
-        default:
-          return "0.0";
-      }
-    };
-
-    const salesAgentValues = filteredTierHeaders.map(tier => getSalesAgentValue(tier));
-    const installerValues = filteredTierHeaders.map(tier => getInstallerValue(tier));
-    const financeValues = filteredTierHeaders.map(tier => getFinanceValue(tier));
+    const salesAgentValues = tiers.map(tier => getTierValue(tier.label, 'salesAgent'));
+    const installerValues = tiers.map(tier => getTierValue(tier.label, 'installer'));
+    const financeValues = tiers.map(tier => getTierValue(tier.label, 'finance'));
 
     return {
       headers: salesAgentHeaders,
@@ -265,109 +269,120 @@ const PartnerCommissionStructure = ({ onSetupStructure, refreshData }) => {
   };
 
   const getEpcAssistedTableData = () => {
-    const epcHeaders = ["Stakeholder"];
-    
-    headers.forEach(header => {
-      if (header !== "Cancellation Fee") {
-        epcHeaders.push(header.includes("k") || header.includes("m") ? `${header} (%)` : header);
-      }
-    });
+    const epcHeaders = ["Stakeholder", ...tiers.map(tier => tier.label.includes("k") || tier.label.includes("m") ? `${tier.label} (%)` : tier.label), "Max Duration (Years)", "Agreement Duration (Years)"];
 
     if (!epcAssistedData || !commercialData || !residentialData) {
-      const rowLength = epcHeaders.length;
-      const emptyRow = Array(rowLength - 1).fill("0.0");
-      
+      const defaultRows = [
+        ["Finance Company (Commercial)", ...Array(tiers.length).fill("0.0"), "0", "0"],
+        ["Installer/EPC (Commercial)", ...Array(tiers.length).fill("0.0"), "0", "0"],
+        ["", ...Array(tiers.length + 2).fill("")],
+        ["Finance Company (Residential)", ...Array(tiers.length).fill("0.0"), "0", "0"],
+        ["Installer/EPC (Residential)", ...Array(tiers.length).fill("0.0"), "0", "0"],
+      ];
+
       return {
         headers: epcHeaders,
-        rows: [
-          ["Finance Company (Commercial)", ...emptyRow],
-          ["Installer/EPC (Commercial)", ...emptyRow],
-          ["", ...Array(rowLength - 1).fill("")],
-          ["Finance Company (Residential)", ...emptyRow],
-          ["Installer/EPC (Residential)", ...emptyRow],
-        ],
+        rows: defaultRows,
       };
     }
 
-    const getEpcValue = (type, header, sector = "commercial") => {
-      const formatNumber = (num) => {
-        if (typeof num === 'number') {
-          return num % 1 === 0 ? num.toString() : num.toFixed(1);
-        }
-        return num || "0.0";
-      };
-
-      if (header === "Max Duration") {
-        return formatNumber(epcAssistedData.maxDuration);
+    const formatNumber = (num) => {
+      if (typeof num === 'number') {
+        return num % 1 === 0 ? num.toString() : num.toFixed(1);
       }
-      
-      if (header === "Agreement Duration") {
-        return formatNumber(epcAssistedData.agreementDuration);
-      }
-
-      if (header === "Cancellation Fee") {
-        return "—";
-      }
-
-      if (header.includes("500k") || header.includes("k") || header.includes("m")) {
-        const baseValue = sector === "commercial" 
-          ? commercialData[type === "finance" ? "partnerFinance" : "partnerInstaller"]
-          : residentialData[type === "finance" ? "partnerFinance" : "partnerInstaller"];
-
-        let commissionValue;
-        switch(header) {
-          case "<500k":
-          case "<$500k":
-            commissionValue = baseValue[`partnerShareLessThan500k`];
-            break;
-          case "500k-2.5m":
-          case "$500k - $2.5M":
-            commissionValue = baseValue[`partnerShareBetween500kTo2_5m`];
-            break;
-          case ">2.5m":
-          case ">$2.5M":
-            commissionValue = baseValue[`partnerShareMoreThan2_5m`];
-            break;
-          default:
-            commissionValue = 0;
-        }
-
-        const epcValue = type === "finance" 
-          ? epcAssistedData[`${sector === "residential" ? "residential" : ""}financeShare${header.replace(/[^a-zA-Z0-9]/g, '')}`] || 
-            commissionValue * (type === "finance" ? 0.6 : 0.4)
-          : epcAssistedData[`${sector === "residential" ? "residential" : ""}installerShare${header.replace(/[^a-zA-Z0-9]/g, '')}`] || 
-            commissionValue * (type === "finance" ? 0.6 : 0.4);
-
-        return formatNumber(epcValue);
-      }
-
-      return "0.0";
+      return num || "0.0";
     };
 
-    const commercialFinanceValues = headers
-      .filter(header => header !== "Cancellation Fee")
-      .map(header => getEpcValue("finance", header, "commercial"));
-    
-    const commercialInstallerValues = headers
-      .filter(header => header !== "Cancellation Fee")
-      .map(header => getEpcValue("installer", header, "commercial"));
-    
-    const residentialFinanceValues = headers
-      .filter(header => header !== "Cancellation Fee")
-      .map(header => getEpcValue("finance", header, "residential"));
-    
-    const residentialInstallerValues = headers
-      .filter(header => header !== "Cancellation Fee")
-      .map(header => getEpcValue("installer", header, "residential"));
+    const getEpcTierValue = (tierLabel, stakeholder, sector = "commercial") => {
+      if (!tierLabel) return "0.0";
+      
+      const tierKey = tierLabel.toLowerCase()
+        .replace(/[^a-z0-9]/g, '')
+        .replace('500k', '500k')
+        .replace('2_5m', '2_5m')
+        .replace('2.5m', '2_5m')
+        .replace('25m', '2_5m');
+
+      if (stakeholder === 'finance') {
+        if (sector === 'commercial') {
+          switch(tierKey) {
+            case '500k':
+            case 'lessthan500k':
+              return formatNumber(epcAssistedData.financeShareLessThan500k || 0);
+            case '500kto25m':
+            case '500kto2_5m':
+            case 'between500kto2_5m':
+              return formatNumber(epcAssistedData.financeShare500kTo2_5m || 0);
+            case 'greaterthan25m':
+            case 'morethan2_5m':
+              return formatNumber(epcAssistedData.financeShareMoreThan2_5m || 0);
+            default:
+              return "0.0";
+          }
+        } else {
+          switch(tierKey) {
+            case '500k':
+            case 'lessthan500k':
+              return formatNumber(epcAssistedData.residentialFinanceShareLessThan500k || 0);
+            case '500kto25m':
+            case '500kto2_5m':
+            case 'between500kto2_5m':
+              return formatNumber(epcAssistedData.residentialFinanceShare500kTo2_5m || 0);
+            case 'greaterthan25m':
+            case 'morethan2_5m':
+              return formatNumber(epcAssistedData.residentialFinanceShareMoreThan2_5m || 0);
+            default:
+              return "0.0";
+          }
+        }
+      } else {
+        if (sector === 'commercial') {
+          switch(tierKey) {
+            case '500k':
+            case 'lessthan500k':
+              return formatNumber(epcAssistedData.installerShareLessThan500k || 0);
+            case '500kto25m':
+            case '500kto2_5m':
+            case 'between500kto2_5m':
+              return formatNumber(epcAssistedData.installerShare500kTo2_5m || 0);
+            case 'greaterthan25m':
+            case 'morethan2_5m':
+              return formatNumber(epcAssistedData.installerShareMoreThan2_5m || 0);
+            default:
+              return "0.0";
+          }
+        } else {
+          switch(tierKey) {
+            case '500k':
+            case 'lessthan500k':
+              return formatNumber(epcAssistedData.residentialInstallerShareLessThan500k || 0);
+            case '500kto25m':
+            case '500kto2_5m':
+            case 'between500kto2_5m':
+              return formatNumber(epcAssistedData.residentialInstallerShare500kTo2_5m || 0);
+            case 'greaterthan25m':
+            case 'morethan2_5m':
+              return formatNumber(epcAssistedData.residentialInstallerShareMoreThan2_5m || 0);
+            default:
+              return "0.0";
+          }
+        }
+      }
+    };
+
+    const commercialFinanceValues = tiers.map(tier => getEpcTierValue(tier.label, 'finance', 'commercial'));
+    const commercialInstallerValues = tiers.map(tier => getEpcTierValue(tier.label, 'installer', 'commercial'));
+    const residentialFinanceValues = tiers.map(tier => getEpcTierValue(tier.label, 'finance', 'residential'));
+    const residentialInstallerValues = tiers.map(tier => getEpcTierValue(tier.label, 'installer', 'residential'));
 
     return {
       headers: epcHeaders,
       rows: [
-        ["Finance Company (Commercial)", ...commercialFinanceValues],
-        ["Installer/EPC (Commercial)", ...commercialInstallerValues],
-        ["", ...Array(epcHeaders.length - 1).fill("")],
-        ["Finance Company (Residential)", ...residentialFinanceValues],
-        ["Installer/EPC (Residential)", ...residentialInstallerValues],
+        ["Finance Company (Commercial)", ...commercialFinanceValues, formatNumber(epcAssistedData.maxDuration), formatNumber(epcAssistedData.agreementDuration)],
+        ["Installer/EPC (Commercial)", ...commercialInstallerValues, formatNumber(epcAssistedData.maxDuration), formatNumber(epcAssistedData.agreementDuration)],
+        ["", ...Array(tiers.length + 2).fill("")],
+        ["Finance Company (Residential)", ...residentialFinanceValues, formatNumber(epcAssistedData.maxDuration), formatNumber(epcAssistedData.agreementDuration)],
+        ["Installer/EPC (Residential)", ...residentialInstallerValues, formatNumber(epcAssistedData.maxDuration), formatNumber(epcAssistedData.agreementDuration)],
       ],
     };
   };
