@@ -46,6 +46,8 @@ const CommissionSetupModal = ({
     }
   }, [editingCommission]);
 
+  const isDirectCustomerMode = formData.mode === "DIRECT_CUSTOMER";
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -67,9 +69,9 @@ const CommissionSetupModal = ({
       const payload = {
         ...formData,
         customerShare: formData.customerShare ? parseFloat(formData.customerShare) : null,
-        installerShare: formData.installerShare ? parseFloat(formData.installerShare) : null,
-        salesAgentShare: formData.salesAgentShare ? parseFloat(formData.salesAgentShare) : null,
-        financeShare: formData.financeShare ? parseFloat(formData.financeShare) : null,
+        installerShare: isDirectCustomerMode ? null : (formData.installerShare ? parseFloat(formData.installerShare) : null),
+        salesAgentShare: isDirectCustomerMode ? null : (formData.salesAgentShare ? parseFloat(formData.salesAgentShare) : null),
+        financeShare: isDirectCustomerMode ? null : (formData.financeShare ? parseFloat(formData.financeShare) : null),
         maxDuration: formData.maxDuration ? parseInt(formData.maxDuration) : null,
         agreementYrs: formData.agreementYrs ? parseInt(formData.agreementYrs) : null,
         cancellationFee: formData.cancellationFee ? parseFloat(formData.cancellationFee) : null,
@@ -116,6 +118,94 @@ const CommissionSetupModal = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  const renderShareFields = () => {
+    if (isDirectCustomerMode) {
+      return (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Customer Share (%)
+          </label>
+          <input
+            type="number"
+            name="customerShare"
+            value={formData.customerShare}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            step="0.1"
+            min="0"
+            max="100"
+            required
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Customer Share (%)
+          </label>
+          <input
+            type="number"
+            name="customerShare"
+            value={formData.customerShare}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            step="0.1"
+            min="0"
+            max="100"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Installer Share (%)
+          </label>
+          <input
+            type="number"
+            name="installerShare"
+            value={formData.installerShare}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            step="0.1"
+            min="0"
+            max="100"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Sales Agent Share (%)
+          </label>
+          <input
+            type="number"
+            name="salesAgentShare"
+            value={formData.salesAgentShare}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            step="0.1"
+            min="0"
+            max="100"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Finance Share (%)
+          </label>
+          <input
+            type="number"
+            name="financeShare"
+            value={formData.financeShare}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            step="0.1"
+            min="0"
+            max="100"
+          />
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -188,67 +278,16 @@ const CommissionSetupModal = ({
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Customer Share (%)
-                  </label>
-                  <input
-                    type="number"
-                    name="customerShare"
-                    value={formData.customerShare}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    step="0.1"
-                    min="0"
-                    max="100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Installer Share (%)
-                  </label>
-                  <input
-                    type="number"
-                    name="installerShare"
-                    value={formData.installerShare}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    step="0.1"
-                    min="0"
-                    max="100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Sales Agent Share (%)
-                  </label>
-                  <input
-                    type="number"
-                    name="salesAgentShare"
-                    value={formData.salesAgentShare}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    step="0.1"
-                    min="0"
-                    max="100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Finance Share (%)
-                  </label>
-                  <input
-                    type="number"
-                    name="financeShare"
-                    value={formData.financeShare}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    step="0.1"
-                    min="0"
-                    max="100"
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Share Distribution {isDirectCustomerMode && "(Direct Customer)"}
+                </label>
+                {renderShareFields()}
+                {isDirectCustomerMode && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    For Direct Customer mode, only Customer Share is applicable.
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-3 gap-4">
