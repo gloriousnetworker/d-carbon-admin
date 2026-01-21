@@ -23,9 +23,6 @@ const CommissionTable = ({ data, tiers, onEdit, onDelete }) => {
         propertyType: item.propertyType,
         mode: item.mode,
         tiers: {},
-        maxDuration: item.maxDuration,
-        agreementYrs: item.agreementYrs,
-        cancellationFee: item.cancellationFee,
         items: []
       };
     }
@@ -34,6 +31,9 @@ const CommissionTable = ({ data, tiers, onEdit, onDelete }) => {
       installerShare: item.installerShare,
       salesAgentShare: item.salesAgentShare,
       financeShare: item.financeShare,
+      maxDuration: item.maxDuration,
+      agreementYrs: item.agreementYrs,
+      cancellationFee: item.cancellationFee,
       itemId: item.id
     };
     acc[key].items.push(item);
@@ -102,35 +102,32 @@ const CommissionTable = ({ data, tiers, onEdit, onDelete }) => {
                 );
               })}
               <td className="px-3 py-4 text-sm text-gray-900 whitespace-nowrap">
-                {group.maxDuration ? `${group.maxDuration} yrs` : '-'}
+                {group.items[0]?.maxDuration ? `${group.items[0].maxDuration} yrs` : '-'}
               </td>
               <td className="px-3 py-4 text-sm text-gray-900 whitespace-nowrap">
-                {group.agreementYrs ? `${group.agreementYrs} yrs` : '-'}
+                {group.items[0]?.agreementYrs ? `${group.items[0].agreementYrs} yrs` : '-'}
               </td>
               <td className="px-3 py-4 text-sm text-gray-900 whitespace-nowrap">
-                {group.cancellationFee ? `$${group.cancellationFee}` : '-'}
+                {group.items[0]?.cancellationFee ? `$${group.items[0].cancellationFee}` : '-'}
               </td>
               <td className="px-3 py-4 text-sm whitespace-nowrap">
-                <button
-                  onClick={() => onEdit(group.items[0])}
-                  className="text-[#039994] hover:text-[#028884] mr-3"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => {
-                    if (group.items.length === 1) {
-                      onDelete(group.items[0].id);
-                    } else {
-                      if (window.confirm(`Delete all ${group.items.length} commission structures for this mode?`)) {
-                        group.items.forEach(item => onDelete(item.id));
-                      }
-                    }
-                  }}
-                  className="text-red-600 hover:text-red-800"
-                >
-                  Delete
-                </button>
+                {group.items.map((item, itemIndex) => (
+                  <div key={item.id} className="mb-1 last:mb-0">
+                    <span className="text-xs text-gray-500 mr-2">Tier {sortedTiers.find(t => t.id === item.tierId)?.order || itemIndex + 1}:</span>
+                    <button
+                      onClick={() => onEdit(item)}
+                      className="text-[#039994] hover:text-[#028884] mr-2 text-xs"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => onDelete(item.id)}
+                      className="text-red-600 hover:text-red-800 text-xs"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ))}
               </td>
             </tr>
           ))}

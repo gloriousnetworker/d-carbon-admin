@@ -208,13 +208,19 @@ const CommissionSetupModal = ({
     );
   };
 
+  const getCurrentTierLabel = () => {
+    if (!formData.tierId) return "";
+    const tier = tiers.find(t => t.id === formData.tierId);
+    return tier ? `Tier ${tier.order}: ${tier.label}` : "";
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-lg font-semibold">
-              {editingCommission ? "Edit Commission Structure" : "Create Commission Structure"}
+              {editingCommission ? `Edit Commission Structure ${getCurrentTierLabel()}` : "Create Commission Structure"}
             </h2>
             <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
               ✕
@@ -232,7 +238,7 @@ const CommissionSetupModal = ({
                   value={formData.propertyType}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  disabled={editingCommission}
+                  disabled={!!editingCommission}
                 >
                   <option value="COMMERCIAL">COMMERCIAL</option>
                   <option value="RESIDENTIAL">RESIDENTIAL</option>
@@ -248,7 +254,7 @@ const CommissionSetupModal = ({
                   value={formData.mode}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  disabled={editingCommission}
+                  disabled={!!editingCommission}
                 >
                   {modes.map((modeOption) => (
                     <option key={modeOption} value={modeOption}>
@@ -268,6 +274,7 @@ const CommissionSetupModal = ({
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   required
+                  disabled={!!editingCommission}
                 >
                   <option value="">Select a tier</option>
                   {tiers.map((tier) => (
