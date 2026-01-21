@@ -8,17 +8,24 @@ import BonusCommissionSetup from "./setupModals/BonusCommissionSetup";
 
 const CommissionStructure = () => {
   const [activeTab, setActiveTab] = useState("COMMISSION");
-  const [activeProperty, setActiveProperty] = useState("COMMERCIAL");
+  const [activePropertyTab, setActivePropertyTab] = useState("COMMERCIAL");
   const [activeMode, setActiveMode] = useState("DIRECT_CUSTOMER");
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [showTiersModal, setShowTiersModal] = useState(false);
   const [showBonusSetup, setShowBonusSetup] = useState(false);
   const [tiers, setTiers] = useState([]);
   const [modes, setModes] = useState([]);
+  const [accountModes, setAccountModes] = useState([]);
   const [commissionData, setCommissionData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editingCommission, setEditingCommission] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const propertyTypes = {
+    COMMERCIAL: ["COMMERCIAL"],
+    RESIDENTIAL: ["RESIDENTIAL"],
+    ACCOUNT_LEVEL: ["ACCOUNT_LEVEL"]
+  };
 
   useEffect(() => {
     fetchTiers();
@@ -29,7 +36,7 @@ const CommissionStructure = () => {
     if (activeTab === "COMMISSION") {
       fetchCommissionData();
     }
-  }, [activeTab, activeProperty, activeMode, refreshTrigger]);
+  }, [activeTab, activePropertyTab, activeMode, refreshTrigger]);
 
   const fetchTiers = async () => {
     try {
@@ -54,7 +61,13 @@ const CommissionStructure = () => {
       });
       if (response.ok) {
         const data = await response.json();
-        setModes(data);
+        const allModes = data;
+        setModes(allModes.filter(mode => 
+          !mode.includes("SALES_AGENT") && mode !== "ACCOUNT_LEVEL"
+        ));
+        setAccountModes(allModes.filter(mode => 
+          mode.includes("SALES_AGENT") || mode === "ACCOUNT_LEVEL"
+        ));
       }
     } catch (error) {
       console.error("Failed to fetch modes:", error);
@@ -65,8 +78,11 @@ const CommissionStructure = () => {
     try {
       setLoading(true);
       const authToken = localStorage.getItem("authToken");
+      const property = activePropertyTab === "ACCOUNT_LEVEL" ? "ACCOUNT_LEVEL" : activePropertyTab;
+      const mode = activePropertyTab === "ACCOUNT_LEVEL" ? activeMode : activeMode;
+      
       const response = await fetch(
-        `https://services.dcarbon.solutions/api/commission-structure/filter/mode-property?mode=${activeMode}&property=${activeProperty}`,
+        `https://services.dcarbon.solutions/api/commission-structure/filter/mode-property?mode=${mode}&property=${property}`,
         {
           headers: { Authorization: `Bearer ${authToken}` },
         }
@@ -80,6 +96,13 @@ const CommissionStructure = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const getAvailableModes = () => {
+    if (activePropertyTab === "ACCOUNT_LEVEL") {
+      return accountModes;
+    }
+    return modes;
   };
 
   const handleCreateCommission = () => {
@@ -125,6 +148,10 @@ const CommissionStructure = () => {
     setRefreshTrigger(prev => prev + 1);
   };
 
+  const getPropertyTypeForModal = () => {
+    return activePropertyTab === "ACCOUNT_LEVEL" ? "ACCOUNT_LEVEL" : activePropertyTab;
+  };
+
   return (
     <div className="min-h-screen bg-[#F7F7F7] py-8 px-4">
       {showSetupModal && (
@@ -132,8 +159,8 @@ const CommissionStructure = () => {
           onClose={() => setShowSetupModal(false)}
           onSuccess={handleSuccess}
           tiers={tiers}
-          modes={modes}
-          propertyType={activeProperty}
+          modes={getAvailableModes()}
+          propertyType={getPropertyTypeForModal()}
           mode={activeMode}
           editingCommission={editingCommission}
         />
@@ -187,30 +214,39 @@ const CommissionStructure = () => {
                 <div className="mb-6">
                   <h3 className="text-sm font-medium text-gray-700 mb-2">Property Type</h3>
                   <div className="flex space-x-2">
-                    {["COMMERCIAL", "RESIDENTIAL"].map((property) => (
+                    {["COMMERCIAL", "RESIDENTIAL", "ACCOUNT_LEVEL"].map((property) => (
                       <button
                         key={property}
-                        onClick={() => setActiveProperty(property)}
+                        onClick={() => {
+                          setActivePropertyTab(property);
+                          if (property === "ACCOUNT_LEVEL") {
+                            setActiveMode("SALES_AGENT_DIRECT_CUSTOMER");
+                          } else {
+                            setActiveMode("DIRECT_CUSTOMER");
+                          }
+                        }}
                         className={`px-4 py-2 rounded-md text-sm font-medium ${
-                          activeProperty === property
+                          activePropertyTab === property
                             ? "bg-[#039994] text-white"
                             : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                         }`}
                       >
-                        {property}
+                        {property === "ACCOUNT_LEVEL" ? "Account Level" : property}
                       </button>
                     ))}
                   </div>
                 </div>
 
                 <div className="mb-6">
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">Commission Mode</h3>
+                  <h3 className="text-sm font-medium text-gray-700 mb-2">
+                    {activePropertyTab === "ACCOUNT_LEVEL" ? "Sales Agent Mode" : "Commission Mode"}
+                  </h3>
                   <select
                     value={activeMode}
                     onChange={(e) => setActiveMode(e.target.value)}
                     className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-md bg-white"
                   >
-                    {modes.map((mode) => (
+                    {getAvailableModes().map((mode) => (
                       <option key={mode} value={mode}>
                         {mode.replace(/_/g, " ")}
                       </option>
@@ -239,6 +275,7 @@ const CommissionStructure = () => {
                   <CommissionTable
                     data={commissionData}
                     tiers={tiers}
+                    propertyType={activePropertyTab}
                     onEdit={handleEditCommission}
                     onDelete={handleDeleteCommission}
                   />

@@ -47,6 +47,8 @@ const CommissionSetupModal = ({
   }, [editingCommission]);
 
   const isDirectCustomerMode = formData.mode === "DIRECT_CUSTOMER";
+  const isAccountLevel = formData.propertyType === "ACCOUNT_LEVEL";
+  const isSalesAgentMode = formData.mode.includes("SALES_AGENT");
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -66,17 +68,30 @@ const CommissionSetupModal = ({
     setLoading(true);
     try {
       const authToken = localStorage.getItem("authToken");
-      const payload = {
+      
+      let payload = {
         ...formData,
         customerShare: formData.customerShare ? parseFloat(formData.customerShare) : null,
-        installerShare: isDirectCustomerMode ? null : (formData.installerShare ? parseFloat(formData.installerShare) : null),
-        salesAgentShare: isDirectCustomerMode ? null : (formData.salesAgentShare ? parseFloat(formData.salesAgentShare) : null),
-        financeShare: isDirectCustomerMode ? null : (formData.financeShare ? parseFloat(formData.financeShare) : null),
+        installerShare: formData.installerShare ? parseFloat(formData.installerShare) : null,
+        salesAgentShare: formData.salesAgentShare ? parseFloat(formData.salesAgentShare) : null,
+        financeShare: formData.financeShare ? parseFloat(formData.financeShare) : null,
         maxDuration: formData.maxDuration ? parseInt(formData.maxDuration) : null,
         agreementYrs: formData.agreementYrs ? parseInt(formData.agreementYrs) : null,
         cancellationFee: formData.cancellationFee ? parseFloat(formData.cancellationFee) : null,
         annualCap: formData.annualCap ? parseFloat(formData.annualCap) : null,
       };
+
+      if (isDirectCustomerMode) {
+        payload.installerShare = null;
+        payload.salesAgentShare = null;
+        payload.financeShare = null;
+      }
+
+      if (isAccountLevel && isSalesAgentMode) {
+        payload.customerShare = null;
+        payload.installerShare = null;
+        payload.financeShare = formData.financeShare ? parseFloat(formData.financeShare) : null;
+      }
 
       let response;
       if (editingCommission) {
@@ -138,6 +153,44 @@ const CommissionSetupModal = ({
             max="100"
             required
           />
+        </div>
+      );
+    }
+
+    if (isAccountLevel && isSalesAgentMode) {
+      return (
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Sales Agent Share (%)
+            </label>
+            <input
+              type="number"
+              name="salesAgentShare"
+              value={formData.salesAgentShare}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              step="0.1"
+              min="0"
+              max="100"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Finance Share (%)
+            </label>
+            <input
+              type="number"
+              name="financeShare"
+              value={formData.financeShare}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              step="0.1"
+              min="0"
+              max="100"
+            />
+          </div>
         </div>
       );
     }
@@ -214,6 +267,12 @@ const CommissionSetupModal = ({
     return tier ? `Tier ${tier.order}: ${tier.label}` : "";
   };
 
+  const getShareFieldTitle = () => {
+    if (isDirectCustomerMode) return "Share Distribution (Direct Customer)";
+    if (isAccountLevel && isSalesAgentMode) return "Share Distribution (Sales Agent)";
+    return "Share Distribution";
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -242,6 +301,7 @@ const CommissionSetupModal = ({
                 >
                   <option value="COMMERCIAL">COMMERCIAL</option>
                   <option value="RESIDENTIAL">RESIDENTIAL</option>
+                  <option value="ACCOUNT_LEVEL">ACCOUNT LEVEL</option>
                 </select>
               </div>
 
@@ -287,12 +347,17 @@ const CommissionSetupModal = ({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Share Distribution {isDirectCustomerMode && "(Direct Customer)"}
+                  {getShareFieldTitle()}
                 </label>
                 {renderShareFields()}
                 {isDirectCustomerMode && (
                   <p className="text-xs text-gray-500 mt-1">
                     For Direct Customer mode, only Customer Share is applicable.
+                  </p>
+                )}
+                {isAccountLevel && isSalesAgentMode && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    For Sales Agent modes, Sales Agent Share is required. Finance Share is optional.
                   </p>
                 )}
               </div>

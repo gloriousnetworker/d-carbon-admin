@@ -1,7 +1,8 @@
 "use client";
 import React from "react";
+import { FiEdit, FiTrash2 } from "react-icons/fi";
 
-const CommissionTable = ({ data, tiers, onEdit, onDelete }) => {
+const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
   const sortedTiers = tiers.sort((a, b) => a.order - b.order);
 
   const buildHeaders = () => {
@@ -16,7 +17,14 @@ const CommissionTable = ({ data, tiers, onEdit, onDelete }) => {
     return header;
   };
 
-  const groupedData = data.reduce((acc, item) => {
+  const filteredData = data.filter(item => {
+    if (propertyType === "ACCOUNT_LEVEL") {
+      return item.propertyType === "ACCOUNT_LEVEL";
+    }
+    return item.propertyType === propertyType;
+  });
+
+  const groupedData = filteredData.reduce((acc, item) => {
     const key = `${item.propertyType}_${item.mode}`;
     if (!acc[key]) {
       acc[key] = {
@@ -43,23 +51,31 @@ const CommissionTable = ({ data, tiers, onEdit, onDelete }) => {
   const headers = buildHeaders();
 
   const getShareDisplay = (tierData) => {
-    if (!tierData) return <span className="text-gray-400">-</span>;
+    if (!tierData) return (
+      <div className="text-center">
+        <span className="text-gray-300">—</span>
+      </div>
+    );
     
     const shares = [];
-    if (tierData.customerShare !== null) {
+    if (tierData.customerShare !== null && tierData.customerShare !== undefined) {
       shares.push(`Customer: ${tierData.customerShare}%`);
     }
-    if (tierData.installerShare !== null) {
+    if (tierData.installerShare !== null && tierData.installerShare !== undefined) {
       shares.push(`Installer: ${tierData.installerShare}%`);
     }
-    if (tierData.salesAgentShare !== null) {
+    if (tierData.salesAgentShare !== null && tierData.salesAgentShare !== undefined) {
       shares.push(`Sales Agent: ${tierData.salesAgentShare}%`);
     }
-    if (tierData.financeShare !== null) {
+    if (tierData.financeShare !== null && tierData.financeShare !== undefined) {
       shares.push(`Finance: ${tierData.financeShare}%`);
     }
     
-    if (shares.length === 0) return <span className="text-gray-400">-</span>;
+    if (shares.length === 0) return (
+      <div className="text-center">
+        <span className="text-gray-300">—</span>
+      </div>
+    );
     
     return (
       <div className="space-y-1">
@@ -88,16 +104,47 @@ const CommissionTable = ({ data, tiers, onEdit, onDelete }) => {
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
-          {Object.values(groupedData).map((group, index) => (
-            <tr key={index} className="hover:bg-gray-50">
+          {Object.values(groupedData).map((group, groupIndex) => (
+            <tr key={groupIndex} className="hover:bg-gray-50">
               <td className="px-3 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">
-                {group.propertyType} - {group.mode.replace(/_/g, ' ')}
+                <div className="flex flex-col">
+                  <span>{group.propertyType === "ACCOUNT_LEVEL" ? "Account Level" : group.propertyType}</span>
+                  <span className="text-xs text-gray-500">{group.mode.replace(/_/g, ' ')}</span>
+                </div>
               </td>
               {sortedTiers.map(tier => {
                 const tierData = group.tiers[tier.id];
+                const commissionItem = group.items.find(item => item.tierId === tier.id);
                 return (
                   <td key={tier.id} className="px-3 py-4 text-sm">
-                    {getShareDisplay(tierData)}
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        {getShareDisplay(tierData)}
+                      </div>
+                      {commissionItem && (
+                        <div className="ml-2 flex flex-col space-y-1">
+                          <button
+                            onClick={() => onEdit(commissionItem)}
+                            className="text-[#039994] hover:text-[#028884] p-1 rounded hover:bg-gray-100"
+                            title="Edit"
+                          >
+                            <FiEdit size={14} />
+                          </button>
+                          <button
+                            onClick={() => onDelete(commissionItem.id)}
+                            className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-gray-100"
+                            title="Delete"
+                          >
+                            <FiTrash2 size={14} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    {commissionItem && (
+                      <div className="text-xs text-gray-500 mt-1">
+                        Tier {tier.order}
+                      </div>
+                    )}
                   </td>
                 );
               })}
@@ -111,23 +158,19 @@ const CommissionTable = ({ data, tiers, onEdit, onDelete }) => {
                 {group.items[0]?.cancellationFee ? `$${group.items[0].cancellationFee}` : '-'}
               </td>
               <td className="px-3 py-4 text-sm whitespace-nowrap">
-                {group.items.map((item, itemIndex) => (
-                  <div key={item.id} className="mb-1 last:mb-0">
-                    <span className="text-xs text-gray-500 mr-2">Tier {sortedTiers.find(t => t.id === item.tierId)?.order || itemIndex + 1}:</span>
-                    <button
-                      onClick={() => onEdit(item)}
-                      className="text-[#039994] hover:text-[#028884] mr-2 text-xs"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => onDelete(item.id)}
-                      className="text-red-600 hover:text-red-800 text-xs"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                ))}
+                <div className="flex flex-col space-y-2">
+                  <button
+                    onClick={() => {
+                      const allIds = group.items.map(item => item.id);
+                      if (window.confirm(`Delete all ${group.items.length} commission structures for this mode?`)) {
+                        allIds.forEach(id => onDelete(id));
+                      }
+                    }}
+                    className="text-xs text-red-600 hover:text-red-800 px-2 py-1 border border-red-200 rounded hover:bg-red-50"
+                  >
+                    Delete All
+                  </button>
+                </div>
               </td>
             </tr>
           ))}
