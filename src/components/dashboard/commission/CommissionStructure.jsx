@@ -21,6 +21,12 @@ const CommissionStructure = () => {
   const [editingCommission, setEditingCommission] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
+  const propertyTypes = {
+    COMMERCIAL: ["COMMERCIAL"],
+    RESIDENTIAL: ["RESIDENTIAL"],
+    ACCOUNT_LEVEL: ["ACCOUNT_LEVEL"]
+  };
+
   useEffect(() => {
     fetchTiers();
     fetchModes();
@@ -57,19 +63,13 @@ const CommissionStructure = () => {
         const data = await response.json();
         const allModes = data;
         const filteredModes = allModes.filter(mode => 
-          mode !== "CUSTOMER_ASSISTED" && 
-          mode !== "EPC_ASSISTED_FINANCE" && 
+          !mode.includes("SALES_AGENT") && 
+          mode !== "ACCOUNT_LEVEL" &&
+          mode !== "EPC_ASSISTED_FINANCE" &&
           mode !== "EPC_ASSISTED_INSTALLER"
         );
-        
-        const renamedModes = filteredModes.map(mode => 
-          mode === "CUSTOMER_ASSISTED" ? "REFERRED_CUSTOMER" : mode
-        );
-        
-        setModes(renamedModes.filter(mode => 
-          !mode.includes("SALES_AGENT") && mode !== "ACCOUNT_LEVEL"
-        ));
-        setAccountModes(renamedModes.filter(mode => 
+        setModes(filteredModes);
+        setAccountModes(allModes.filter(mode => 
           mode.includes("SALES_AGENT") || mode === "ACCOUNT_LEVEL"
         ));
       }
@@ -152,6 +152,10 @@ const CommissionStructure = () => {
     setRefreshTrigger(prev => prev + 1);
   };
 
+  const getPropertyTypeForModal = () => {
+    return activePropertyTab === "ACCOUNT_LEVEL" ? "ACCOUNT_LEVEL" : activePropertyTab;
+  };
+
   return (
     <div className="min-h-screen bg-[#F7F7F7] py-8 px-4">
       {showSetupModal && (
@@ -160,7 +164,7 @@ const CommissionStructure = () => {
           onSuccess={handleSuccess}
           tiers={tiers}
           modes={getAvailableModes()}
-          propertyType={activePropertyTab}
+          propertyType={getPropertyTypeForModal()}
           mode={activeMode}
           editingCommission={editingCommission}
         />
@@ -220,7 +224,7 @@ const CommissionStructure = () => {
                         onClick={() => {
                           setActivePropertyTab(property);
                           if (property === "ACCOUNT_LEVEL") {
-                            setActiveMode("SALES_AGENT_DIRECT_CUSTOMER");
+                            setActiveMode("SALES_AGENT_REFERRED_CUSTOMER");
                           } else {
                             setActiveMode("DIRECT_CUSTOMER");
                           }
@@ -248,7 +252,7 @@ const CommissionStructure = () => {
                   >
                     {getAvailableModes().map((mode) => (
                       <option key={mode} value={mode}>
-                        {mode === "REFERRED_CUSTOMER" ? "REFERRED CUSTOMER" : mode.replace(/_/g, " ")}
+                        {mode.replace(/_/g, " ")}
                       </option>
                     ))}
                   </select>

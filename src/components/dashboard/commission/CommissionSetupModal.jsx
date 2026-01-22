@@ -19,15 +19,20 @@ const CommissionSetupModal = ({
     installerShare: "",
     salesAgentShare: "",
     financeShare: "",
-    epcFinanceShare: "",
-    epcInstallerShare: "",
     maxDuration: "",
     agreementYrs: "",
     cancellationFee: "",
     annualCap: "",
     notes: "",
   });
+  
+  const [epcShares, setEpcShares] = useState({
+    epcAssistedFinanceShare: "",
+    epcAssistedInstallerShare: ""
+  });
+  
   const [loading, setLoading] = useState(false);
+  const [validationError, setValidationError] = useState("");
 
   useEffect(() => {
     if (editingCommission) {
@@ -39,8 +44,6 @@ const CommissionSetupModal = ({
         installerShare: editingCommission.installerShare || "",
         salesAgentShare: editingCommission.salesAgentShare || "",
         financeShare: editingCommission.financeShare || "",
-        epcFinanceShare: editingCommission.epcFinanceShare || "",
-        epcInstallerShare: editingCommission.epcInstallerShare || "",
         maxDuration: editingCommission.maxDuration || "",
         agreementYrs: editingCommission.agreementYrs || "",
         cancellationFee: editingCommission.cancellationFee || "",
@@ -51,11 +54,55 @@ const CommissionSetupModal = ({
   }, [editingCommission]);
 
   const isDirectCustomerMode = formData.mode === "DIRECT_CUSTOMER";
-  const isReferredCustomerMode = formData.mode === "REFERRED_CUSTOMER";
-  const isPartnerInstallerMode = formData.mode === "PARTNER_INSTALLER";
-  const isPartnerFinanceMode = formData.mode === "PARTNER_FINANCE";
   const isAccountLevel = formData.propertyType === "ACCOUNT_LEVEL";
   const isSalesAgentMode = formData.mode.includes("SALES_AGENT");
+  const isPartnerFinanceMode = formData.mode === "PARTNER_FINANCE";
+  const isReferredCustomerMode = formData.mode === "REFERRED_CUSTOMER";
+  const isPartnerInstallerMode = formData.mode === "PARTNER_INSTALLER";
+
+  const calculateDCarbonRemainder = () => {
+    let total = 0;
+    if (formData.customerShare) total += parseFloat(formData.customerShare);
+    if (formData.installerShare) total += parseFloat(formData.installerShare);
+    if (formData.salesAgentShare) total += parseFloat(formData.salesAgentShare);
+    if (formData.financeShare) total += parseFloat(formData.financeShare);
+    
+    const remainder = 100 - total;
+    return remainder >= 0 ? remainder.toFixed(1) : "0.0";
+  };
+
+  const validateForm = () => {
+    setValidationError("");
+    
+    let total = 0;
+    const shares = [];
+    
+    if (formData.customerShare) shares.push(parseFloat(formData.customerShare));
+    if (formData.installerShare) shares.push(parseFloat(formData.installerShare));
+    if (formData.salesAgentShare) shares.push(parseFloat(formData.salesAgentShare));
+    if (formData.financeShare) shares.push(parseFloat(formData.financeShare));
+    
+    total = shares.reduce((sum, share) => sum + share, 0);
+    
+    if (total > 100) {
+      setValidationError(`Total shares (${total.toFixed(1)}%) exceed 100%`);
+      return false;
+    }
+    
+    if (isPartnerFinanceMode) {
+      const financeShare = parseFloat(formData.financeShare || 0);
+      const epcFinanceShare = parseFloat(epcShares.epcAssistedFinanceShare || 0);
+      const epcInstallerShare = parseFloat(epcShares.epcAssistedInstallerShare || 0);
+      const epcTotal = epcFinanceShare + epcInstallerShare;
+      
+      if (epcTotal > financeShare) {
+        setValidationError(`EPC shares (${epcTotal.toFixed(1)}%) exceed Partner Finance share (${financeShare.toFixed(1)}%)`);
+        return false;
+      }
+    }
+    
+    return true;
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -63,76 +110,26 @@ const CommissionSetupModal = ({
       ...prev,
       [name]: value,
     }));
+    setValidationError("");
   };
 
-  const validateCommissionTotals = () => {
-    if (isDirectCustomerMode) {
-      const total = parseFloat(formData.customerShare) || 0;
-      if (total > 100) {
-        toast.error("Customer share cannot exceed 100%");
-        return false;
-      }
-    }
-
-    if (isReferredCustomerMode) {
-      const customer = parseFloat(formData.customerShare) || 0;
-      const installer = parseFloat(formData.installerShare) || 0;
-      const finance = parseFloat(formData.financeShare) || 0;
-      const total = customer + installer + finance;
-      
-      if (total > 100) {
-        toast.error("Total commission cannot exceed 100%");
-        return false;
-      }
-    }
-
-    if (isPartnerInstallerMode) {
-      const installer = parseFloat(formData.installerShare) || 0;
-      if (installer > 100) {
-        toast.error("Installer share cannot exceed 100%");
-        return false;
-      }
-    }
-
-    if (isPartnerFinanceMode) {
-      const finance = parseFloat(formData.financeShare) || 0;
-      const epcFinance = parseFloat(formData.epcFinanceShare) || 0;
-      const epcInstaller = parseFloat(formData.epcInstallerShare) || 0;
-      
-      if (finance > 100) {
-        toast.error("Finance share cannot exceed 100%");
-        return false;
-      }
-      
-      if (epcFinance + epcInstaller > finance) {
-        toast.error("EPC split cannot exceed Finance share");
-        return false;
-      }
-    }
-
-    if (isAccountLevel && isSalesAgentMode) {
-      const salesAgent = parseFloat(formData.salesAgentShare) || 0;
-      const finance = parseFloat(formData.financeShare) || 0;
-      const total = salesAgent + finance;
-      
-      if (total > 100) {
-        toast.error("Total commission cannot exceed 100%");
-        return false;
-      }
-    }
-
-    return true;
+  const handleEpcChange = (e) => {
+    const { name, value } = e.target;
+    setEpcShares((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+    setValidationError("");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
     if (!formData.tierId) {
       toast.error("Please select a tier");
       return;
     }
-
-    if (!validateCommissionTotals()) {
+    
+    if (!validateForm()) {
       return;
     }
 
@@ -146,24 +143,22 @@ const CommissionSetupModal = ({
         installerShare: formData.installerShare ? parseFloat(formData.installerShare) : null,
         salesAgentShare: formData.salesAgentShare ? parseFloat(formData.salesAgentShare) : null,
         financeShare: formData.financeShare ? parseFloat(formData.financeShare) : null,
-        epcFinanceShare: formData.epcFinanceShare ? parseFloat(formData.epcFinanceShare) : null,
-        epcInstallerShare: formData.epcInstallerShare ? parseFloat(formData.epcInstallerShare) : null,
         maxDuration: formData.maxDuration ? parseInt(formData.maxDuration) : null,
         agreementYrs: formData.agreementYrs ? parseInt(formData.agreementYrs) : null,
         cancellationFee: formData.cancellationFee ? parseFloat(formData.cancellationFee) : null,
         annualCap: formData.annualCap ? parseFloat(formData.annualCap) : null,
       };
 
-      if (isPartnerInstallerMode) {
-        payload.customerShare = null;
+      if (isDirectCustomerMode) {
+        payload.installerShare = null;
+        payload.salesAgentShare = null;
         payload.financeShare = null;
-        payload.epcFinanceShare = null;
-        payload.epcInstallerShare = null;
       }
 
-      if (isPartnerFinanceMode) {
+      if (isAccountLevel && isSalesAgentMode) {
         payload.customerShare = null;
         payload.installerShare = null;
+        payload.financeShare = formData.financeShare ? parseFloat(formData.financeShare) : null;
       }
 
       let response;
@@ -208,45 +203,6 @@ const CommissionSetupModal = ({
     }
   };
 
-  const calculateRemainingPercentage = () => {
-    if (isDirectCustomerMode) {
-      const customer = parseFloat(formData.customerShare) || 0;
-      const remaining = (100 - customer).toFixed(2);
-      return remaining >= 0 ? remaining : 0;
-    }
-
-    if (isReferredCustomerMode) {
-      const customer = parseFloat(formData.customerShare) || 0;
-      const installer = parseFloat(formData.installerShare) || 0;
-      const finance = parseFloat(formData.financeShare) || 0;
-      const total = customer + installer + finance;
-      const remaining = (100 - total).toFixed(2);
-      return remaining >= 0 ? remaining : 0;
-    }
-
-    if (isPartnerInstallerMode) {
-      const installer = parseFloat(formData.installerShare) || 0;
-      const remaining = (100 - installer).toFixed(2);
-      return remaining >= 0 ? remaining : 0;
-    }
-
-    if (isPartnerFinanceMode) {
-      const finance = parseFloat(formData.financeShare) || 0;
-      const remaining = (100 - finance).toFixed(2);
-      return remaining >= 0 ? remaining : 0;
-    }
-
-    if (isAccountLevel && isSalesAgentMode) {
-      const salesAgent = parseFloat(formData.salesAgentShare) || 0;
-      const finance = parseFloat(formData.financeShare) || 0;
-      const total = salesAgent + finance;
-      const remaining = (100 - total).toFixed(2);
-      return remaining >= 0 ? remaining : 0;
-    }
-
-    return 100;
-  };
-
   const renderShareFields = () => {
     if (isDirectCustomerMode) {
       return (
@@ -265,224 +221,13 @@ const CommissionSetupModal = ({
             max="100"
             required
           />
-          <div className="mt-2 text-sm text-gray-600">
-            <div className="flex justify-between">
-              <span>Customer:</span>
-              <span>{formData.customerShare || 0}%</span>
-            </div>
-            <div className="flex justify-between">
-              <span>DCarbon Remainder:</span>
-              <span className="font-medium">{calculateRemainingPercentage()}%</span>
-            </div>
-            <div className="flex justify-between font-bold">
-              <span>Total:</span>
-              <span>100%</span>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    if (isReferredCustomerMode) {
-      return (
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Customer Share (%)
-            </label>
-            <input
-              type="number"
-              name="customerShare"
-              value={formData.customerShare}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              step="0.1"
-              min="0"
-              max="100"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Installer Share (%)
-            </label>
-            <input
-              type="number"
-              name="installerShare"
-              value={formData.installerShare}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              step="0.1"
-              min="0"
-              max="100"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Finance Share (%)
-            </label>
-            <input
-              type="number"
-              name="financeShare"
-              value={formData.financeShare}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              step="0.1"
-              min="0"
-              max="100"
-            />
-          </div>
-          <div className="p-3 bg-gray-50 rounded">
-            <div className="text-sm text-gray-600">
-              <div className="flex justify-between">
-                <span>Customer:</span>
-                <span>{formData.customerShare || 0}%</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Installer:</span>
-                <span>{formData.installerShare || 0}%</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Finance:</span>
-                <span>{formData.financeShare || 0}%</span>
-              </div>
-              <div className="flex justify-between">
-                <span>DCarbon Remainder:</span>
-                <span className="font-medium">{calculateRemainingPercentage()}%</span>
-              </div>
-              <div className="flex justify-between font-bold border-t pt-1 mt-1">
-                <span>Total:</span>
-                <span>100%</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    if (isPartnerInstallerMode) {
-      return (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Installer Share (%)
-          </label>
-          <input
-            type="number"
-            name="installerShare"
-            value={formData.installerShare}
-            onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            step="0.1"
-            min="0"
-            max="100"
-            required
-          />
-          <div className="mt-2 text-sm text-gray-600">
-            <div className="flex justify-between">
-              <span>Installer:</span>
-              <span>{formData.installerShare || 0}%</span>
-            </div>
-            <div className="flex justify-between">
-              <span>DCarbon Remainder:</span>
-              <span className="font-medium">{calculateRemainingPercentage()}%</span>
-            </div>
-            <div className="flex justify-between font-bold">
-              <span>Total:</span>
-              <span>100%</span>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    if (isPartnerFinanceMode) {
-      return (
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Finance Share (%)
-            </label>
-            <input
-              type="number"
-              name="financeShare"
-              value={formData.financeShare}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              step="0.1"
-              min="0"
-              max="100"
-              required
-            />
-          </div>
-          <div className="pl-4 border-l-2 border-[#039994]">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">EPC Split</h4>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
-                  EPC Finance Share (%)
-                </label>
-                <input
-                  type="number"
-                  name="epcFinanceShare"
-                  value={formData.epcFinanceShare}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  step="0.1"
-                  min="0"
-                  max={formData.financeShare || 100}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
-                  EPC Installer Share (%)
-                </label>
-                <input
-                  type="number"
-                  name="epcInstallerShare"
-                  value={formData.epcInstallerShare}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  step="0.1"
-                  min="0"
-                  max={formData.financeShare || 100}
-                />
-              </div>
-            </div>
-            <div className="mt-2 text-xs text-gray-500">
-              EPC split must not exceed Finance share
-            </div>
-          </div>
-          <div className="p-3 bg-gray-50 rounded">
-            <div className="text-sm text-gray-600">
-              <div className="flex justify-between">
-                <span>Finance:</span>
-                <span>{formData.financeShare || 0}%</span>
-              </div>
-              <div className="flex justify-between text-xs pl-4">
-                <span className="text-gray-500">EPC Finance:</span>
-                <span className="text-gray-500">{formData.epcFinanceShare || 0}%</span>
-              </div>
-              <div className="flex justify-between text-xs pl-4">
-                <span className="text-gray-500">EPC Installer:</span>
-                <span className="text-gray-500">{formData.epcInstallerShare || 0}%</span>
-              </div>
-              <div className="flex justify-between">
-                <span>DCarbon Remainder:</span>
-                <span className="font-medium">{calculateRemainingPercentage()}%</span>
-              </div>
-              <div className="flex justify-between font-bold border-t pt-1 mt-1">
-                <span>Total:</span>
-                <span>100%</span>
-              </div>
-            </div>
-          </div>
         </div>
       );
     }
 
     if (isAccountLevel && isSalesAgentMode) {
       return (
-        <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Sales Agent Share (%)
@@ -514,23 +259,78 @@ const CommissionSetupModal = ({
               max="100"
             />
           </div>
-          <div className="p-3 bg-gray-50 rounded">
-            <div className="text-sm text-gray-600">
-              <div className="flex justify-between">
-                <span>Sales Agent:</span>
-                <span>{formData.salesAgentShare || 0}%</span>
+        </div>
+      );
+    }
+
+    if (isPartnerFinanceMode) {
+      return (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Customer Share (%)
+              </label>
+              <input
+                type="number"
+                name="customerShare"
+                value={formData.customerShare}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                step="0.1"
+                min="0"
+                max="100"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Partner Finance Share (%)
+              </label>
+              <input
+                type="number"
+                name="financeShare"
+                value={formData.financeShare}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                step="0.1"
+                min="0"
+                max="100"
+              />
+            </div>
+          </div>
+          
+          <div className="border-t pt-4">
+            <h4 className="text-sm font-medium text-gray-700 mb-3">EPC Assisted Settings</h4>
+            <div className="grid grid-cols-2 gap-4 pl-4 border-l-2 border-gray-200">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  EPC Assisted Finance (%)
+                </label>
+                <input
+                  type="number"
+                  name="epcAssistedFinanceShare"
+                  value={epcShares.epcAssistedFinanceShare}
+                  onChange={handleEpcChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  step="0.1"
+                  min="0"
+                  max={formData.financeShare || 100}
+                />
               </div>
-              <div className="flex justify-between">
-                <span>Finance:</span>
-                <span>{formData.financeShare || 0}%</span>
-              </div>
-              <div className="flex justify-between">
-                <span>DCarbon Remainder:</span>
-                <span className="font-medium">{calculateRemainingPercentage()}%</span>
-              </div>
-              <div className="flex justify-between font-bold border-t pt-1 mt-1">
-                <span>Total:</span>
-                <span>100%</span>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  EPC Assisted Installer (%)
+                </label>
+                <input
+                  type="number"
+                  name="epcAssistedInstallerShare"
+                  value={epcShares.epcAssistedInstallerShare}
+                  onChange={handleEpcChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  step="0.1"
+                  min="0"
+                  max={formData.financeShare || 100}
+                />
               </div>
             </div>
           </div>
@@ -539,10 +339,67 @@ const CommissionSetupModal = ({
     }
 
     return (
-      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded">
-        <p className="text-sm text-yellow-700">
-          Please select a commission mode to configure shares.
-        </p>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Customer Share (%)
+          </label>
+          <input
+            type="number"
+            name="customerShare"
+            value={formData.customerShare}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            step="0.1"
+            min="0"
+            max="100"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Installer Share (%)
+          </label>
+          <input
+            type="number"
+            name="installerShare"
+            value={formData.installerShare}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            step="0.1"
+            min="0"
+            max="100"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Sales Agent Share (%)
+          </label>
+          <input
+            type="number"
+            name="salesAgentShare"
+            value={formData.salesAgentShare}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            step="0.1"
+            min="0"
+            max="100"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Finance Share (%)
+          </label>
+          <input
+            type="number"
+            name="financeShare"
+            value={formData.financeShare}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            step="0.1"
+            min="0"
+            max="100"
+          />
+        </div>
       </div>
     );
   };
@@ -553,33 +410,25 @@ const CommissionSetupModal = ({
     return tier ? `Tier ${tier.order}: ${tier.label}` : "";
   };
 
-  const getModalTitle = () => {
-    if (editingCommission) {
-      return `Edit Commission Structure ${getCurrentTierLabel()}`;
-    }
-    return "Create Commission Structure";
+  const getShareFieldTitle = () => {
+    if (isDirectCustomerMode) return "Share Distribution (Direct Customer)";
+    if (isAccountLevel && isSalesAgentMode) return "Share Distribution (Sales Agent)";
+    if (isPartnerFinanceMode) return "Share Distribution (Partner Finance)";
+    if (isReferredCustomerMode) return "Share Distribution (Referred Customer)";
+    if (isPartnerInstallerMode) return "Share Distribution (Partner Installer)";
+    return "Share Distribution";
   };
 
-  const getModeDescription = () => {
-    if (isDirectCustomerMode) return "Direct Customer - No referrals";
-    if (isReferredCustomerMode) return "Referred Customer - Customer referred by partners";
-    if (isPartnerInstallerMode) return "Partner Installer - Installer partner share only";
-    if (isPartnerFinanceMode) return "Partner Finance - Finance partner share with EPC split";
-    if (isAccountLevel && isSalesAgentMode) return "Sales Agent Commission";
-    return "";
-  };
+  const dcarbonRemainder = calculateDCarbonRemainder();
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
-            <div>
-              <h2 className="text-lg font-semibold">{getModalTitle()}</h2>
-              {getModeDescription() && (
-                <p className="text-xs text-gray-500">{getModeDescription()}</p>
-              )}
-            </div>
+            <h2 className="text-lg font-semibold">
+              {editingCommission ? `Edit Commission Structure ${getCurrentTierLabel()}` : "Create Commission Structure"}
+            </h2>
             <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
               ✕
             </button>
@@ -615,7 +464,10 @@ const CommissionSetupModal = ({
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   disabled={!!editingCommission}
                 >
-                  {modes.map((modeOption) => (
+                  {modes.filter(mode => 
+                    mode !== "EPC_ASSISTED_FINANCE" && 
+                    mode !== "EPC_ASSISTED_INSTALLER"
+                  ).map((modeOption) => (
                     <option key={modeOption} value={modeOption}>
                       {modeOption.replace(/_/g, " ")}
                     </option>
@@ -644,14 +496,37 @@ const CommissionSetupModal = ({
                 </select>
               </div>
 
-              <div className="pt-4 border-t">
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Commission Distribution
-                </label>
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-sm font-medium text-gray-700">
+                    {getShareFieldTitle()}
+                  </label>
+                  <div className="text-sm font-medium text-gray-700">
+                    DCarbon Remainder: {dcarbonRemainder}%
+                  </div>
+                </div>
                 {renderShareFields()}
+                {validationError && (
+                  <p className="text-sm text-red-600 mt-1">{validationError}</p>
+                )}
+                {isDirectCustomerMode && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    For Direct Customer mode, only Customer Share is applicable.
+                  </p>
+                )}
+                {isAccountLevel && isSalesAgentMode && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    For Sales Agent modes, Sales Agent Share is required. Finance Share is optional.
+                  </p>
+                )}
+                {isPartnerFinanceMode && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    EPC shares must not exceed Partner Finance share. DCarbon remainder is calculated automatically.
+                  </p>
+                )}
               </div>
 
-              <div className="grid grid-cols-3 gap-4 pt-4 border-t">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Max Duration (Years)
@@ -713,7 +588,7 @@ const CommissionSetupModal = ({
                   name="notes"
                   value={formData.notes}
                   onChange={handleChange}
-                  rows={2}
+                  rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 />
               </div>
