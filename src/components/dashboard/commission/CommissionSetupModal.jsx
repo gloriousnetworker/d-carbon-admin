@@ -31,6 +31,7 @@ const CommissionSetupModal = ({
     epcAssistedInstallerShare: ""
   });
   
+  const [referredCustomerShare, setReferredCustomerShare] = useState("");
   const [loading, setLoading] = useState(false);
   const [validationError, setValidationError] = useState("");
 
@@ -51,21 +52,66 @@ const CommissionSetupModal = ({
         notes: editingCommission.notes || "",
       });
     }
-  }, [editingCommission]);
+    
+    if (!editingCommission && (mode === "PARTNER_INSTALLER" || mode === "PARTNER_FINANCE")) {
+      fetchReferredCustomerShare();
+    }
+  }, [editingCommission, mode, propertyType]);
 
   const isDirectCustomerMode = formData.mode === "DIRECT_CUSTOMER";
-  const isAccountLevel = formData.propertyType === "ACCOUNT_LEVEL";
-  const isSalesAgentMode = formData.mode.includes("SALES_AGENT");
-  const isPartnerFinanceMode = formData.mode === "PARTNER_FINANCE";
   const isReferredCustomerMode = formData.mode === "REFERRED_CUSTOMER";
   const isPartnerInstallerMode = formData.mode === "PARTNER_INSTALLER";
+  const isPartnerFinanceMode = formData.mode === "PARTNER_FINANCE";
+  const isAccountLevel = formData.propertyType === "ACCOUNT_LEVEL";
+  const isSalesAgentMode = formData.mode.includes("SALES_AGENT");
+
+  const fetchReferredCustomerShare = async () => {
+    try {
+      const authToken = localStorage.getItem("authToken");
+      const property = propertyType === "ACCOUNT_LEVEL" ? "ACCOUNT_LEVEL" : propertyType;
+      
+      const response = await fetch(
+        `https://services.dcarbon.solutions/api/commission-structure/filter/mode-property?mode=REFERRED_CUSTOMER&property=${property}`,
+        {
+          headers: { Authorization: `Bearer ${authToken}` },
+        }
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.length > 0) {
+          setReferredCustomerShare(data[0].customerShare || "");
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch referred customer share:", error);
+    }
+  };
 
   const calculateDCarbonRemainder = () => {
+    if (isReferredCustomerMode) {
+      return null;
+    }
+    
     let total = 0;
-    if (formData.customerShare) total += parseFloat(formData.customerShare);
-    if (formData.installerShare) total += parseFloat(formData.installerShare);
-    if (formData.salesAgentShare) total += parseFloat(formData.salesAgentShare);
-    if (formData.financeShare) total += parseFloat(formData.financeShare);
+    
+    if (isPartnerInstallerMode) {
+      total += parseFloat(referredCustomerShare || 0);
+      total += parseFloat(formData.installerShare || 0);
+    } else if (isPartnerFinanceMode) {
+      total += parseFloat(referredCustomerShare || 0);
+      total += parseFloat(formData.financeShare || 0);
+    } else if (isAccountLevel && isSalesAgentMode) {
+      total += parseFloat(formData.salesAgentShare || 0);
+      total += parseFloat(formData.financeShare || 0);
+    } else if (isDirectCustomerMode) {
+      total += parseFloat(formData.customerShare || 0);
+    } else {
+      total += parseFloat(formData.customerShare || 0);
+      total += parseFloat(formData.installerShare || 0);
+      total += parseFloat(formData.salesAgentShare || 0);
+      total += parseFloat(formData.financeShare || 0);
+    }
     
     const remainder = 100 - total;
     return remainder >= 0 ? remainder.toFixed(1) : "0.0";
@@ -73,21 +119,6 @@ const CommissionSetupModal = ({
 
   const validateForm = () => {
     setValidationError("");
-    
-    let total = 0;
-    const shares = [];
-    
-    if (formData.customerShare) shares.push(parseFloat(formData.customerShare));
-    if (formData.installerShare) shares.push(parseFloat(formData.installerShare));
-    if (formData.salesAgentShare) shares.push(parseFloat(formData.salesAgentShare));
-    if (formData.financeShare) shares.push(parseFloat(formData.financeShare));
-    
-    total = shares.reduce((sum, share) => sum + share, 0);
-    
-    if (total > 100) {
-      setValidationError(`Total shares (${total.toFixed(1)}%) exceed 100%`);
-      return false;
-    }
     
     if (isPartnerFinanceMode) {
       const financeShare = parseFloat(formData.financeShare || 0);
@@ -122,6 +153,25 @@ const CommissionSetupModal = ({
     setValidationError("");
   };
 
+  const createCommissionStructure = async (payload, modeOverride = null) => {
+    const authToken = localStorage.getItem("authToken");
+    const finalPayload = {
+      ...payload,
+      mode: modeOverride || payload.mode,
+    };
+    
+    const response = await fetch("https://services.dcarbon.solutions/api/commission-structure", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: JSON.stringify(finalPayload),
+    });
+    
+    return response;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.tierId) {
@@ -137,27 +187,110 @@ const CommissionSetupModal = ({
     try {
       const authToken = localStorage.getItem("authToken");
       
-      let payload = {
-        ...formData,
-        customerShare: formData.customerShare ? parseFloat(formData.customerShare) : null,
-        installerShare: formData.installerShare ? parseFloat(formData.installerShare) : null,
-        salesAgentShare: formData.salesAgentShare ? parseFloat(formData.salesAgentShare) : null,
-        financeShare: formData.financeShare ? parseFloat(formData.financeShare) : null,
+      let basePayload = {
+        propertyType: formData.propertyType,
+        tierId: formData.tierId,
         maxDuration: formData.maxDuration ? parseInt(formData.maxDuration) : null,
         agreementYrs: formData.agreementYrs ? parseInt(formData.agreementYrs) : null,
         cancellationFee: formData.cancellationFee ? parseFloat(formData.cancellationFee) : null,
         annualCap: formData.annualCap ? parseFloat(formData.annualCap) : null,
+        notes: formData.notes || "",
+      };
+
+      if (isPartnerFinanceMode) {
+        const epcFinanceShare = parseFloat(epcShares.epcAssistedFinanceShare || 0);
+        const epcInstallerShare = parseFloat(epcShares.epcAssistedInstallerShare || 0);
+        
+        if (epcFinanceShare > 0 || epcInstallerShare > 0) {
+          let response;
+          
+          const referredCustomerPayload = {
+            ...basePayload,
+            mode: "REFERRED_CUSTOMER",
+            customerShare: parseFloat(referredCustomerShare),
+            installerShare: null,
+            salesAgentShare: null,
+            financeShare: null,
+          };
+          
+          response = await createCommissionStructure(referredCustomerPayload);
+          if (!response.ok) throw new Error("Failed to create referred customer structure");
+          
+          const partnerFinancePayload = {
+            ...basePayload,
+            mode: "PARTNER_FINANCE",
+            customerShare: parseFloat(referredCustomerShare),
+            installerShare: null,
+            salesAgentShare: null,
+            financeShare: formData.financeShare ? parseFloat(formData.financeShare) : null,
+          };
+          
+          response = await createCommissionStructure(partnerFinancePayload);
+          if (!response.ok) throw new Error("Failed to create partner finance structure");
+          
+          if (epcFinanceShare > 0) {
+            const epcFinancePayload = {
+              ...basePayload,
+              mode: "EPC_ASSISTED_FINANCE",
+              customerShare: parseFloat(referredCustomerShare),
+              installerShare: null,
+              salesAgentShare: null,
+              financeShare: epcFinanceShare,
+            };
+            
+            response = await createCommissionStructure(epcFinancePayload);
+            if (!response.ok) throw new Error("Failed to create EPC assisted finance structure");
+          }
+          
+          if (epcInstallerShare > 0) {
+            const epcInstallerPayload = {
+              ...basePayload,
+              mode: "EPC_ASSISTED_INSTALLER",
+              customerShare: parseFloat(referredCustomerShare),
+              installerShare: epcInstallerShare,
+              salesAgentShare: null,
+              financeShare: null,
+            };
+            
+            response = await createCommissionStructure(epcInstallerPayload);
+            if (!response.ok) throw new Error("Failed to create EPC assisted installer structure");
+          }
+          
+          toast.success("All commission structures created successfully");
+          onSuccess();
+          return;
+        }
+      }
+
+      let payload = {
+        ...basePayload,
+        mode: formData.mode,
       };
 
       if (isDirectCustomerMode) {
+        payload.customerShare = formData.customerShare ? parseFloat(formData.customerShare) : null;
         payload.installerShare = null;
         payload.salesAgentShare = null;
         payload.financeShare = null;
-      }
-
-      if (isAccountLevel && isSalesAgentMode) {
+      } else if (isReferredCustomerMode) {
+        payload.customerShare = formData.customerShare ? parseFloat(formData.customerShare) : null;
+        payload.installerShare = null;
+        payload.salesAgentShare = null;
+        payload.financeShare = null;
+      } else if (isPartnerInstallerMode) {
+        payload.customerShare = referredCustomerShare ? parseFloat(referredCustomerShare) : null;
+        payload.installerShare = formData.installerShare ? parseFloat(formData.installerShare) : null;
+        payload.salesAgentShare = null;
+        payload.financeShare = null;
+      } else if (isAccountLevel && isSalesAgentMode) {
         payload.customerShare = null;
         payload.installerShare = null;
+        payload.salesAgentShare = formData.salesAgentShare ? parseFloat(formData.salesAgentShare) : null;
+        payload.financeShare = formData.financeShare ? parseFloat(formData.financeShare) : null;
+      } else {
+        payload.customerShare = formData.customerShare ? parseFloat(formData.customerShare) : null;
+        payload.installerShare = formData.installerShare ? parseFloat(formData.installerShare) : null;
+        payload.salesAgentShare = formData.salesAgentShare ? parseFloat(formData.salesAgentShare) : null;
         payload.financeShare = formData.financeShare ? parseFloat(formData.financeShare) : null;
       }
 
@@ -175,14 +308,7 @@ const CommissionSetupModal = ({
           }
         );
       } else {
-        response = await fetch("https://services.dcarbon.solutions/api/commission-structure", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${authToken}`,
-          },
-          body: JSON.stringify(payload),
-        });
+        response = await createCommissionStructure(payload);
       }
 
       if (response.ok) {
@@ -225,17 +351,49 @@ const CommissionSetupModal = ({
       );
     }
 
-    if (isAccountLevel && isSalesAgentMode) {
+    if (isReferredCustomerMode) {
       return (
-        <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Customer Share (%)
+          </label>
+          <input
+            type="number"
+            name="customerShare"
+            value={formData.customerShare}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            step="0.1"
+            min="0"
+            max="100"
+            required
+          />
+        </div>
+      );
+    }
+
+    if (isPartnerInstallerMode) {
+      return (
+        <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Sales Agent Share (%)
+              Referred Customer Share (%)
             </label>
             <input
               type="number"
-              name="salesAgentShare"
-              value={formData.salesAgentShare}
+              value={referredCustomerShare}
+              readOnly
+              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Installer Share (%)
+            </label>
+            <input
+              type="number"
+              name="installerShare"
+              value={formData.installerShare}
               onChange={handleChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
               step="0.1"
@@ -244,9 +402,27 @@ const CommissionSetupModal = ({
               required
             />
           </div>
+        </div>
+      );
+    }
+
+    if (isPartnerFinanceMode) {
+      return (
+        <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Finance Share (%)
+              Referred Customer Share (%)
+            </label>
+            <input
+              type="number"
+              value={referredCustomerShare}
+              readOnly
+              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Partner Finance Share (%)
             </label>
             <input
               type="number"
@@ -257,46 +433,8 @@ const CommissionSetupModal = ({
               step="0.1"
               min="0"
               max="100"
+              required
             />
-          </div>
-        </div>
-      );
-    }
-
-    if (isPartnerFinanceMode) {
-      return (
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Customer Share (%)
-              </label>
-              <input
-                type="number"
-                name="customerShare"
-                value={formData.customerShare}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                step="0.1"
-                min="0"
-                max="100"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Partner Finance Share (%)
-              </label>
-              <input
-                type="number"
-                name="financeShare"
-                value={formData.financeShare}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                step="0.1"
-                min="0"
-                max="100"
-              />
-            </div>
           </div>
           
           <div className="border-t pt-4">
@@ -333,6 +471,44 @@ const CommissionSetupModal = ({
                 />
               </div>
             </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (isAccountLevel && isSalesAgentMode) {
+      return (
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Sales Agent Share (%)
+            </label>
+            <input
+              type="number"
+              name="salesAgentShare"
+              value={formData.salesAgentShare}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              step="0.1"
+              min="0"
+              max="100"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Finance Share (%)
+            </label>
+            <input
+              type="number"
+              name="financeShare"
+              value={formData.financeShare}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              step="0.1"
+              min="0"
+              max="100"
+            />
           </div>
         </div>
       );
@@ -412,10 +588,10 @@ const CommissionSetupModal = ({
 
   const getShareFieldTitle = () => {
     if (isDirectCustomerMode) return "Share Distribution (Direct Customer)";
-    if (isAccountLevel && isSalesAgentMode) return "Share Distribution (Sales Agent)";
-    if (isPartnerFinanceMode) return "Share Distribution (Partner Finance)";
     if (isReferredCustomerMode) return "Share Distribution (Referred Customer)";
     if (isPartnerInstallerMode) return "Share Distribution (Partner Installer)";
+    if (isPartnerFinanceMode) return "Share Distribution (Partner Finance)";
+    if (isAccountLevel && isSalesAgentMode) return "Share Distribution (Sales Agent)";
     return "Share Distribution";
   };
 
@@ -501,9 +677,11 @@ const CommissionSetupModal = ({
                   <label className="block text-sm font-medium text-gray-700">
                     {getShareFieldTitle()}
                   </label>
-                  <div className="text-sm font-medium text-gray-700">
-                    DCarbon Remainder: {dcarbonRemainder}%
-                  </div>
+                  {dcarbonRemainder !== null && (
+                    <div className="text-sm font-medium text-gray-700">
+                      DCarbon Remainder: {dcarbonRemainder}%
+                    </div>
+                  )}
                 </div>
                 {renderShareFields()}
                 {validationError && (
@@ -514,14 +692,24 @@ const CommissionSetupModal = ({
                     For Direct Customer mode, only Customer Share is applicable.
                   </p>
                 )}
-                {isAccountLevel && isSalesAgentMode && (
+                {isReferredCustomerMode && (
                   <p className="text-xs text-gray-500 mt-1">
-                    For Sales Agent modes, Sales Agent Share is required. Finance Share is optional.
+                    For Referred Customer mode, only Customer Share is applicable.
+                  </p>
+                )}
+                {isPartnerInstallerMode && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Referred Customer Share is read-only. Only Installer Share can be set.
                   </p>
                 )}
                 {isPartnerFinanceMode && (
                   <p className="text-xs text-gray-500 mt-1">
-                    EPC shares must not exceed Partner Finance share. DCarbon remainder is calculated automatically.
+                    Referred Customer Share is read-only. EPC shares must not exceed Partner Finance share.
+                  </p>
+                )}
+                {isAccountLevel && isSalesAgentMode && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    For Sales Agent modes, Sales Agent Share is required. Finance Share is optional.
                   </p>
                 )}
               </div>

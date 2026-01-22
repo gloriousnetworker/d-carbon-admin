@@ -50,27 +50,6 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
 
   const headers = buildHeaders();
 
-  const calculateDCarbonRemainder = (tierData) => {
-    if (!tierData) return null;
-    
-    let total = 0;
-    if (tierData.customerShare !== null && tierData.customerShare !== undefined) {
-      total += parseFloat(tierData.customerShare);
-    }
-    if (tierData.installerShare !== null && tierData.installerShare !== undefined) {
-      total += parseFloat(tierData.installerShare);
-    }
-    if (tierData.salesAgentShare !== null && tierData.salesAgentShare !== undefined) {
-      total += parseFloat(tierData.salesAgentShare);
-    }
-    if (tierData.financeShare !== null && tierData.financeShare !== undefined) {
-      total += parseFloat(tierData.financeShare);
-    }
-    
-    const remainder = 100 - total;
-    return remainder >= 0 ? remainder : 0;
-  };
-
   const getShareDisplay = (tierData) => {
     if (!tierData) return (
       <div className="text-center">
@@ -79,22 +58,85 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
     );
     
     const shares = [];
-    if (tierData.customerShare !== null && tierData.customerShare !== undefined) {
-      shares.push(`Customer: ${tierData.customerShare}%`);
-    }
-    if (tierData.installerShare !== null && tierData.installerShare !== undefined) {
-      shares.push(`Installer: ${tierData.installerShare}%`);
-    }
-    if (tierData.salesAgentShare !== null && tierData.salesAgentShare !== undefined) {
-      shares.push(`Sales Agent: ${tierData.salesAgentShare}%`);
-    }
-    if (tierData.financeShare !== null && tierData.financeShare !== undefined) {
-      shares.push(`Finance: ${tierData.financeShare}%`);
-    }
     
-    const dcarbonRemainder = calculateDCarbonRemainder(tierData);
-    if (dcarbonRemainder !== null && dcarbonRemainder !== undefined) {
-      shares.push(`DCarbon: ${dcarbonRemainder.toFixed(1)}%`);
+    if (tierData.mode === "REFERRED_CUSTOMER") {
+      if (tierData.customerShare !== null && tierData.customerShare !== undefined) {
+        shares.push(`Customer: ${tierData.customerShare}%`);
+      }
+    } else if (tierData.mode === "PARTNER_INSTALLER") {
+      if (tierData.customerShare !== null && tierData.customerShare !== undefined) {
+        shares.push(`Customer: ${tierData.customerShare}%`);
+      }
+      if (tierData.installerShare !== null && tierData.installerShare !== undefined) {
+        shares.push(`Installer: ${tierData.installerShare}%`);
+      }
+      const total = (parseFloat(tierData.customerShare || 0) + parseFloat(tierData.installerShare || 0));
+      const remainder = 100 - total;
+      if (remainder >= 0) {
+        shares.push(`DCarbon: ${remainder.toFixed(1)}%`);
+      }
+    } else if (tierData.mode === "PARTNER_FINANCE") {
+      if (tierData.customerShare !== null && tierData.customerShare !== undefined) {
+        shares.push(`Customer: ${tierData.customerShare}%`);
+      }
+      if (tierData.financeShare !== null && tierData.financeShare !== undefined) {
+        shares.push(`Finance: ${tierData.financeShare}%`);
+      }
+      const total = (parseFloat(tierData.customerShare || 0) + parseFloat(tierData.financeShare || 0));
+      const remainder = 100 - total;
+      if (remainder >= 0) {
+        shares.push(`DCarbon: ${remainder.toFixed(1)}%`);
+      }
+    } else if (tierData.mode === "EPC_ASSISTED_FINANCE" || tierData.mode === "EPC_ASSISTED_INSTALLER") {
+      if (tierData.customerShare !== null && tierData.customerShare !== undefined) {
+        shares.push(`Customer: ${tierData.customerShare}%`);
+      }
+      if (tierData.financeShare !== null && tierData.financeShare !== undefined) {
+        shares.push(`Finance: ${tierData.financeShare}%`);
+      }
+      if (tierData.installerShare !== null && tierData.installerShare !== undefined) {
+        shares.push(`Installer: ${tierData.installerShare}%`);
+      }
+      const total = (parseFloat(tierData.customerShare || 0) + 
+                     parseFloat(tierData.financeShare || 0) + 
+                     parseFloat(tierData.installerShare || 0));
+      const remainder = 100 - total;
+      if (remainder >= 0) {
+        shares.push(`DCarbon: ${remainder.toFixed(1)}%`);
+      }
+    } else if (tierData.mode.includes("SALES_AGENT")) {
+      if (tierData.salesAgentShare !== null && tierData.salesAgentShare !== undefined) {
+        shares.push(`Sales Agent: ${tierData.salesAgentShare}%`);
+      }
+      if (tierData.financeShare !== null && tierData.financeShare !== undefined) {
+        shares.push(`Finance: ${tierData.financeShare}%`);
+      }
+      const total = (parseFloat(tierData.salesAgentShare || 0) + parseFloat(tierData.financeShare || 0));
+      const remainder = 100 - total;
+      if (remainder >= 0) {
+        shares.push(`DCarbon: ${remainder.toFixed(1)}%`);
+      }
+    } else {
+      if (tierData.customerShare !== null && tierData.customerShare !== undefined) {
+        shares.push(`Customer: ${tierData.customerShare}%`);
+      }
+      if (tierData.installerShare !== null && tierData.installerShare !== undefined) {
+        shares.push(`Installer: ${tierData.installerShare}%`);
+      }
+      if (tierData.salesAgentShare !== null && tierData.salesAgentShare !== undefined) {
+        shares.push(`Sales Agent: ${tierData.salesAgentShare}%`);
+      }
+      if (tierData.financeShare !== null && tierData.financeShare !== undefined) {
+        shares.push(`Finance: ${tierData.financeShare}%`);
+      }
+      const total = (parseFloat(tierData.customerShare || 0) + 
+                     parseFloat(tierData.installerShare || 0) + 
+                     parseFloat(tierData.salesAgentShare || 0) + 
+                     parseFloat(tierData.financeShare || 0));
+      const remainder = 100 - total;
+      if (remainder >= 0) {
+        shares.push(`DCarbon: ${remainder.toFixed(1)}%`);
+      }
     }
     
     if (shares.length === 0) return (
@@ -145,7 +187,7 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
                   <td key={tier.id} className="px-3 py-4 text-sm">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        {getShareDisplay(tierData)}
+                        {getShareDisplay({...tierData, mode: group.mode})}
                       </div>
                       {commissionItem && (
                         <div className="ml-2 flex flex-col space-y-1">
