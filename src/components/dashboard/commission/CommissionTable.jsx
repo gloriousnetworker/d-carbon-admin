@@ -30,52 +30,92 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
       acc[key] = {
         propertyType: item.propertyType,
         mode: item.mode,
-        tiers: {},
+        itemsByTier: {},
         items: []
       };
     }
-    acc[key].tiers[item.tierId] = {
-      customerShare: item.customerShare,
-      installerShare: item.installerShare,
-      salesAgentShare: item.salesAgentShare,
-      financeShare: item.financeShare,
-      maxDuration: item.maxDuration,
-      agreementYrs: item.agreementYrs,
-      cancellationFee: item.cancellationFee,
-      itemId: item.id
-    };
+    acc[key].itemsByTier[item.tierId] = item;
     acc[key].items.push(item);
     return acc;
   }, {});
 
-  const headers = buildHeaders();
+  const getModeDisplayName = (mode) => {
+    if (mode === "REFERRED_CUSTOMER") return "REFERRED CUSTOMER";
+    return mode.replace(/_/g, " ");
+  };
 
-  const getShareDisplay = (tierData) => {
-    if (!tierData) return (
-      <div className="text-center">
-        <span className="text-gray-300">—</span>
-      </div>
-    );
+  const getPropertyDisplayName = (property) => {
+    if (property === "ACCOUNT_LEVEL") return "Account Level";
+    return property;
+  };
+
+  const calculateDCarbonRemainder = (item) => {
+    if (!item) return "0";
+    
+    const customer = parseFloat(item.customerShare) || 0;
+    const installer = parseFloat(item.installerShare) || 0;
+    const salesAgent = parseFloat(item.salesAgentShare) || 0;
+    const finance = parseFloat(item.financeShare) || 0;
+    
+    if (item.mode === "DIRECT_CUSTOMER") {
+      const remainder = (100 - customer).toFixed(2);
+      return remainder >= 0 ? remainder : "0";
+    }
+    
+    if (item.mode === "REFERRED_CUSTOMER") {
+      const total = customer + installer + finance;
+      const remainder = (100 - total).toFixed(2);
+      return remainder >= 0 ? remainder : "0";
+    }
+    
+    if (item.mode === "PARTNER_INSTALLER") {
+      const remainder = (100 - installer).toFixed(2);
+      return remainder >= 0 ? remainder : "0";
+    }
+    
+    if (item.mode === "PARTNER_FINANCE") {
+      const remainder = (100 - finance).toFixed(2);
+      return remainder >= 0 ? remainder : "0";
+    }
+    
+    if (item.mode.includes("SALES_AGENT")) {
+      const total = salesAgent + finance;
+      const remainder = (100 - total).toFixed(2);
+      return remainder >= 0 ? remainder : "0";
+    }
+    
+    return "0";
+  };
+
+  const getCommissionDisplay = (item) => {
+    if (!item) return null;
     
     const shares = [];
-    if (tierData.customerShare !== null && tierData.customerShare !== undefined) {
-      shares.push(`Customer: ${tierData.customerShare}%`);
+    
+    if (item.customerShare !== null && item.customerShare !== undefined) {
+      shares.push(`Customer: ${item.customerShare}%`);
     }
-    if (tierData.installerShare !== null && tierData.installerShare !== undefined) {
-      shares.push(`Installer: ${tierData.installerShare}%`);
+    if (item.installerShare !== null && item.installerShare !== undefined) {
+      shares.push(`Installer: ${item.installerShare}%`);
     }
-    if (tierData.salesAgentShare !== null && tierData.salesAgentShare !== undefined) {
-      shares.push(`Sales Agent: ${tierData.salesAgentShare}%`);
+    if (item.salesAgentShare !== null && item.salesAgentShare !== undefined) {
+      shares.push(`Sales Agent: ${item.salesAgentShare}%`);
     }
-    if (tierData.financeShare !== null && tierData.financeShare !== undefined) {
-      shares.push(`Finance: ${tierData.financeShare}%`);
+    if (item.financeShare !== null && item.financeShare !== undefined) {
+      shares.push(`Finance: ${item.financeShare}%`);
     }
     
-    if (shares.length === 0) return (
-      <div className="text-center">
-        <span className="text-gray-300">—</span>
-      </div>
-    );
+    if (item.mode === "PARTNER_FINANCE") {
+      if (item.epcFinanceShare !== null && item.epcFinanceShare !== undefined) {
+        shares.push(`EPC Finance: ${item.epcFinanceShare}%`);
+      }
+      if (item.epcInstallerShare !== null && item.epcInstallerShare !== undefined) {
+        shares.push(`EPC Installer: ${item.epcInstallerShare}%`);
+      }
+    }
+    
+    const remainder = calculateDCarbonRemainder(item);
+    shares.push(`DCarbon: ${remainder}%`);
     
     return (
       <div className="space-y-1">
@@ -87,6 +127,8 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
       </div>
     );
   };
+
+  const headers = buildHeaders();
 
   return (
     <div className="overflow-x-auto bg-white rounded-lg shadow-sm border border-[#E8E8E8]">
@@ -108,30 +150,29 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
             <tr key={groupIndex} className="hover:bg-gray-50">
               <td className="px-3 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">
                 <div className="flex flex-col">
-                  <span>{group.propertyType === "ACCOUNT_LEVEL" ? "Account Level" : group.propertyType}</span>
-                  <span className="text-xs text-gray-500">{group.mode.replace(/_/g, ' ')}</span>
+                  <span>{getPropertyDisplayName(group.propertyType)}</span>
+                  <span className="text-xs text-gray-500">{getModeDisplayName(group.mode)}</span>
                 </div>
               </td>
               {sortedTiers.map(tier => {
-                const tierData = group.tiers[tier.id];
-                const commissionItem = group.items.find(item => item.tierId === tier.id);
+                const item = group.itemsByTier[tier.id];
                 return (
                   <td key={tier.id} className="px-3 py-4 text-sm">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        {getShareDisplay(tierData)}
+                        {getCommissionDisplay(item)}
                       </div>
-                      {commissionItem && (
+                      {item && (
                         <div className="ml-2 flex flex-col space-y-1">
                           <button
-                            onClick={() => onEdit(commissionItem)}
+                            onClick={() => onEdit(item)}
                             className="text-[#039994] hover:text-[#028884] p-1 rounded hover:bg-gray-100"
                             title="Edit"
                           >
                             <FiEdit size={14} />
                           </button>
                           <button
-                            onClick={() => onDelete(commissionItem.id)}
+                            onClick={() => onDelete(item.id)}
                             className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-gray-100"
                             title="Delete"
                           >
@@ -140,7 +181,7 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
                         </div>
                       )}
                     </div>
-                    {commissionItem && (
+                    {item && (
                       <div className="text-xs text-gray-500 mt-1">
                         Tier {tier.order}
                       </div>
