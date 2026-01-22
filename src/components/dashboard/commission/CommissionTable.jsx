@@ -50,7 +50,7 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
 
   const headers = buildHeaders();
 
-  const getShareDisplay = (tierData) => {
+  const getShareDisplay = (tierData, mode) => {
     if (!tierData) return (
       <div className="text-center">
         <span className="text-gray-300">—</span>
@@ -59,13 +59,13 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
     
     const shares = [];
     
-    if (tierData.mode === "REFERRED_CUSTOMER") {
+    if (mode === "REFERRED_CUSTOMER") {
       if (tierData.customerShare !== null && tierData.customerShare !== undefined) {
-        shares.push(`Customer: ${tierData.customerShare}%`);
+        shares.push(`Referred Customer: ${tierData.customerShare}%`);
       }
-    } else if (tierData.mode === "PARTNER_INSTALLER") {
+    } else if (mode === "PARTNER_INSTALLER") {
       if (tierData.customerShare !== null && tierData.customerShare !== undefined) {
-        shares.push(`Customer: ${tierData.customerShare}%`);
+        shares.push(`Referred Customer: ${tierData.customerShare}%`);
       }
       if (tierData.installerShare !== null && tierData.installerShare !== undefined) {
         shares.push(`Installer: ${tierData.installerShare}%`);
@@ -75,9 +75,9 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
       if (remainder >= 0) {
         shares.push(`DCarbon: ${remainder.toFixed(1)}%`);
       }
-    } else if (tierData.mode === "PARTNER_FINANCE") {
+    } else if (mode === "PARTNER_FINANCE") {
       if (tierData.customerShare !== null && tierData.customerShare !== undefined) {
-        shares.push(`Customer: ${tierData.customerShare}%`);
+        shares.push(`Referred Customer: ${tierData.customerShare}%`);
       }
       if (tierData.financeShare !== null && tierData.financeShare !== undefined) {
         shares.push(`Finance: ${tierData.financeShare}%`);
@@ -87,31 +87,35 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
       if (remainder >= 0) {
         shares.push(`DCarbon: ${remainder.toFixed(1)}%`);
       }
-    } else if (tierData.mode === "EPC_ASSISTED_FINANCE" || tierData.mode === "EPC_ASSISTED_INSTALLER") {
+    } else if (mode === "EPC_ASSISTED_FINANCE") {
       if (tierData.customerShare !== null && tierData.customerShare !== undefined) {
-        shares.push(`Customer: ${tierData.customerShare}%`);
+        shares.push(`Referred Customer: ${tierData.customerShare}%`);
       }
       if (tierData.financeShare !== null && tierData.financeShare !== undefined) {
-        shares.push(`Finance: ${tierData.financeShare}%`);
+        shares.push(`EPC Finance: ${tierData.financeShare}%`);
       }
-      if (tierData.installerShare !== null && tierData.installerShare !== undefined) {
-        shares.push(`Installer: ${tierData.installerShare}%`);
-      }
-      const total = (parseFloat(tierData.customerShare || 0) + 
-                     parseFloat(tierData.financeShare || 0) + 
-                     parseFloat(tierData.installerShare || 0));
+      const total = (parseFloat(tierData.customerShare || 0) + parseFloat(tierData.financeShare || 0));
       const remainder = 100 - total;
       if (remainder >= 0) {
         shares.push(`DCarbon: ${remainder.toFixed(1)}%`);
       }
-    } else if (tierData.mode.includes("SALES_AGENT")) {
+    } else if (mode === "EPC_ASSISTED_INSTALLER") {
+      if (tierData.customerShare !== null && tierData.customerShare !== undefined) {
+        shares.push(`Referred Customer: ${tierData.customerShare}%`);
+      }
+      if (tierData.installerShare !== null && tierData.installerShare !== undefined) {
+        shares.push(`EPC Installer: ${tierData.installerShare}%`);
+      }
+      const total = (parseFloat(tierData.customerShare || 0) + parseFloat(tierData.installerShare || 0));
+      const remainder = 100 - total;
+      if (remainder >= 0) {
+        shares.push(`DCarbon: ${remainder.toFixed(1)}%`);
+      }
+    } else if (mode.includes("SALES_AGENT")) {
       if (tierData.salesAgentShare !== null && tierData.salesAgentShare !== undefined) {
         shares.push(`Sales Agent: ${tierData.salesAgentShare}%`);
       }
-      if (tierData.financeShare !== null && tierData.financeShare !== undefined) {
-        shares.push(`Finance: ${tierData.financeShare}%`);
-      }
-      const total = (parseFloat(tierData.salesAgentShare || 0) + parseFloat(tierData.financeShare || 0));
+      const total = parseFloat(tierData.salesAgentShare || 0);
       const remainder = 100 - total;
       if (remainder >= 0) {
         shares.push(`DCarbon: ${remainder.toFixed(1)}%`);
@@ -187,7 +191,7 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
                   <td key={tier.id} className="px-3 py-4 text-sm">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        {getShareDisplay({...tierData, mode: group.mode})}
+                        {getShareDisplay(tierData, group.mode)}
                       </div>
                       {commissionItem && (
                         <div className="ml-2 flex flex-col space-y-1">

@@ -103,7 +103,6 @@ const CommissionSetupModal = ({
       total += parseFloat(formData.financeShare || 0);
     } else if (isAccountLevel && isSalesAgentMode) {
       total += parseFloat(formData.salesAgentShare || 0);
-      total += parseFloat(formData.financeShare || 0);
     } else if (isDirectCustomerMode) {
       total += parseFloat(formData.customerShare || 0);
     } else {
@@ -153,12 +152,8 @@ const CommissionSetupModal = ({
     setValidationError("");
   };
 
-  const createCommissionStructure = async (payload, modeOverride = null) => {
+  const createCommissionStructure = async (payload) => {
     const authToken = localStorage.getItem("authToken");
-    const finalPayload = {
-      ...payload,
-      mode: modeOverride || payload.mode,
-    };
     
     const response = await fetch("https://services.dcarbon.solutions/api/commission-structure", {
       method: "POST",
@@ -166,10 +161,31 @@ const CommissionSetupModal = ({
         "Content-Type": "application/json",
         Authorization: `Bearer ${authToken}`,
       },
-      body: JSON.stringify(finalPayload),
+      body: JSON.stringify(payload),
     });
     
     return response;
+  };
+
+  const checkIfCommissionExists = async (propertyType, mode, tierId) => {
+    try {
+      const authToken = localStorage.getItem("authToken");
+      const response = await fetch(
+        `https://services.dcarbon.solutions/api/commission-structure/filter/mode-property?mode=${mode}&property=${propertyType}`,
+        {
+          headers: { Authorization: `Bearer ${authToken}` },
+        }
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        return data.some(item => item.tierId === tierId);
+      }
+      return false;
+    } catch (error) {
+      console.error("Failed to check commission existence:", error);
+      return false;
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -201,65 +217,93 @@ const CommissionSetupModal = ({
         const epcFinanceShare = parseFloat(epcShares.epcAssistedFinanceShare || 0);
         const epcInstallerShare = parseFloat(epcShares.epcAssistedInstallerShare || 0);
         
-        if (epcFinanceShare > 0 || epcInstallerShare > 0) {
-          let response;
+        const partnerFinancePayload = {
+          ...basePayload,
+          mode: "PARTNER_FINANCE",
+          customerShare: parseFloat(referredCustomerShare || 0),
+          installerShare: null,
+          salesAgentShare: null,
+          financeShare: formData.financeShare ? parseFloat(formData.financeShare) : null,
+        };
+        
+        const partnerFinanceExists = await checkIfCommissionExists(
+          formData.propertyType, 
+          "PARTNER_FINANCE", 
+          formData.tierId
+        );
+        
+        if (partnerFinanceExists) {
+          throw new Error("Partner Finance commission structure already exists for this tier");
+        }
+        
+        const partnerFinanceResponse = await createCommissionStructure(partnerFinancePayload);
+        if (!partnerFinanceResponse.ok) {
+          const error = await partnerFinanceResponse.json();
+          throw new Error(error.message || "Failed to create partner finance structure");
+        }
+        
+        toast.success("Partner finance structure created successfully");
+        
+        if (epcFinanceShare > 0) {
+          const epcFinanceExists = await checkIfCommissionExists(
+            formData.propertyType, 
+            "EPC_ASSISTED_FINANCE", 
+            formData.tierId
+          );
           
-          const referredCustomerPayload = {
-            ...basePayload,
-            mode: "REFERRED_CUSTOMER",
-            customerShare: parseFloat(referredCustomerShare),
-            installerShare: null,
-            salesAgentShare: null,
-            financeShare: null,
-          };
-          
-          response = await createCommissionStructure(referredCustomerPayload);
-          if (!response.ok) throw new Error("Failed to create referred customer structure");
-          
-          const partnerFinancePayload = {
-            ...basePayload,
-            mode: "PARTNER_FINANCE",
-            customerShare: parseFloat(referredCustomerShare),
-            installerShare: null,
-            salesAgentShare: null,
-            financeShare: formData.financeShare ? parseFloat(formData.financeShare) : null,
-          };
-          
-          response = await createCommissionStructure(partnerFinancePayload);
-          if (!response.ok) throw new Error("Failed to create partner finance structure");
-          
-          if (epcFinanceShare > 0) {
+          if (!epcFinanceExists) {
             const epcFinancePayload = {
               ...basePayload,
               mode: "EPC_ASSISTED_FINANCE",
-              customerShare: parseFloat(referredCustomerShare),
+              customerShare: null,
               installerShare: null,
               salesAgentShare: null,
               financeShare: epcFinanceShare,
             };
             
-            response = await createCommissionStructure(epcFinancePayload);
-            if (!response.ok) throw new Error("Failed to create EPC assisted finance structure");
+            const epcFinanceResponse = await createCommissionStructure(epcFinancePayload);
+            if (!epcFinanceResponse.ok) {
+              const errorData = await epcFinanceResponse.json();
+              throw new Error(errorData.message || "Failed to create EPC assisted finance structure");
+            }
+            
+            toast.success("EPC assisted finance structure created successfully");
+          } else {
+            toast.success("EPC assisted finance structure already exists");
           }
+        }
+        
+        if (epcInstallerShare > 0) {
+          const epcInstallerExists = await checkIfCommissionExists(
+            formData.propertyType, 
+            "EPC_ASSISTED_INSTALLER", 
+            formData.tierId
+          );
           
-          if (epcInstallerShare > 0) {
+          if (!epcInstallerExists) {
             const epcInstallerPayload = {
               ...basePayload,
               mode: "EPC_ASSISTED_INSTALLER",
-              customerShare: parseFloat(referredCustomerShare),
+              customerShare: null,
               installerShare: epcInstallerShare,
               salesAgentShare: null,
               financeShare: null,
             };
             
-            response = await createCommissionStructure(epcInstallerPayload);
-            if (!response.ok) throw new Error("Failed to create EPC assisted installer structure");
+            const epcInstallerResponse = await createCommissionStructure(epcInstallerPayload);
+            if (!epcInstallerResponse.ok) {
+              const errorData = await epcInstallerResponse.json();
+              throw new Error(errorData.message || "Failed to create EPC assisted installer structure");
+            }
+            
+            toast.success("EPC assisted installer structure created successfully");
+          } else {
+            toast.success("EPC assisted installer structure already exists");
           }
-          
-          toast.success("All commission structures created successfully");
-          onSuccess();
-          return;
         }
+        
+        onSuccess();
+        return;
       }
 
       let payload = {
@@ -286,12 +330,22 @@ const CommissionSetupModal = ({
         payload.customerShare = null;
         payload.installerShare = null;
         payload.salesAgentShare = formData.salesAgentShare ? parseFloat(formData.salesAgentShare) : null;
-        payload.financeShare = formData.financeShare ? parseFloat(formData.financeShare) : null;
+        payload.financeShare = null;
       } else {
         payload.customerShare = formData.customerShare ? parseFloat(formData.customerShare) : null;
         payload.installerShare = formData.installerShare ? parseFloat(formData.installerShare) : null;
         payload.salesAgentShare = formData.salesAgentShare ? parseFloat(formData.salesAgentShare) : null;
         payload.financeShare = formData.financeShare ? parseFloat(formData.financeShare) : null;
+      }
+
+      const commissionExists = await checkIfCommissionExists(
+        formData.propertyType, 
+        formData.mode, 
+        formData.tierId
+      );
+      
+      if (commissionExists && !editingCommission) {
+        throw new Error("Commission structure already exists for this mode and tier");
       }
 
       let response;
@@ -355,7 +409,7 @@ const CommissionSetupModal = ({
       return (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Customer Share (%)
+            Referred Customer Share (%)
           </label>
           <input
             type="number"
@@ -478,38 +532,21 @@ const CommissionSetupModal = ({
 
     if (isAccountLevel && isSalesAgentMode) {
       return (
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Sales Agent Share (%)
-            </label>
-            <input
-              type="number"
-              name="salesAgentShare"
-              value={formData.salesAgentShare}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              step="0.1"
-              min="0"
-              max="100"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Finance Share (%)
-            </label>
-            <input
-              type="number"
-              name="financeShare"
-              value={formData.financeShare}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              step="0.1"
-              min="0"
-              max="100"
-            />
-          </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Sales Agent Share (%)
+          </label>
+          <input
+            type="number"
+            name="salesAgentShare"
+            value={formData.salesAgentShare}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            step="0.1"
+            min="0"
+            max="100"
+            required
+          />
         </div>
       );
     }
@@ -694,7 +731,7 @@ const CommissionSetupModal = ({
                 )}
                 {isReferredCustomerMode && (
                   <p className="text-xs text-gray-500 mt-1">
-                    For Referred Customer mode, only Customer Share is applicable.
+                    For Referred Customer mode, only Referred Customer Share is applicable.
                   </p>
                 )}
                 {isPartnerInstallerMode && (
@@ -709,7 +746,7 @@ const CommissionSetupModal = ({
                 )}
                 {isAccountLevel && isSalesAgentMode && (
                   <p className="text-xs text-gray-500 mt-1">
-                    For Sales Agent modes, Sales Agent Share is required. Finance Share is optional.
+                    For Sales Agent modes, only Sales Agent Share is applicable.
                   </p>
                 )}
               </div>
