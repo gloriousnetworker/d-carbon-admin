@@ -22,10 +22,16 @@ const BonusCommissionSetup = ({ onClose, onSuccess }) => {
         return { showMin: true, showMax: true, showPercent: true, showFlat: false, unit: "MW" };
       case "RESIDENTIAL_REFERRAL_QUARTERLY":
         return { showMin: true, showMax: true, showPercent: true, showFlat: false, unit: "Referrals" };
-      case "PARTNER_MW_ANNUAL":
-        return { showMin: true, showMax: false, showPercent: true, showFlat: false, unit: "MW" };
       case "SALES_AGENT_FLAT":
         return { showMin: true, showMax: true, showPercent: false, showFlat: true, unit: "Units" };
+      case "PARTNER_RESIDENTIAL_MW_ANNUAL":
+        return { showMin: true, showMax: false, showPercent: true, showFlat: false, unit: "MW" };
+      case "PARTNER_COMMERCIAL_MW_ANNUAL":
+        return { showMin: true, showMax: false, showPercent: true, showFlat: false, unit: "MW" };
+      case "PARTNER_RESIDENTIAL_MW_QUARTER":
+        return { showMin: true, showMax: true, showPercent: true, showFlat: false, unit: "MW" };
+      case "PARTNER_COMMERCIAL_MW_QUARTER":
+        return { showMin: true, showMax: true, showPercent: true, showFlat: false, unit: "MW" };
       default:
         return { showMin: true, showMax: true, showPercent: true, showFlat: false, unit: "" };
     }
@@ -154,16 +160,6 @@ const BonusCommissionSetup = ({ onClose, onSuccess }) => {
         </button>
         <button
           className={`px-4 py-3 rounded-md text-sm font-medium transition-colors ${
-            target === "PARTNER_MW_ANNUAL"
-              ? "bg-[#039994] text-white"
-              : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-          }`}
-          onClick={() => handleTargetChange("PARTNER_MW_ANNUAL")}
-        >
-          Partner MW Annual
-        </button>
-        <button
-          className={`px-4 py-3 rounded-md text-sm font-medium transition-colors ${
             target === "SALES_AGENT_FLAT"
               ? "bg-[#039994] text-white"
               : "bg-gray-200 text-gray-700 hover:bg-gray-300"
@@ -171,6 +167,46 @@ const BonusCommissionSetup = ({ onClose, onSuccess }) => {
           onClick={() => handleTargetChange("SALES_AGENT_FLAT")}
         >
           Sales Agent Flat
+        </button>
+        <button
+          className={`px-4 py-3 rounded-md text-sm font-medium transition-colors ${
+            target === "PARTNER_RESIDENTIAL_MW_ANNUAL"
+              ? "bg-[#039994] text-white"
+              : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+          }`}
+          onClick={() => handleTargetChange("PARTNER_RESIDENTIAL_MW_ANNUAL")}
+        >
+          Partner Residential MW Annual
+        </button>
+        <button
+          className={`px-4 py-3 rounded-md text-sm font-medium transition-colors ${
+            target === "PARTNER_COMMERCIAL_MW_ANNUAL"
+              ? "bg-[#039994] text-white"
+              : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+          }`}
+          onClick={() => handleTargetChange("PARTNER_COMMERCIAL_MW_ANNUAL")}
+        >
+          Partner Commercial MW Annual
+        </button>
+        <button
+          className={`px-4 py-3 rounded-md text-sm font-medium transition-colors ${
+            target === "PARTNER_RESIDENTIAL_MW_QUARTER"
+              ? "bg-[#039994] text-white"
+              : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+          }`}
+          onClick={() => handleTargetChange("PARTNER_RESIDENTIAL_MW_QUARTER")}
+        >
+          Partner Residential MW Quarter
+        </button>
+        <button
+          className={`px-4 py-3 rounded-md text-sm font-medium transition-colors ${
+            target === "PARTNER_COMMERCIAL_MW_QUARTER"
+              ? "bg-[#039994] text-white"
+              : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+          }`}
+          onClick={() => handleTargetChange("PARTNER_COMMERCIAL_MW_QUARTER")}
+        >
+          Partner Commercial MW Quarter
         </button>
       </div>
     </div>
