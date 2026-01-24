@@ -21,12 +21,6 @@ const CommissionStructure = () => {
   const [editingCommission, setEditingCommission] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  const propertyTypes = {
-    COMMERCIAL: ["COMMERCIAL"],
-    RESIDENTIAL: ["RESIDENTIAL"],
-    ACCOUNT_LEVEL: ["ACCOUNT_LEVEL"]
-  };
-
   useEffect(() => {
     fetchTiers();
     fetchModes();
@@ -64,9 +58,7 @@ const CommissionStructure = () => {
         const allModes = data;
         const filteredModes = allModes.filter(mode => 
           !mode.includes("SALES_AGENT") && 
-          mode !== "ACCOUNT_LEVEL" &&
-          mode !== "EPC_ASSISTED_FINANCE" &&
-          mode !== "EPC_ASSISTED_INSTALLER"
+          mode !== "ACCOUNT_LEVEL"
         );
         setModes(filteredModes);
         setAccountModes(allModes.filter(mode => 
@@ -82,15 +74,20 @@ const CommissionStructure = () => {
     try {
       setLoading(true);
       const authToken = localStorage.getItem("authToken");
-      const property = activePropertyTab === "ACCOUNT_LEVEL" ? "ACCOUNT_LEVEL" : activePropertyTab;
-      const mode = activePropertyTab === "ACCOUNT_LEVEL" ? activeMode : activeMode;
       
-      const response = await fetch(
-        `https://services.dcarbon.solutions/api/commission-structure/filter/mode-property?mode=${mode}&property=${property}`,
-        {
-          headers: { Authorization: `Bearer ${authToken}` },
-        }
-      );
+      let url;
+      if (activePropertyTab === "ACCOUNT_LEVEL") {
+        url = "https://services.dcarbon.solutions/api/commission-structure/";
+      } else {
+        const property = activePropertyTab;
+        const mode = activeMode;
+        url = `https://services.dcarbon.solutions/api/commission-structure/filter/mode-property?mode=${mode}&property=${property}`;
+      }
+      
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      
       if (response.ok) {
         const data = await response.json();
         setCommissionData(data);
@@ -241,22 +238,22 @@ const CommissionStructure = () => {
                   </div>
                 </div>
 
-                <div className="mb-6">
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">
-                    {activePropertyTab === "ACCOUNT_LEVEL" ? "Sales Agent Mode" : "Commission Mode"}
-                  </h3>
-                  <select
-                    value={activeMode}
-                    onChange={(e) => setActiveMode(e.target.value)}
-                    className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-md bg-white"
-                  >
-                    {getAvailableModes().map((mode) => (
-                      <option key={mode} value={mode}>
-                        {mode.replace(/_/g, " ")}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {activePropertyTab !== "ACCOUNT_LEVEL" && (
+                  <div className="mb-6">
+                    <h3 className="text-sm font-medium text-gray-700 mb-2">Commission Mode</h3>
+                    <select
+                      value={activeMode}
+                      onChange={(e) => setActiveMode(e.target.value)}
+                      className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-md bg-white"
+                    >
+                      {getAvailableModes().map((mode) => (
+                        <option key={mode} value={mode}>
+                          {mode.replace(/_/g, " ")}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <div className="flex justify-between items-center mb-6">
                   <button
