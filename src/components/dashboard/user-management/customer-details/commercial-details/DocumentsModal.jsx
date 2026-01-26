@@ -83,7 +83,7 @@ export default function DocumentsModal({ facility, onVerifyFacility, verifyingFa
     { name: "Utility PTO Letter", url: facility.ptoLetterUrl, status: facility.ptoLetterStatus, type: "ptoLetter", rejectionReason: facility.ptoLetterRejectionReason },
     { name: "Single Line Diagram", url: facility.singleLineDiagramUrl, status: facility.singleLineDiagramStatus, type: "singleLineDiagram", rejectionReason: facility.singleLineDiagramRejectionReason },
     { name: "Installation Site Plan", url: facility.sitePlanUrl, status: facility.sitePlanStatus, type: "sitePlan", rejectionReason: facility.sitePlanRejectionReason },
-    { name: "Panel/Inverter Datasheet", url: facility.inverterDatasheetUrl, status: facility.inverterDatasheetStatus, type: "panelInverterDatasheet", rejectionReason: facility.inverterDatasheetRejectionReason },
+    { name: "Panel/Inverter Datasheet", url: facility.panelInverterDatasheetUrl, status: facility.panelInverterDatasheetStatus, type: "panelInverterDatasheet", rejectionReason: facility.panelInverterDatasheetRejectionReason },
     { name: "Revenue Meter Datasheet", url: facility.revenueMeterDataUrl, status: facility.revenueMeterDataStatus, type: "revenueMeterData", rejectionReason: facility.revenueMeterDataRejectionReason },
     { name: "Utility Meter Photo", url: facility.utilityMeterPhotoUrl, status: facility.utilityMeterPhotoStatus, type: "utilityMeterPhoto", rejectionReason: facility.utilityMeterPhotoRejectionReason },
     { name: "Assignment of Registration Right", url: facility.assignmentOfRegistrationRightUrl, status: facility.assignmentOfRegistrationRightStatus, type: "assignmentOfRegistrationRight", rejectionReason: facility.assignmentOfRegistrationRightRejectionReason },
@@ -269,18 +269,33 @@ export default function DocumentsModal({ facility, onVerifyFacility, verifyingFa
           "ptoLetter": "ptoLetterStatus",
           "singleLineDiagram": "singleLineDiagramStatus",
           "sitePlan": "sitePlanStatus",
-          "panelInverterDatasheet": "inverterDatasheetStatus",
+          "panelInverterDatasheet": "panelInverterDatasheetStatus",
           "revenueMeterData": "revenueMeterDataStatus",
           "utilityMeterPhoto": "utilityMeterPhotoStatus",
           "assignmentOfRegistrationRight": "assignmentOfRegistrationRightStatus",
           "acknowledgementOfStationService": "acknowledgementOfStationServiceStatus"
         };
 
+        const rejectionFieldMap = {
+          "wregisAssignment": "wregisAssignmentRejectionReason",
+          "financeAgreement": "financeAgreementRejectionReason",
+          "solarInstallationContract": "solarInstallationContractRejectionReason",
+          "interconnectionAgreement": "interconnectionAgreementRejectionReason",
+          "ptoLetter": "ptoLetterRejectionReason",
+          "singleLineDiagram": "singleLineDiagramRejectionReason",
+          "sitePlan": "sitePlanRejectionReason",
+          "panelInverterDatasheet": "panelInverterDatasheetRejectionReason",
+          "revenueMeterData": "revenueMeterDataRejectionReason",
+          "utilityMeterPhoto": "utilityMeterPhotoRejectionReason",
+          "assignmentOfRegistrationRight": "assignmentOfRegistrationRightRejectionReason",
+          "acknowledgementOfStationService": "acknowledgementOfStationServiceRejectionReason"
+        };
+
         const updatedFacility = {
           ...facility,
           [statusFieldMap[currentDocument.type]]: actionType === "APPROVE" ? "APPROVED" : "REJECTED",
           ...(actionType === "REJECT" && {
-            [`${currentDocument.type}RejectionReason`]: rejectionReason || "No reason provided"
+            [rejectionFieldMap[currentDocument.type]]: rejectionReason || "No reason provided"
           })
         };
 
