@@ -128,17 +128,22 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
         shares.push(`DCarbon: ${tierData.dcarbonShare}%`);
       }
       
-      const partnerFinanceTotal = (parseFloat(tierData.financeShare || 0) + parseFloat(tierData.installerShare || 0));
+      const referredCustomerValue = parseFloat(tierData.customerShare || 0);
+      const dcarbonRemainderValue = parseFloat(tierData.dcarbonShare || 0);
+      const partnerFinanceTotal = 100 - referredCustomerValue - dcarbonRemainderValue;
+      
       if (partnerFinanceTotal > 0) {
-        shares.push(`Partner Finance Total: ${partnerFinanceTotal}%`);
+        shares.push(`Partner Finance Total: ${partnerFinanceTotal.toFixed(2)}%`);
       }
     } else if (mode === "EPC_ASSISTED_FINANCE") {
       const partnerFinance = findPartnerFinanceItem(propertyType, tierId);
       if (partnerFinance) {
         const epcInstallerShare = findEpcInstallerShare(propertyType, tierId);
-        const partnerFinanceTotal = (parseFloat(tierData.financeShare || 0) + parseFloat(epcInstallerShare || 0));
+        const referredCustomerValue = parseFloat(partnerFinance.customerShare || 0);
+        const dcarbonRemainderValue = parseFloat(partnerFinance.dcarbonShare || 0);
+        const partnerFinanceTotal = 100 - referredCustomerValue - dcarbonRemainderValue;
         shares.push(`EPC Finance: ${tierData.financeShare}%`);
-        shares.push(`(Part of Partner Finance: ${partnerFinanceTotal}%)`);
+        shares.push(`(Part of Partner Finance: ${partnerFinanceTotal.toFixed(2)}%)`);
       } else {
         shares.push(`EPC Finance: ${tierData.financeShare}%`);
       }
@@ -146,9 +151,11 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
       const partnerFinance = findPartnerFinanceItem(propertyType, tierId);
       if (partnerFinance) {
         const epcFinanceShare = findEpcFinanceShare(propertyType, tierId);
-        const partnerFinanceTotal = (parseFloat(epcFinanceShare || 0) + parseFloat(tierData.installerShare || 0));
+        const referredCustomerValue = parseFloat(partnerFinance.customerShare || 0);
+        const dcarbonRemainderValue = parseFloat(partnerFinance.dcarbonShare || 0);
+        const partnerFinanceTotal = 100 - referredCustomerValue - dcarbonRemainderValue;
         shares.push(`EPC Installer: ${tierData.installerShare}%`);
-        shares.push(`(Part of Partner Finance: ${partnerFinanceTotal}%)`);
+        shares.push(`(Part of Partner Finance: ${partnerFinanceTotal.toFixed(2)}%)`);
       } else {
         shares.push(`EPC Installer: ${tierData.installerShare}%`);
       }

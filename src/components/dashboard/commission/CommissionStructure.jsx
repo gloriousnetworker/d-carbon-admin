@@ -58,7 +58,9 @@ const CommissionStructure = () => {
         const allModes = data;
         const filteredModes = allModes.filter(mode => 
           !mode.includes("SALES_AGENT") && 
-          mode !== "ACCOUNT_LEVEL"
+          mode !== "ACCOUNT_LEVEL" &&
+          mode !== "EPC_ASSISTED_FINANCE" && 
+          mode !== "EPC_ASSISTED_INSTALLER"
         );
         setModes(filteredModes);
         setAccountModes(allModes.filter(mode => 
@@ -221,7 +223,7 @@ const CommissionStructure = () => {
                         onClick={() => {
                           setActivePropertyTab(property);
                           if (property === "ACCOUNT_LEVEL") {
-                            setActiveMode("SALES_AGENT_REFERRED_CUSTOMER");
+                            setActiveMode("SALES_AGENT_REFERRED_RESIDENTIAL");
                           } else {
                             setActiveMode("DIRECT_CUSTOMER");
                           }

@@ -26,7 +26,8 @@ const CommissionSetupModal = ({
     notes: "",
   });
   
-  const [epcShares, setEpcShares] = useState({
+  const [partnerFinanceData, setPartnerFinanceData] = useState({
+    partnerFinanceTotal: "",
     epcAssistedFinanceShare: "",
     epcAssistedInstallerShare: ""
   });
@@ -34,7 +35,7 @@ const CommissionSetupModal = ({
   const [referredCustomerShare, setReferredCustomerShare] = useState("");
   const [loading, setLoading] = useState(false);
   const [validationError, setValidationError] = useState("");
-  const [partnerFinanceData, setPartnerFinanceData] = useState(null);
+  const [existingPartnerFinance, setExistingPartnerFinance] = useState(null);
 
   useEffect(() => {
     if (editingCommission) {
@@ -54,10 +55,8 @@ const CommissionSetupModal = ({
       });
 
       if (editingCommission.mode === "PARTNER_FINANCE") {
-        fetchRelatedEpcShares(editingCommission);
-        setPartnerFinanceData(editingCommission);
-      } else if (editingCommission.mode === "EPC_ASSISTED_FINANCE" || editingCommission.mode === "EPC_ASSISTED_INSTALLER") {
-        fetchRelatedPartnerFinance(editingCommission);
+        fetchExistingEpcShares(editingCommission);
+        setExistingPartnerFinance(editingCommission);
       }
     }
     
@@ -66,7 +65,7 @@ const CommissionSetupModal = ({
     }
   }, [editingCommission, mode, propertyType]);
 
-  const fetchRelatedEpcShares = async (commission) => {
+  const fetchExistingEpcShares = async (commission) => {
     try {
       const authToken = localStorage.getItem("authToken");
       
@@ -91,64 +90,18 @@ const CommissionSetupModal = ({
         const tierEpcFinance = epcFinanceData.find(item => item.tierId === commission.tierId);
         const tierEpcInstaller = epcInstallerData.find(item => item.tierId === commission.tierId);
         
-        setEpcShares({
-          epcAssistedFinanceShare: tierEpcFinance?.financeShare || "",
-          epcAssistedInstallerShare: tierEpcInstaller?.installerShare || ""
+        const epcFinanceShare = tierEpcFinance?.financeShare || "";
+        const epcInstallerShare = tierEpcInstaller?.installerShare || "";
+        const partnerFinanceTotal = parseFloat(epcFinanceShare || 0) + parseFloat(epcInstallerShare || 0);
+        
+        setPartnerFinanceData({
+          partnerFinanceTotal: partnerFinanceTotal > 0 ? partnerFinanceTotal.toString() : "",
+          epcAssistedFinanceShare: epcFinanceShare,
+          epcAssistedInstallerShare: epcInstallerShare
         });
       }
     } catch (error) {
-      console.error("Failed to fetch related EPC shares:", error);
-    }
-  };
-
-  const fetchRelatedPartnerFinance = async (epcCommission) => {
-    try {
-      const authToken = localStorage.getItem("authToken");
-      
-      const response = await fetch(
-        `https://services.dcarbon.solutions/api/commission-structure/filter/mode-property?mode=PARTNER_FINANCE&property=${epcCommission.propertyType}`,
-        {
-          headers: { Authorization: `Bearer ${authToken}` },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        const tierPartnerFinance = data.find(item => item.tierId === epcCommission.tierId);
-        
-        if (tierPartnerFinance) {
-          setPartnerFinanceData(tierPartnerFinance);
-          
-          const epcFinanceResponse = await fetch(
-            `https://services.dcarbon.solutions/api/commission-structure/filter/mode-property?mode=EPC_ASSISTED_FINANCE&property=${epcCommission.propertyType}`,
-            {
-              headers: { Authorization: `Bearer ${authToken}` },
-            }
-          );
-          
-          const epcInstallerResponse = await fetch(
-            `https://services.dcarbon.solutions/api/commission-structure/filter/mode-property?mode=EPC_ASSISTED_INSTALLER&property=${epcCommission.propertyType}`,
-            {
-              headers: { Authorization: `Bearer ${authToken}` },
-            }
-          );
-
-          if (epcFinanceResponse.ok && epcInstallerResponse.ok) {
-            const epcFinanceData = await epcFinanceResponse.json();
-            const epcInstallerData = await epcInstallerResponse.json();
-            
-            const tierEpcFinance = epcFinanceData.find(item => item.tierId === epcCommission.tierId);
-            const tierEpcInstaller = epcInstallerData.find(item => item.tierId === epcCommission.tierId);
-            
-            setEpcShares({
-              epcAssistedFinanceShare: tierEpcFinance?.financeShare || "",
-              epcAssistedInstallerShare: tierEpcInstaller?.installerShare || ""
-            });
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Failed to fetch related Partner Finance:", error);
+      console.error("Failed to fetch existing EPC shares:", error);
     }
   };
 
@@ -156,24 +109,14 @@ const CommissionSetupModal = ({
   const isReferredCustomerMode = formData.mode === "REFERRED_CUSTOMER";
   const isPartnerInstallerMode = formData.mode === "PARTNER_INSTALLER";
   const isPartnerFinanceMode = formData.mode === "PARTNER_FINANCE";
-  const isEpcAssistedFinance = formData.mode === "EPC_ASSISTED_FINANCE";
-  const isEpcAssistedInstaller = formData.mode === "EPC_ASSISTED_INSTALLER";
   const isAccountLevel = formData.propertyType === "ACCOUNT_LEVEL";
   const isSalesAgentMode = formData.mode.includes("SALES_AGENT");
-
-  const isEditingEpcWithPartnerFinance = (isEpcAssistedFinance || isEpcAssistedInstaller) && partnerFinanceData;
 
   useEffect(() => {
     if ((isPartnerFinanceMode || isPartnerInstallerMode) && formData.tierId) {
       fetchReferredCustomerShare();
     }
   }, [formData.tierId, isPartnerFinanceMode, isPartnerInstallerMode]);
-
-  useEffect(() => {
-    if (isEditingEpcWithPartnerFinance) {
-      setReferredCustomerShare(partnerFinanceData.customerShare || "");
-    }
-  }, [isEditingEpcWithPartnerFinance, partnerFinanceData]);
 
   const fetchReferredCustomerShare = async () => {
     try {
@@ -198,16 +141,8 @@ const CommissionSetupModal = ({
     }
   };
 
-  const calculatePartnerFinanceTotal = () => {
-    if (!isPartnerFinanceMode && !isEditingEpcWithPartnerFinance) return null;
-    
-    const epcFinance = parseFloat(epcShares.epcAssistedFinanceShare || 0);
-    const epcInstaller = parseFloat(epcShares.epcAssistedInstallerShare || 0);
-    return epcFinance + epcInstaller;
-  };
-
   const calculateDCarbonRemainder = () => {
-    if (isReferredCustomerMode || (isEpcAssistedFinance && !isEditingEpcWithPartnerFinance) || (isEpcAssistedInstaller && !isEditingEpcWithPartnerFinance)) {
+    if (isReferredCustomerMode) {
       return null;
     }
     
@@ -216,9 +151,9 @@ const CommissionSetupModal = ({
     if (isPartnerInstallerMode) {
       total += parseFloat(referredCustomerShare || 0);
       total += parseFloat(formData.installerShare || 0);
-    } else if (isPartnerFinanceMode || isEditingEpcWithPartnerFinance) {
+    } else if (isPartnerFinanceMode) {
       total += parseFloat(referredCustomerShare || 0);
-      total += calculatePartnerFinanceTotal();
+      total += parseFloat(partnerFinanceData.partnerFinanceTotal || 0);
     } else if (isAccountLevel && isSalesAgentMode) {
       total += parseFloat(formData.salesAgentShare || 0);
     } else if (isDirectCustomerMode) {
@@ -237,17 +172,25 @@ const CommissionSetupModal = ({
   const validateForm = () => {
     setValidationError("");
     
-    if (isPartnerFinanceMode || isEditingEpcWithPartnerFinance) {
-      const financeTotal = calculatePartnerFinanceTotal();
+    if (isPartnerFinanceMode) {
+      const partnerTotal = parseFloat(partnerFinanceData.partnerFinanceTotal || 0);
+      const referredShare = parseFloat(referredCustomerShare || 0);
+      const epcFinanceShare = parseFloat(partnerFinanceData.epcAssistedFinanceShare || 0);
+      const epcInstallerShare = parseFloat(partnerFinanceData.epcAssistedInstallerShare || 0);
       
       if (!referredCustomerShare) {
         setValidationError("Referred Customer Share is required. Please ensure a REFERRED_CUSTOMER structure exists for this tier.");
         return false;
       }
       
-      const availableAllocation = 100 - parseFloat(referredCustomerShare || 0);
-      if (financeTotal > availableAllocation) {
-        setValidationError(`EPC shares (${financeTotal}%) exceed available allocation (${availableAllocation}%) after Referred Customer Share`);
+      const totalAllocation = referredShare + partnerTotal;
+      if (totalAllocation > 100) {
+        setValidationError(`Total allocation (${totalAllocation}%) exceeds 100%. Available after Referred Customer: ${100 - referredShare}%`);
+        return false;
+      }
+      
+      if (epcFinanceShare + epcInstallerShare > partnerTotal) {
+        setValidationError(`EPC shares (${epcFinanceShare + epcInstallerShare}%) exceed Partner Finance Total (${partnerTotal}%)`);
         return false;
       }
     }
@@ -264,9 +207,9 @@ const CommissionSetupModal = ({
     setValidationError("");
   };
 
-  const handleEpcChange = (e) => {
+  const handlePartnerFinanceChange = (e) => {
     const { name, value } = e.target;
-    setEpcShares((prev) => ({
+    setPartnerFinanceData((prev) => ({
       ...prev,
       [name]: value,
     }));
@@ -303,12 +246,13 @@ const CommissionSetupModal = ({
     return response;
   };
 
-  const updateEpcAndPartnerFinance = async () => {
+  const updatePartnerFinanceWithEpcShares = async () => {
     const referredShare = parseFloat(referredCustomerShare);
-    const epcFinanceShare = parseFloat(epcShares.epcAssistedFinanceShare || 0);
-    const epcInstallerShare = parseFloat(epcShares.epcAssistedInstallerShare || 0);
-    const financeTotal = epcFinanceShare + epcInstallerShare;
-    const dcarbonRemainder = 100 - (referredShare + financeTotal);
+    const partnerTotal = parseFloat(partnerFinanceData.partnerFinanceTotal || 0);
+    const dcarbonRemainder = 100 - (referredShare + partnerTotal);
+    
+    const epcFinanceShare = parseFloat(partnerFinanceData.epcAssistedFinanceShare || 0);
+    const epcInstallerShare = parseFloat(partnerFinanceData.epcAssistedInstallerShare || 0);
     
     const basePayload = {
       propertyType: formData.propertyType,
@@ -378,113 +322,76 @@ const CommissionSetupModal = ({
       dcarbonShare: dcarbonRemainder,
     };
 
+    let partnerResponse;
     if (relatedIds.partnerFinanceId) {
-      await updateCommissionStructure(relatedIds.partnerFinanceId, partnerFinancePayload);
+      partnerResponse = await updateCommissionStructure(relatedIds.partnerFinanceId, partnerFinancePayload);
     } else {
-      await createCommissionStructure(partnerFinancePayload);
+      partnerResponse = await createCommissionStructure(partnerFinancePayload);
     }
     
-    if (epcFinanceShare > 0) {
-      const epcFinancePayload = {
-        ...basePayload,
-        mode: "EPC_ASSISTED_FINANCE",
-        customerShare: null,
-        installerShare: null,
-        salesAgentShare: null,
-        financeShare: epcFinanceShare,
-        dcarbonShare: null,
-      };
-      
-      if (relatedIds.epcFinanceId) {
-        await updateCommissionStructure(relatedIds.epcFinanceId, epcFinancePayload);
-      } else {
-        await createCommissionStructure(epcFinancePayload);
+    if (partnerTotal > 0) {
+      if (epcFinanceShare > 0) {
+        const epcFinancePayload = {
+          ...basePayload,
+          mode: "EPC_ASSISTED_FINANCE",
+          customerShare: null,
+          installerShare: null,
+          salesAgentShare: null,
+          financeShare: epcFinanceShare,
+          dcarbonShare: null,
+        };
+        
+        if (relatedIds.epcFinanceId) {
+          await updateCommissionStructure(relatedIds.epcFinanceId, epcFinancePayload);
+        } else {
+          await createCommissionStructure(epcFinancePayload);
+        }
+      } else if (relatedIds.epcFinanceId) {
+        await fetch(`https://services.dcarbon.solutions/api/commission-structure/${relatedIds.epcFinanceId}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
       }
-    } else if (relatedIds.epcFinanceId) {
-      await fetch(`https://services.dcarbon.solutions/api/commission-structure/${relatedIds.epcFinanceId}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${authToken}` },
-      });
-    }
 
-    if (epcInstallerShare > 0) {
-      const epcInstallerPayload = {
-        ...basePayload,
-        mode: "EPC_ASSISTED_INSTALLER",
-        customerShare: null,
-        installerShare: epcInstallerShare,
-        salesAgentShare: null,
-        financeShare: null,
-        dcarbonShare: null,
-      };
+      if (epcInstallerShare > 0) {
+        const epcInstallerPayload = {
+          ...basePayload,
+          mode: "EPC_ASSISTED_INSTALLER",
+          customerShare: null,
+          installerShare: epcInstallerShare,
+          salesAgentShare: null,
+          financeShare: null,
+          dcarbonShare: null,
+        };
+        
+        if (relatedIds.epcInstallerId) {
+          await updateCommissionStructure(relatedIds.epcInstallerId, epcInstallerPayload);
+        } else {
+          await createCommissionStructure(epcInstallerPayload);
+        }
+      } else if (relatedIds.epcInstallerId) {
+        await fetch(`https://services.dcarbon.solutions/api/commission-structure/${relatedIds.epcInstallerId}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
+      }
+    } else {
+      if (relatedIds.epcFinanceId) {
+        await fetch(`https://services.dcarbon.solutions/api/commission-structure/${relatedIds.epcFinanceId}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
+      }
       
       if (relatedIds.epcInstallerId) {
-        await updateCommissionStructure(relatedIds.epcInstallerId, epcInstallerPayload);
-      } else {
-        await createCommissionStructure(epcInstallerPayload);
-      }
-    } else if (relatedIds.epcInstallerId) {
-      await fetch(`https://services.dcarbon.solutions/api/commission-structure/${relatedIds.epcInstallerId}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${authToken}` },
-      });
-    }
-  };
-
-  const handlePartnerFinanceSubmit = async () => {
-    await updateEpcAndPartnerFinance();
-    toast.success("Partner finance structure updated successfully");
-  };
-
-  const handleEpcAssistedSubmit = async () => {
-    if (isEditingEpcWithPartnerFinance) {
-      await updateEpcAndPartnerFinance();
-      toast.success(`${formData.mode.replace(/_/g, ' ')} structure updated successfully`);
-    } else {
-      let basePayload = {
-        propertyType: formData.propertyType,
-        tierId: formData.tierId,
-        maxDuration: formData.maxDuration ? parseInt(formData.maxDuration) : null,
-        agreementYrs: formData.agreementYrs ? parseInt(formData.agreementYrs) : null,
-        cancellationFee: formData.cancellationFee ? parseFloat(formData.cancellationFee) : null,
-        annualCap: formData.annualCap ? parseFloat(formData.annualCap) : null,
-        notes: formData.notes || "",
-      };
-
-      let payload = {
-        ...basePayload,
-        mode: formData.mode,
-        customerShare: null,
-        installerShare: null,
-        salesAgentShare: null,
-        financeShare: null,
-        dcarbonShare: null,
-      };
-
-      if (isEpcAssistedFinance) {
-        payload.financeShare = formData.financeShare ? parseFloat(formData.financeShare) : null;
-      } else if (isEpcAssistedInstaller) {
-        payload.installerShare = formData.installerShare ? parseFloat(formData.installerShare) : null;
-      }
-
-      let response;
-      if (editingCommission) {
-        response = await updateCommissionStructure(editingCommission.id, payload);
-      } else {
-        response = await createCommissionStructure(payload);
-      }
-
-      if (response.ok) {
-        toast.success(
-          editingCommission
-            ? `${formData.mode.replace(/_/g, ' ')} structure updated successfully`
-            : `${formData.mode.replace(/_/g, ' ')} structure created successfully`
-        );
-      } else {
-        const error = await response.json();
-        throw new Error(error.message || "Operation failed");
+        await fetch(`https://services.dcarbon.solutions/api/commission-structure/${relatedIds.epcInstallerId}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
       }
     }
+    
+    return partnerResponse;
   };
 
   const handleSubmit = async (e) => {
@@ -501,14 +408,18 @@ const CommissionSetupModal = ({
     setLoading(true);
     try {
       if (isPartnerFinanceMode) {
-        await handlePartnerFinanceSubmit();
-        onSuccess();
-        return;
-      }
-
-      if (isEpcAssistedFinance || isEpcAssistedInstaller) {
-        await handleEpcAssistedSubmit();
-        onSuccess();
+        const response = await updatePartnerFinanceWithEpcShares();
+        if (response.ok) {
+          toast.success(
+            existingPartnerFinance
+              ? "Partner Finance structure updated successfully"
+              : "Partner Finance structure created successfully"
+          );
+          onSuccess();
+        } else {
+          const error = await response.json();
+          throw new Error(error.message || "Operation failed");
+        }
         return;
       }
 
@@ -627,48 +538,6 @@ const CommissionSetupModal = ({
       );
     }
 
-    if (isEpcAssistedFinance && !isEditingEpcWithPartnerFinance) {
-      return (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            EPC Assisted Finance Share (%)
-          </label>
-          <input
-            type="number"
-            name="financeShare"
-            value={formData.financeShare}
-            onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            step="0.1"
-            min="0"
-            max="100"
-            required
-          />
-        </div>
-      );
-    }
-
-    if (isEpcAssistedInstaller && !isEditingEpcWithPartnerFinance) {
-      return (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            EPC Assisted Installer Share (%)
-          </label>
-          <input
-            type="number"
-            name="installerShare"
-            value={formData.installerShare}
-            onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            step="0.1"
-            min="0"
-            max="100"
-            required
-          />
-        </div>
-      );
-    }
-
     if (isPartnerInstallerMode) {
       return (
         <div className="space-y-4">
@@ -703,10 +572,12 @@ const CommissionSetupModal = ({
       );
     }
 
-    if (isPartnerFinanceMode || isEditingEpcWithPartnerFinance) {
-      const financeTotal = calculatePartnerFinanceTotal();
+    if (isPartnerFinanceMode) {
       const referredShare = parseFloat(referredCustomerShare || 0);
+      const partnerTotal = parseFloat(partnerFinanceData.partnerFinanceTotal || 0);
       const availableAllocation = 100 - referredShare;
+      const epcFinanceShare = parseFloat(partnerFinanceData.epcAssistedFinanceShare || 0);
+      const epcInstallerShare = parseFloat(partnerFinanceData.epcAssistedInstallerShare || 0);
       
       return (
         <div className="space-y-4">
@@ -724,50 +595,68 @@ const CommissionSetupModal = ({
           
           <div className="border-t pt-4">
             <h4 className="text-sm font-medium text-gray-700 mb-3">Partner Finance Settings</h4>
-            <div className="mb-3">
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Partner Finance Total Share (%)
               </label>
-              <div className="text-lg font-semibold text-gray-800">
-                {financeTotal || 0}%
-              </div>
+              <input
+                type="number"
+                name="partnerFinanceTotal"
+                value={partnerFinanceData.partnerFinanceTotal}
+                onChange={handlePartnerFinanceChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                step="0.1"
+                min="0"
+                max={availableAllocation}
+                required
+              />
               <p className="text-xs text-gray-500 mt-1">
                 Available allocation after Referred Customer: {availableAllocation}%
               </p>
             </div>
             
-            <div className="grid grid-cols-2 gap-4 pl-4 border-l-2 border-gray-200">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  EPC Assisted Finance (%)
-                </label>
-                <input
-                  type="number"
-                  name="epcAssistedFinanceShare"
-                  value={epcShares.epcAssistedFinanceShare}
-                  onChange={handleEpcChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  step="0.1"
-                  min="0"
-                  max={availableAllocation}
-                />
+            {partnerFinanceData.partnerFinanceTotal && (
+              <div className="mt-4 p-3 bg-gray-50 rounded-md">
+                <h5 className="text-sm font-medium text-gray-700 mb-2">EPC Shares Distribution</h5>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      EPC Assisted Finance (%)
+                    </label>
+                    <input
+                      type="number"
+                      name="epcAssistedFinanceShare"
+                      value={partnerFinanceData.epcAssistedFinanceShare}
+                      onChange={handlePartnerFinanceChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      step="0.1"
+                      min="0"
+                      max={partnerTotal}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      EPC Assisted Installer (%)
+                    </label>
+                    <input
+                      type="number"
+                      name="epcAssistedInstallerShare"
+                      value={partnerFinanceData.epcAssistedInstallerShare}
+                      onChange={handlePartnerFinanceChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      step="0.1"
+                      min="0"
+                      max={partnerTotal}
+                    />
+                  </div>
+                </div>
+                <div className="text-xs text-gray-500 mt-2">
+                  <div>EPC Finance: {epcFinanceShare}%</div>
+                  <div>EPC Installer: {epcInstallerShare}%</div>
+                  <div className="font-medium mt-1">EPC Total: {epcFinanceShare + epcInstallerShare}% of {partnerTotal}%</div>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  EPC Assisted Installer (%)
-                </label>
-                <input
-                  type="number"
-                  name="epcAssistedInstallerShare"
-                  value={epcShares.epcAssistedInstallerShare}
-                  onChange={handleEpcChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  step="0.1"
-                  min="0"
-                  max={availableAllocation}
-                />
-              </div>
-            </div>
+            )}
           </div>
         </div>
       );
@@ -869,9 +758,6 @@ const CommissionSetupModal = ({
   const getShareFieldTitle = () => {
     if (isDirectCustomerMode) return "Share Distribution (Direct Customer)";
     if (isReferredCustomerMode) return "Share Distribution (Referred Customer)";
-    if (isEpcAssistedFinance && !isEditingEpcWithPartnerFinance) return "Share Distribution (EPC Assisted Finance)";
-    if (isEpcAssistedInstaller && !isEditingEpcWithPartnerFinance) return "Share Distribution (EPC Assisted Installer)";
-    if (isEditingEpcWithPartnerFinance) return "Share Distribution (Linked to Partner Finance)";
     if (isPartnerInstallerMode) return "Share Distribution (Partner Installer)";
     if (isPartnerFinanceMode) return "Share Distribution (Partner Finance)";
     if (isAccountLevel && isSalesAgentMode) return "Share Distribution (Sales Agent)";
@@ -880,6 +766,11 @@ const CommissionSetupModal = ({
 
   const dcarbonRemainder = calculateDCarbonRemainder();
 
+  const filteredModes = modes.filter(mode => 
+    mode !== "EPC_ASSISTED_FINANCE" && 
+    mode !== "EPC_ASSISTED_INSTALLER"
+  );
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -887,11 +778,6 @@ const CommissionSetupModal = ({
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-lg font-semibold">
               {editingCommission ? `Edit ${formData.mode.replace(/_/g, ' ')} Structure ${getCurrentTierLabel()}` : "Create Commission Structure"}
-              {isEditingEpcWithPartnerFinance && (
-                <div className="text-xs text-blue-600 mt-1">
-                  (Linked to Partner Finance structure)
-                </div>
-              )}
             </h2>
             <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
               ✕
@@ -928,7 +814,7 @@ const CommissionSetupModal = ({
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   disabled={!!editingCommission}
                 >
-                  {modes.map((modeOption) => (
+                  {filteredModes.map((modeOption) => (
                     <option key={modeOption} value={modeOption}>
                       {modeOption.replace(/_/g, " ")}
                     </option>
@@ -982,21 +868,6 @@ const CommissionSetupModal = ({
                     For Referred Customer mode, only Referred Customer Share is applicable.
                   </p>
                 )}
-                {isEpcAssistedFinance && !isEditingEpcWithPartnerFinance && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    For EPC Assisted Finance mode, only Finance Share is applicable.
-                  </p>
-                )}
-                {isEpcAssistedInstaller && !isEditingEpcWithPartnerFinance && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    For EPC Assisted Installer mode, only Installer Share is applicable.
-                  </p>
-                )}
-                {isEditingEpcWithPartnerFinance && (
-                  <p className="text-xs text-blue-600 mt-1">
-                    This EPC structure is linked to a Partner Finance structure. Changes here will update the Partner Finance structure automatically.
-                  </p>
-                )}
                 {isPartnerInstallerMode && (
                   <p className="text-xs text-gray-500 mt-1">
                     Referred Customer Share is read-only. Only Installer Share can be set.
@@ -1004,7 +875,7 @@ const CommissionSetupModal = ({
                 )}
                 {isPartnerFinanceMode && (
                   <p className="text-xs text-gray-500 mt-1">
-                    Referred Customer Share is read-only. EPC shares must not exceed available allocation.
+                    Partner Finance Total can be set independently. EPC shares must not exceed Partner Finance Total.
                   </p>
                 )}
                 {isAccountLevel && isSalesAgentMode && (
