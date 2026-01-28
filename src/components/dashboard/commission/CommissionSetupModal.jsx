@@ -36,6 +36,7 @@ const CommissionSetupModal = ({
   const [loading, setLoading] = useState(false);
   const [validationError, setValidationError] = useState("");
   const [existingPartnerFinance, setExistingPartnerFinance] = useState(null);
+  const [allCommissionData, setAllCommissionData] = useState([]);
 
   useEffect(() => {
     if (editingCommission) {
@@ -59,51 +60,11 @@ const CommissionSetupModal = ({
         setExistingPartnerFinance(editingCommission);
       }
     }
-    
-    if (!editingCommission && (mode === "PARTNER_INSTALLER" || mode === "PARTNER_FINANCE")) {
-      fetchReferredCustomerShare();
-    }
-  }, [editingCommission, mode, propertyType]);
+  }, [editingCommission]);
 
-  const fetchExistingEpcShares = async (commission) => {
-    try {
-      const authToken = localStorage.getItem("authToken");
-      
-      const epcFinanceResponse = await fetch(
-        `https://services.dcarbon.solutions/api/commission-structure/filter/mode-property?mode=EPC_ASSISTED_FINANCE&property=${commission.propertyType}`,
-        {
-          headers: { Authorization: `Bearer ${authToken}` },
-        }
-      );
-      
-      const epcInstallerResponse = await fetch(
-        `https://services.dcarbon.solutions/api/commission-structure/filter/mode-property?mode=EPC_ASSISTED_INSTALLER&property=${commission.propertyType}`,
-        {
-          headers: { Authorization: `Bearer ${authToken}` },
-        }
-      );
-
-      if (epcFinanceResponse.ok && epcInstallerResponse.ok) {
-        const epcFinanceData = await epcFinanceResponse.json();
-        const epcInstallerData = await epcInstallerResponse.json();
-        
-        const tierEpcFinance = epcFinanceData.find(item => item.tierId === commission.tierId);
-        const tierEpcInstaller = epcInstallerData.find(item => item.tierId === commission.tierId);
-        
-        const epcFinanceShare = tierEpcFinance?.financeShare || "";
-        const epcInstallerShare = tierEpcInstaller?.installerShare || "";
-        const partnerFinanceTotal = parseFloat(epcFinanceShare || 0) + parseFloat(epcInstallerShare || 0);
-        
-        setPartnerFinanceData({
-          partnerFinanceTotal: partnerFinanceTotal > 0 ? partnerFinanceTotal.toString() : "",
-          epcAssistedFinanceShare: epcFinanceShare,
-          epcAssistedInstallerShare: epcInstallerShare
-        });
-      }
-    } catch (error) {
-      console.error("Failed to fetch existing EPC shares:", error);
-    }
-  };
+  useEffect(() => {
+    fetchAllCommissionData();
+  }, []);
 
   const isDirectCustomerMode = formData.mode === "DIRECT_CUSTOMER";
   const isReferredCustomerMode = formData.mode === "REFERRED_CUSTOMER";
@@ -113,18 +74,16 @@ const CommissionSetupModal = ({
   const isSalesAgentMode = formData.mode.includes("SALES_AGENT");
 
   useEffect(() => {
-    if ((isPartnerFinanceMode || isPartnerInstallerMode) && formData.tierId) {
+    if ((isPartnerFinanceMode || isPartnerInstallerMode) && formData.tierId && formData.propertyType && allCommissionData.length > 0) {
       fetchReferredCustomerShare();
     }
-  }, [formData.tierId, isPartnerFinanceMode, isPartnerInstallerMode]);
+  }, [formData.tierId, isPartnerFinanceMode, isPartnerInstallerMode, formData.propertyType, allCommissionData]);
 
-  const fetchReferredCustomerShare = async () => {
+  const fetchAllCommissionData = async () => {
     try {
       const authToken = localStorage.getItem("authToken");
-      const property = formData.propertyType === "ACCOUNT_LEVEL" ? "ACCOUNT_LEVEL" : formData.propertyType;
-      
       const response = await fetch(
-        `https://services.dcarbon.solutions/api/commission-structure/filter/mode-property?mode=REFERRED_CUSTOMER&property=${property}`,
+        `https://services.dcarbon.solutions/api/commission-structure`,
         {
           headers: { Authorization: `Bearer ${authToken}` },
         }
@@ -132,9 +91,56 @@ const CommissionSetupModal = ({
       
       if (response.ok) {
         const data = await response.json();
-        const tierData = data.find(item => item.tierId === formData.tierId);
-        setReferredCustomerShare(tierData?.customerShare || "");
+        setAllCommissionData(data);
       }
+    } catch (error) {
+      console.error("Failed to fetch commission data:", error);
+    }
+  };
+
+  const fetchExistingEpcShares = (commission) => {
+    try {
+      const residentialData = allCommissionData.filter(
+        item => item.propertyType === "RESIDENTIAL"
+      );
+      const commercialData = allCommissionData.filter(
+        item => item.propertyType === "COMMERCIAL"
+      );
+      
+      const dataToUse = commission.propertyType === "RESIDENTIAL" ? residentialData : commercialData;
+      
+      const epcFinanceData = dataToUse.filter(item => item.mode === "EPC_ASSISTED_FINANCE");
+      const epcInstallerData = dataToUse.filter(item => item.mode === "EPC_ASSISTED_INSTALLER");
+      
+      const tierEpcFinance = epcFinanceData.find(item => item.tierId === commission.tierId);
+      const tierEpcInstaller = epcInstallerData.find(item => item.tierId === commission.tierId);
+      
+      const epcFinanceShare = tierEpcFinance?.financeShare || "";
+      const epcInstallerShare = tierEpcInstaller?.installerShare || "";
+      const partnerFinanceTotal = parseFloat(epcFinanceShare || 0) + parseFloat(epcInstallerShare || 0);
+      
+      setPartnerFinanceData({
+        partnerFinanceTotal: partnerFinanceTotal > 0 ? partnerFinanceTotal.toString() : "",
+        epcAssistedFinanceShare: epcFinanceShare,
+        epcAssistedInstallerShare: epcInstallerShare
+      });
+    } catch (error) {
+      console.error("Failed to fetch existing EPC shares:", error);
+    }
+  };
+
+  const fetchReferredCustomerShare = () => {
+    try {
+      const propertyData = allCommissionData.filter(
+        item => item.propertyType === formData.propertyType
+      );
+      
+      const referredData = propertyData.filter(
+        item => item.mode === "REFERRED_CUSTOMER"
+      );
+      
+      const tierData = referredData.find(item => item.tierId === formData.tierId);
+      setReferredCustomerShare(tierData?.customerShare || "");
     } catch (error) {
       console.error("Failed to fetch referred customer share:", error);
       setReferredCustomerShare("");
@@ -200,11 +206,19 @@ const CommissionSetupModal = ({
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
+    const updatedFormData = {
+      ...formData,
       [name]: value,
-    }));
+    };
+    
+    setFormData(updatedFormData);
     setValidationError("");
+    
+    if ((name === "propertyType" || name === "tierId") && 
+        (updatedFormData.mode === "PARTNER_INSTALLER" || updatedFormData.mode === "PARTNER_FINANCE") &&
+        updatedFormData.tierId && allCommissionData.length > 0) {
+      fetchReferredCustomerShare();
+    }
   };
 
   const handlePartnerFinanceChange = (e) => {
@@ -246,7 +260,131 @@ const CommissionSetupModal = ({
     return response;
   };
 
+  const handleResidentialPartnerFinance = async () => {
+    try {
+      const authToken = localStorage.getItem("authToken");
+      const referredShare = parseFloat(referredCustomerShare);
+      const partnerTotal = parseFloat(partnerFinanceData.partnerFinanceTotal || 0);
+      const dcarbonRemainder = 100 - (referredShare + partnerTotal);
+      
+      const epcFinanceShare = parseFloat(partnerFinanceData.epcAssistedFinanceShare || 0);
+      const epcInstallerShare = parseFloat(partnerFinanceData.epcAssistedInstallerShare || 0);
+      
+      const basePayload = {
+        propertyType: "RESIDENTIAL",
+        tierId: formData.tierId,
+        maxDuration: formData.maxDuration ? parseInt(formData.maxDuration) : null,
+        agreementYrs: formData.agreementYrs ? parseInt(formData.agreementYrs) : null,
+        cancellationFee: formData.cancellationFee ? parseFloat(formData.cancellationFee) : null,
+        annualCap: formData.annualCap ? parseFloat(formData.annualCap) : null,
+        notes: formData.notes || "",
+      };
+
+      const residentialData = allCommissionData.filter(item => item.propertyType === "RESIDENTIAL");
+      const existingReferred = residentialData.find(
+        item => item.mode === "REFERRED_CUSTOMER" && item.tierId === formData.tierId
+      );
+      const referredCommissionId = existingReferred?.id;
+
+      const referredPayload = {
+        propertyType: "RESIDENTIAL",
+        tierId: formData.tierId,
+        mode: "REFERRED_CUSTOMER",
+        customerShare: referredShare,
+        installerShare: null,
+        salesAgentShare: null,
+        financeShare: null,
+        dcarbonShare: null,
+        maxDuration: basePayload.maxDuration,
+        agreementYrs: basePayload.agreementYrs,
+        cancellationFee: basePayload.cancellationFee,
+        annualCap: basePayload.annualCap,
+        notes: basePayload.notes,
+      };
+
+      if (referredCommissionId) {
+        await updateCommissionStructure(referredCommissionId, referredPayload);
+      } else {
+        await createCommissionStructure(referredPayload);
+      }
+
+      const partnerFinancePayload = {
+        ...basePayload,
+        mode: "PARTNER_FINANCE",
+        customerShare: referredShare,
+        installerShare: epcInstallerShare,
+        salesAgentShare: null,
+        financeShare: epcFinanceShare,
+        dcarbonShare: dcarbonRemainder,
+      };
+
+      let partnerResponse;
+      if (existingPartnerFinance) {
+        partnerResponse = await updateCommissionStructure(existingPartnerFinance.id, partnerFinancePayload);
+      } else {
+        partnerResponse = await createCommissionStructure(partnerFinancePayload);
+      }
+
+      if (partnerTotal > 0) {
+        if (epcFinanceShare > 0) {
+          const epcFinancePayload = {
+            ...basePayload,
+            mode: "EPC_ASSISTED_FINANCE",
+            customerShare: null,
+            installerShare: null,
+            salesAgentShare: null,
+            financeShare: epcFinanceShare,
+            dcarbonShare: null,
+          };
+          
+          const existingEpcFinance = residentialData.find(
+            item => item.mode === "EPC_ASSISTED_FINANCE" && item.tierId === formData.tierId
+          );
+          const epcFinanceId = existingEpcFinance?.id;
+          
+          if (epcFinanceId) {
+            await updateCommissionStructure(epcFinanceId, epcFinancePayload);
+          } else {
+            await createCommissionStructure(epcFinancePayload);
+          }
+        }
+
+        if (epcInstallerShare > 0) {
+          const epcInstallerPayload = {
+            ...basePayload,
+            mode: "EPC_ASSISTED_INSTALLER",
+            customerShare: null,
+            installerShare: epcInstallerShare,
+            salesAgentShare: null,
+            financeShare: null,
+            dcarbonShare: null,
+          };
+          
+          const existingEpcInstaller = residentialData.find(
+            item => item.mode === "EPC_ASSISTED_INSTALLER" && item.tierId === formData.tierId
+          );
+          const epcInstallerId = existingEpcInstaller?.id;
+          
+          if (epcInstallerId) {
+            await updateCommissionStructure(epcInstallerId, epcInstallerPayload);
+          } else {
+            await createCommissionStructure(epcInstallerPayload);
+          }
+        }
+      }
+
+      return partnerResponse;
+    } catch (error) {
+      console.error("Failed to handle residential partner finance:", error);
+      throw error;
+    }
+  };
+
   const updatePartnerFinanceWithEpcShares = async () => {
+    if (formData.propertyType === "RESIDENTIAL") {
+      return await handleResidentialPartnerFinance();
+    }
+    
     const referredShare = parseFloat(referredCustomerShare);
     const partnerTotal = parseFloat(partnerFinanceData.partnerFinanceTotal || 0);
     const dcarbonRemainder = 100 - (referredShare + partnerTotal);
@@ -264,53 +402,27 @@ const CommissionSetupModal = ({
       notes: formData.notes || "",
     };
 
-    const authToken = localStorage.getItem("authToken");
+    const propertyData = allCommissionData.filter(item => item.propertyType === formData.propertyType);
     
-    const getRelatedIds = async () => {
-      try {
-        const epcFinanceResponse = await fetch(
-          `https://services.dcarbon.solutions/api/commission-structure/filter/mode-property?mode=EPC_ASSISTED_FINANCE&property=${formData.propertyType}`,
-          {
-            headers: { Authorization: `Bearer ${authToken}` },
-          }
-        );
-        
-        const epcInstallerResponse = await fetch(
-          `https://services.dcarbon.solutions/api/commission-structure/filter/mode-property?mode=EPC_ASSISTED_INSTALLER&property=${formData.propertyType}`,
-          {
-            headers: { Authorization: `Bearer ${authToken}` },
-          }
-        );
-
-        const partnerFinanceResponse = await fetch(
-          `https://services.dcarbon.solutions/api/commission-structure/filter/mode-property?mode=PARTNER_FINANCE&property=${formData.propertyType}`,
-          {
-            headers: { Authorization: `Bearer ${authToken}` },
-          }
-        );
-
-        if (epcFinanceResponse.ok && epcInstallerResponse.ok && partnerFinanceResponse.ok) {
-          const epcFinanceData = await epcFinanceResponse.json();
-          const epcInstallerData = await epcInstallerResponse.json();
-          const partnerFinanceData = await partnerFinanceResponse.json();
-          
-          const tierEpcFinance = epcFinanceData.find(item => item.tierId === formData.tierId);
-          const tierEpcInstaller = epcInstallerData.find(item => item.tierId === formData.tierId);
-          const tierPartnerFinance = partnerFinanceData.find(item => item.tierId === formData.tierId);
-          
-          return {
-            epcFinanceId: tierEpcFinance?.id,
-            epcInstallerId: tierEpcInstaller?.id,
-            partnerFinanceId: tierPartnerFinance?.id
-          };
-        }
-      } catch (error) {
-        console.error("Failed to fetch related IDs:", error);
-        return { epcFinanceId: null, epcInstallerId: null, partnerFinanceId: null };
-      }
+    const getRelatedIds = () => {
+      const tierEpcFinance = propertyData.find(
+        item => item.mode === "EPC_ASSISTED_FINANCE" && item.tierId === formData.tierId
+      );
+      const tierEpcInstaller = propertyData.find(
+        item => item.mode === "EPC_ASSISTED_INSTALLER" && item.tierId === formData.tierId
+      );
+      const tierPartnerFinance = propertyData.find(
+        item => item.mode === "PARTNER_FINANCE" && item.tierId === formData.tierId
+      );
+      
+      return {
+        epcFinanceId: tierEpcFinance?.id,
+        epcInstallerId: tierEpcInstaller?.id,
+        partnerFinanceId: tierPartnerFinance?.id
+      };
     };
 
-    const relatedIds = await getRelatedIds();
+    const relatedIds = getRelatedIds();
     
     const partnerFinancePayload = {
       ...basePayload,
@@ -347,10 +459,7 @@ const CommissionSetupModal = ({
           await createCommissionStructure(epcFinancePayload);
         }
       } else if (relatedIds.epcFinanceId) {
-        await fetch(`https://services.dcarbon.solutions/api/commission-structure/${relatedIds.epcFinanceId}`, {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${authToken}` },
-        });
+        await deleteCommissionStructure(relatedIds.epcFinanceId);
       }
 
       if (epcInstallerShare > 0) {
@@ -370,28 +479,28 @@ const CommissionSetupModal = ({
           await createCommissionStructure(epcInstallerPayload);
         }
       } else if (relatedIds.epcInstallerId) {
-        await fetch(`https://services.dcarbon.solutions/api/commission-structure/${relatedIds.epcInstallerId}`, {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${authToken}` },
-        });
+        await deleteCommissionStructure(relatedIds.epcInstallerId);
       }
     } else {
       if (relatedIds.epcFinanceId) {
-        await fetch(`https://services.dcarbon.solutions/api/commission-structure/${relatedIds.epcFinanceId}`, {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${authToken}` },
-        });
+        await deleteCommissionStructure(relatedIds.epcFinanceId);
       }
       
       if (relatedIds.epcInstallerId) {
-        await fetch(`https://services.dcarbon.solutions/api/commission-structure/${relatedIds.epcInstallerId}`, {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${authToken}` },
-        });
+        await deleteCommissionStructure(relatedIds.epcInstallerId);
       }
     }
     
     return partnerResponse;
+  };
+
+  const deleteCommissionStructure = async (id) => {
+    const authToken = localStorage.getItem("authToken");
+    const response = await fetch(`https://services.dcarbon.solutions/api/commission-structure/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${authToken}` },
+    });
+    return response;
   };
 
   const handleSubmit = async (e) => {
