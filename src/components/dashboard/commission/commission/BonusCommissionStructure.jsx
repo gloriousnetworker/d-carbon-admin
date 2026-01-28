@@ -444,8 +444,27 @@ const BonusCommissionStructure = ({ onSetupStructure, refreshTrigger }) => {
 
   if (!tableData || tableData.length === 0) {
     return (
-      <div className="w-full flex items-center justify-center py-8">
-        <div className="text-gray-500">No bonus structure data available</div>
+      <div className="w-full">
+        <div className="flex items-center justify-between pb-4">
+          <h2 className="text-[#039994] font-semibold text-lg">Bonus Commission Structure</h2>
+          <button
+            className="flex items-center bg-[#039994] text-white px-4 py-2 rounded-full text-sm hover:bg-[#028B86] transition-colors"
+            onClick={onSetupStructure}
+          >
+            <IoSettingsSharp className="mr-2" size={16} />
+            Setup Structure
+          </button>
+        </div>
+        <div className="w-full flex flex-col items-center justify-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
+          <div className="text-gray-500 mb-4">No bonus structure data available</div>
+          <button
+            className="flex items-center bg-[#039994] text-white px-4 py-2 rounded-md text-sm hover:bg-[#028B86] transition-colors"
+            onClick={onSetupStructure}
+          >
+            <IoSettingsSharp className="mr-2" size={16} />
+            Create Bonus Structure
+          </button>
+        </div>
       </div>
     );
   }
@@ -455,9 +474,7 @@ const BonusCommissionStructure = ({ onSetupStructure, refreshTrigger }) => {
   return (
     <div className="w-full">
       <div className="flex items-center justify-between pb-4">
-        <h2 className="text-[#039994] font-semibold text-lg">
-          Bonus Commission Structure
-        </h2>
+        <h2 className="text-[#039994] font-semibold text-lg">Bonus Commission Structure</h2>
         <button
           className="flex items-center bg-[#039994] text-white px-4 py-2 rounded-full text-sm hover:bg-[#028B86] transition-colors"
           onClick={onSetupStructure}
