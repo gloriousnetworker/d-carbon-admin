@@ -98,6 +98,51 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
       </div>
     );
     
+    if (mode === "DIRECT_CUSTOMER") {
+      const customerShare = parseFloat(tierData.customerShare || 0);
+      const dcarbonRemainder = 100 - customerShare;
+      
+      return (
+        <div className="space-y-1">
+          <div className="text-xs font-medium">Direct Customer: {customerShare}%</div>
+          <div className="text-xs text-gray-600">DCarbon: {dcarbonRemainder.toFixed(2)}%</div>
+        </div>
+      );
+    }
+    
+    if (mode === "PARTNER_FINANCE") {
+      const referredCustomerValue = parseFloat(tierData.customerShare || 0);
+      const dcarbonRemainderValue = parseFloat(tierData.dcarbonShare || 0);
+      const partnerFinanceTotal = 100 - referredCustomerValue - dcarbonRemainderValue;
+      const epcFinanceShare = findEpcFinanceShare(propertyType, tierId);
+      const epcInstallerShare = findEpcInstallerShare(propertyType, tierId);
+      const hasEpcAssisted = epcFinanceShare || epcInstallerShare;
+      
+      return (
+        <div className="space-y-2">
+          <div className="space-y-1">
+            <div className="text-xs font-medium text-[#039994]">Partner Finance Total: {partnerFinanceTotal.toFixed(2)}%</div>
+            <div className="text-xs">Referred Customer: {referredCustomerValue}%</div>
+            <div className="text-xs">DCarbon: {dcarbonRemainderValue}%</div>
+          </div>
+          
+          {hasEpcAssisted && (
+            <div className="pt-2 border-t border-gray-200">
+              <div className="text-xs font-medium text-gray-700 mb-1">EPC Assisted Modes:</div>
+              <div className="space-y-1 pl-2 border-l-2 border-gray-300">
+                {epcFinanceShare && (
+                  <div className="text-xs text-gray-600">EPC Finance: {epcFinanceShare}%</div>
+                )}
+                {epcInstallerShare && (
+                  <div className="text-xs text-gray-600">EPC Installer: {epcInstallerShare}%</div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+    
     const shares = [];
     
     if (mode === "REFERRED_CUSTOMER") {
@@ -113,27 +158,6 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
       }
       if (tierData.dcarbonShare !== null) {
         shares.push(`DCarbon: ${tierData.dcarbonShare}%`);
-      }
-    } else if (mode === "PARTNER_FINANCE") {
-      if (tierData.customerShare !== null) {
-        shares.push(`Referred Customer: ${tierData.customerShare}%`);
-      }
-      if (tierData.financeShare !== null) {
-        shares.push(`EPC Finance: ${tierData.financeShare}%`);
-      }
-      if (tierData.installerShare !== null) {
-        shares.push(`EPC Installer: ${tierData.installerShare}%`);
-      }
-      if (tierData.dcarbonShare !== null) {
-        shares.push(`DCarbon: ${tierData.dcarbonShare}%`);
-      }
-      
-      const referredCustomerValue = parseFloat(tierData.customerShare || 0);
-      const dcarbonRemainderValue = parseFloat(tierData.dcarbonShare || 0);
-      const partnerFinanceTotal = 100 - referredCustomerValue - dcarbonRemainderValue;
-      
-      if (partnerFinanceTotal > 0) {
-        shares.push(`Partner Finance Total: ${partnerFinanceTotal.toFixed(2)}%`);
       }
     } else if (mode === "EPC_ASSISTED_FINANCE") {
       const partnerFinance = findPartnerFinanceItem(propertyType, tierId);
@@ -162,10 +186,6 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
     } else if (mode.includes("SALES_AGENT")) {
       if (tierData.salesAgentShare !== null) {
         shares.push(`Sales Agent: ${tierData.salesAgentShare}%`);
-      }
-    } else if (mode === "DIRECT_CUSTOMER") {
-      if (tierData.customerShare !== null) {
-        shares.push(`Customer: ${tierData.customerShare}%`);
       }
     } else {
       if (tierData.customerShare !== null) {
