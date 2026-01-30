@@ -94,70 +94,115 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
   const getShareDisplay = (tierData, mode, propertyType, tierId) => {
     if (!tierData) return (
       <div className="text-center">
-        <span className="text-gray-300">—</span>
+        <span className="text-gray-400">—</span>
       </div>
     );
-    
-    if (mode === "DIRECT_CUSTOMER") {
-      const customerShare = parseFloat(tierData.customerShare || 0);
-      const dcarbonRemainder = 100 - customerShare;
-      
-      return (
-        <div className="space-y-1">
-          <div className="text-xs font-medium">Direct Customer: {customerShare}%</div>
-          <div className="text-xs text-gray-600">DCarbon: {dcarbonRemainder.toFixed(2)}%</div>
-        </div>
-      );
-    }
-    
-    if (mode === "PARTNER_FINANCE") {
-      const referredCustomerValue = parseFloat(tierData.customerShare || 0);
-      const dcarbonRemainderValue = parseFloat(tierData.dcarbonShare || 0);
-      const partnerFinanceTotal = 100 - referredCustomerValue - dcarbonRemainderValue;
-      const epcFinanceShare = findEpcFinanceShare(propertyType, tierId);
-      const epcInstallerShare = findEpcInstallerShare(propertyType, tierId);
-      const hasEpcAssisted = epcFinanceShare || epcInstallerShare;
-      
-      return (
-        <div className="space-y-2">
-          <div className="space-y-1">
-            <div className="text-xs font-medium text-[#039994]">Partner Finance Total: {partnerFinanceTotal.toFixed(2)}%</div>
-            <div className="text-xs">Referred Customer: {referredCustomerValue}%</div>
-            <div className="text-xs">DCarbon: {dcarbonRemainderValue}%</div>
-          </div>
-          
-          {hasEpcAssisted && (
-            <div className="pt-2 border-t border-gray-200">
-              <div className="text-xs font-medium text-gray-700 mb-1">EPC Assisted Modes:</div>
-              <div className="space-y-1 pl-2 border-l-2 border-gray-300">
-                {epcFinanceShare && (
-                  <div className="text-xs text-gray-600">EPC Finance: {epcFinanceShare}%</div>
-                )}
-                {epcInstallerShare && (
-                  <div className="text-xs text-gray-600">EPC Installer: {epcInstallerShare}%</div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      );
-    }
     
     const shares = [];
     
     if (mode === "REFERRED_CUSTOMER") {
       if (tierData.customerShare !== null) {
-        shares.push(`Referred Customer: ${tierData.customerShare}%`);
+        const referredCustomerValue = parseFloat(tierData.customerShare || 0);
+        const dcarbonRemainder = 100 - referredCustomerValue;
+        shares.push(
+          <div key="referred" className="py-1">
+            <span className="font-medium text-gray-900">Referred Customer:</span>
+            <span className="ml-1 text-[#039994] font-semibold">{tierData.customerShare}%</span>
+          </div>
+        );
+        shares.push(
+          <div key="dcarbon" className="py-1">
+            <span className="font-medium text-gray-700">DCarbon Remainder:</span>
+            <span className="ml-1 text-gray-600">{dcarbonRemainder.toFixed(2)}%</span>
+          </div>
+        );
       }
     } else if (mode === "PARTNER_INSTALLER") {
       if (tierData.customerShare !== null) {
-        shares.push(`Referred Customer: ${tierData.customerShare}%`);
+        shares.push(
+          <div key="referred" className="py-1">
+            <span className="font-medium text-gray-900">Referred Customer:</span>
+            <span className="ml-1 text-[#039994] font-semibold">{tierData.customerShare}%</span>
+          </div>
+        );
       }
       if (tierData.installerShare !== null) {
-        shares.push(`Installer: ${tierData.installerShare}%`);
+        shares.push(
+          <div key="installer" className="py-1">
+            <span className="font-medium text-gray-700">Installer:</span>
+            <span className="ml-1 text-gray-600">{tierData.installerShare}%</span>
+          </div>
+        );
       }
       if (tierData.dcarbonShare !== null) {
-        shares.push(`DCarbon: ${tierData.dcarbonShare}%`);
+        shares.push(
+          <div key="dcarbon" className="py-1">
+            <span className="font-medium text-gray-700">DCarbon:</span>
+            <span className="ml-1 text-gray-600">{tierData.dcarbonShare}%</span>
+          </div>
+        );
+      }
+    } else if (mode === "PARTNER_FINANCE") {
+      const referredCustomerValue = parseFloat(tierData.customerShare || 0);
+      const dcarbonRemainderValue = parseFloat(tierData.dcarbonShare || 0);
+      const partnerFinanceTotal = 100 - referredCustomerValue - dcarbonRemainderValue;
+      
+      if (tierData.customerShare !== null) {
+        shares.push(
+          <div key="referred" className="py-1.5 px-2 bg-gradient-to-r from-[#039994]/5 to-transparent rounded">
+            <span className="font-semibold text-gray-900">Referred Customer:</span>
+            <span className="ml-2 text-[#039994] font-bold text-sm">{tierData.customerShare}%</span>
+          </div>
+        );
+      }
+      
+      if (partnerFinanceTotal > 0) {
+        shares.push(
+          <div key="partner-total" className="py-1.5 px-2 bg-blue-50 rounded">
+            <span className="font-semibold text-blue-900">Partner Finance Total:</span>
+            <span className="ml-2 text-blue-700 font-bold text-sm">{partnerFinanceTotal.toFixed(2)}%</span>
+          </div>
+        );
+      }
+      
+      if (tierData.dcarbonShare !== null) {
+        shares.push(
+          <div key="dcarbon" className="py-1.5 px-2 bg-gray-50 rounded mb-2">
+            <span className="font-medium text-gray-800">DCarbon Remainder:</span>
+            <span className="ml-2 text-gray-700 font-semibold text-sm">{tierData.dcarbonShare}%</span>
+          </div>
+        );
+      }
+      
+      shares.push(
+        <div key="divider" className="border-t-2 border-dashed border-gray-300 pt-2 mt-2">
+          <div className="px-2 py-1 bg-gradient-to-r from-purple-50 to-pink-50 rounded-md">
+            <div className="text-xs font-bold text-purple-700 uppercase tracking-wider flex items-center gap-1.5">
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd"/>
+              </svg>
+              EPC Assisted Modes
+            </div>
+          </div>
+        </div>
+      );
+      
+      if (tierData.financeShare !== null) {
+        shares.push(
+          <div key="epc-finance" className="py-1.5 pl-4 pr-2 ml-1 border-l-2 border-purple-200 bg-purple-50/50 rounded-r">
+            <span className="font-medium text-purple-900 text-xs">EPC Finance:</span>
+            <span className="ml-2 text-purple-700 font-semibold text-xs">{tierData.financeShare}%</span>
+          </div>
+        );
+      }
+      
+      if (tierData.installerShare !== null) {
+        shares.push(
+          <div key="epc-installer" className="py-1.5 pl-4 pr-2 ml-1 border-l-2 border-pink-200 bg-pink-50/50 rounded-r">
+            <span className="font-medium text-pink-900 text-xs">EPC Installer:</span>
+            <span className="ml-2 text-pink-700 font-semibold text-xs">{tierData.installerShare}%</span>
+          </div>
+        );
       }
     } else if (mode === "EPC_ASSISTED_FINANCE") {
       const partnerFinance = findPartnerFinanceItem(propertyType, tierId);
@@ -166,10 +211,24 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
         const referredCustomerValue = parseFloat(partnerFinance.customerShare || 0);
         const dcarbonRemainderValue = parseFloat(partnerFinance.dcarbonShare || 0);
         const partnerFinanceTotal = 100 - referredCustomerValue - dcarbonRemainderValue;
-        shares.push(`EPC Finance: ${tierData.financeShare}%`);
-        shares.push(`(Part of Partner Finance: ${partnerFinanceTotal.toFixed(2)}%)`);
+        shares.push(
+          <div key="epc-finance" className="py-1">
+            <span className="font-medium text-purple-900">EPC Finance:</span>
+            <span className="ml-1 text-purple-700 font-semibold">{tierData.financeShare}%</span>
+          </div>
+        );
+        shares.push(
+          <div key="part-of" className="text-xs text-gray-500 italic pl-2">
+            (Part of Partner Finance: {partnerFinanceTotal.toFixed(2)}%)
+          </div>
+        );
       } else {
-        shares.push(`EPC Finance: ${tierData.financeShare}%`);
+        shares.push(
+          <div key="epc-finance" className="py-1">
+            <span className="font-medium text-purple-900">EPC Finance:</span>
+            <span className="ml-1 text-purple-700 font-semibold">{tierData.financeShare}%</span>
+          </div>
+        );
       }
     } else if (mode === "EPC_ASSISTED_INSTALLER") {
       const partnerFinance = findPartnerFinanceItem(propertyType, tierId);
@@ -178,38 +237,94 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
         const referredCustomerValue = parseFloat(partnerFinance.customerShare || 0);
         const dcarbonRemainderValue = parseFloat(partnerFinance.dcarbonShare || 0);
         const partnerFinanceTotal = 100 - referredCustomerValue - dcarbonRemainderValue;
-        shares.push(`EPC Installer: ${tierData.installerShare}%`);
-        shares.push(`(Part of Partner Finance: ${partnerFinanceTotal.toFixed(2)}%)`);
+        shares.push(
+          <div key="epc-installer" className="py-1">
+            <span className="font-medium text-pink-900">EPC Installer:</span>
+            <span className="ml-1 text-pink-700 font-semibold">{tierData.installerShare}%</span>
+          </div>
+        );
+        shares.push(
+          <div key="part-of" className="text-xs text-gray-500 italic pl-2">
+            (Part of Partner Finance: {partnerFinanceTotal.toFixed(2)}%)
+          </div>
+        );
       } else {
-        shares.push(`EPC Installer: ${tierData.installerShare}%`);
+        shares.push(
+          <div key="epc-installer" className="py-1">
+            <span className="font-medium text-pink-900">EPC Installer:</span>
+            <span className="ml-1 text-pink-700 font-semibold">{tierData.installerShare}%</span>
+          </div>
+        );
       }
     } else if (mode.includes("SALES_AGENT")) {
       if (tierData.salesAgentShare !== null) {
-        shares.push(`Sales Agent: ${tierData.salesAgentShare}%`);
+        shares.push(
+          <div key="sales-agent" className="py-1">
+            <span className="font-medium text-gray-900">Sales Agent:</span>
+            <span className="ml-1 text-[#039994] font-semibold">{tierData.salesAgentShare}%</span>
+          </div>
+        );
+      }
+    } else if (mode === "DIRECT_CUSTOMER") {
+      if (tierData.customerShare !== null) {
+        const directCustomerValue = parseFloat(tierData.customerShare || 0);
+        const dcarbonRemainder = 100 - directCustomerValue;
+        shares.push(
+          <div key="customer" className="py-1">
+            <span className="font-medium text-gray-900">Customer:</span>
+            <span className="ml-1 text-[#039994] font-semibold">{tierData.customerShare}%</span>
+          </div>
+        );
+        shares.push(
+          <div key="dcarbon" className="py-1">
+            <span className="font-medium text-gray-700">DCarbon Remainder:</span>
+            <span className="ml-1 text-gray-600">{dcarbonRemainder.toFixed(2)}%</span>
+          </div>
+        );
       }
     } else {
       if (tierData.customerShare !== null) {
-        shares.push(`Customer: ${tierData.customerShare}%`);
+        shares.push(
+          <div key="customer" className="py-1">
+            <span className="font-medium text-gray-900">Customer:</span>
+            <span className="ml-1 text-[#039994] font-semibold">{tierData.customerShare}%</span>
+          </div>
+        );
       }
       if (tierData.installerShare !== null) {
-        shares.push(`Installer: ${tierData.installerShare}%`);
+        shares.push(
+          <div key="installer" className="py-1">
+            <span className="font-medium text-gray-700">Installer:</span>
+            <span className="ml-1 text-gray-600">{tierData.installerShare}%</span>
+          </div>
+        );
       }
       if (tierData.salesAgentShare !== null) {
-        shares.push(`Sales Agent: ${tierData.salesAgentShare}%`);
+        shares.push(
+          <div key="sales-agent" className="py-1">
+            <span className="font-medium text-gray-700">Sales Agent:</span>
+            <span className="ml-1 text-gray-600">{tierData.salesAgentShare}%</span>
+          </div>
+        );
       }
       if (tierData.financeShare !== null) {
-        shares.push(`Finance: ${tierData.financeShare}%`);
+        shares.push(
+          <div key="finance" className="py-1">
+            <span className="font-medium text-gray-700">Finance:</span>
+            <span className="ml-1 text-gray-600">{tierData.financeShare}%</span>
+          </div>
+        );
       }
     }
     
     if (shares.length === 0) return (
       <div className="text-center">
-        <span className="text-gray-300">—</span>
+        <span className="text-gray-400">—</span>
       </div>
     );
     
     return (
-      <div className="space-y-1">
+      <div className="space-y-0.5">
         {shares.map((share, index) => (
           <div key={index} className="text-xs">
             {share}
@@ -301,28 +416,28 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
   const headers = buildHeaders();
 
   return (
-    <div className="overflow-x-auto bg-white rounded-lg shadow-sm border border-[#E8E8E8]">
+    <div className="overflow-x-auto bg-white rounded-xl shadow-lg border border-gray-200">
       <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
+        <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
           <tr>
             {headers.map((header, index) => (
               <th
                 key={index}
-                className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-b-2 border-gray-300"
               >
                 {header}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
+        <tbody className="bg-white divide-y divide-gray-100">
           {Object.values(groupedData).map((group, groupIndex) => (
             <React.Fragment key={groupIndex}>
-              <tr className="hover:bg-gray-50">
-                <td className="px-3 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">
-                  <div className="flex flex-col">
-                    <span>{group.propertyType === "ACCOUNT_LEVEL" ? "Account Level" : group.propertyType}</span>
-                    <span className="text-xs text-gray-500">{group.mode.replace(/_/g, ' ')}</span>
+              <tr className="hover:bg-gradient-to-r hover:from-gray-50 hover:to-transparent transition-all duration-150">
+                <td className="px-4 py-5 text-sm font-medium text-gray-900 whitespace-nowrap">
+                  <div className="flex flex-col gap-1">
+                    <span className="font-bold text-gray-900">{group.propertyType === "ACCOUNT_LEVEL" ? "Account Level" : group.propertyType}</span>
+                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full inline-block w-fit">{group.mode.replace(/_/g, ' ')}</span>
                   </div>
                 </td>
                 {sortedTiers.map(tier => {
@@ -331,26 +446,26 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
                   const editFunction = commissionItem ? getEditFunction(commissionItem, group) : null;
                   
                   return (
-                    <td key={tier.id} className="px-3 py-4 text-sm">
-                      <div className="flex items-start justify-between">
+                    <td key={tier.id} className="px-4 py-5 text-sm">
+                      <div className="flex items-start justify-between gap-2">
                         <div className="flex-1">
                           {getShareDisplay(tierData, group.mode, group.propertyType, tier.id)}
                         </div>
                         {commissionItem && editFunction && (
-                          <div className="ml-2 flex flex-col space-y-1">
+                          <div className="ml-2 flex flex-col space-y-1.5">
                             <button
                               onClick={editFunction}
-                              className="text-[#039994] hover:text-[#028884] p-1 rounded hover:bg-gray-100"
+                              className="text-[#039994] hover:text-[#028884] p-1.5 rounded-md hover:bg-[#039994]/10 transition-colors duration-150"
                               title="Edit"
                             >
-                              <FiEdit size={14} />
+                              <FiEdit size={16} />
                             </button>
                             <button
                               onClick={() => handleDelete(commissionItem, group)}
-                              className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-gray-100"
+                              className="text-red-600 hover:text-red-800 p-1.5 rounded-md hover:bg-red-50 transition-colors duration-150"
                               title="Delete"
                             >
-                              <FiTrash2 size={14} />
+                              <FiTrash2 size={16} />
                             </button>
                           </div>
                         )}
@@ -358,36 +473,48 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
                           <div className="ml-2">
                             <button
                               onClick={() => handleDelete(commissionItem, group)}
-                              className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-gray-100"
+                              className="text-red-600 hover:text-red-800 p-1.5 rounded-md hover:bg-red-50 transition-colors duration-150"
                               title="Delete"
                             >
-                              <FiTrash2 size={14} />
+                              <FiTrash2 size={16} />
                             </button>
                           </div>
                         )}
                       </div>
                       {commissionItem && (
-                        <div className="text-xs text-gray-500 mt-1">
+                        <div className="text-xs text-gray-500 mt-2 font-medium bg-gray-50 px-2 py-1 rounded inline-block">
                           Tier {tier.order}
                         </div>
                       )}
                     </td>
                   );
                 })}
-                <td className="px-3 py-4 text-sm text-gray-900 whitespace-nowrap">
-                  {group.items[0]?.maxDuration ? `${group.items[0].maxDuration} yrs` : '-'}
+                <td className="px-4 py-5 text-sm text-gray-900 whitespace-nowrap font-medium">
+                  {group.items[0]?.maxDuration ? (
+                    <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded-md">{group.items[0].maxDuration} yrs</span>
+                  ) : (
+                    <span className="text-gray-400">-</span>
+                  )}
                 </td>
-                <td className="px-3 py-4 text-sm text-gray-900 whitespace-nowrap">
-                  {group.items[0]?.agreementYrs ? `${group.items[0].agreementYrs} yrs` : '-'}
+                <td className="px-4 py-5 text-sm text-gray-900 whitespace-nowrap font-medium">
+                  {group.items[0]?.agreementYrs ? (
+                    <span className="bg-green-50 text-green-700 px-2 py-1 rounded-md">{group.items[0].agreementYrs} yrs</span>
+                  ) : (
+                    <span className="text-gray-400">-</span>
+                  )}
                 </td>
-                <td className="px-3 py-4 text-sm text-gray-900 whitespace-nowrap">
-                  {group.items[0]?.cancellationFee ? `$${group.items[0].cancellationFee}` : '-'}
+                <td className="px-4 py-5 text-sm text-gray-900 whitespace-nowrap font-medium">
+                  {group.items[0]?.cancellationFee ? (
+                    <span className="bg-amber-50 text-amber-700 px-2 py-1 rounded-md">${group.items[0].cancellationFee}</span>
+                  ) : (
+                    <span className="text-gray-400">-</span>
+                  )}
                 </td>
-                <td className="px-3 py-4 text-sm whitespace-nowrap">
+                <td className="px-4 py-5 text-sm whitespace-nowrap">
                   <div className="flex flex-col space-y-2">
                     <button
                       onClick={() => handleDeleteAll(group)}
-                      className="text-xs text-red-600 hover:text-red-800 px-2 py-1 border border-red-200 rounded hover:bg-red-50"
+                      className="text-xs text-red-600 hover:text-white hover:bg-red-600 px-3 py-2 border border-red-300 rounded-md transition-all duration-150 font-medium"
                     >
                       Delete All
                     </button>
