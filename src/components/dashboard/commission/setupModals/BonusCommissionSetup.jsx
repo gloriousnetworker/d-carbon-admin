@@ -22,7 +22,9 @@ const BonusCommissionSetup = ({ onClose, onSuccess }) => {
         return { showMin: true, showMax: true, showPercent: true, showFlat: false, unit: "MW" };
       case "RESIDENTIAL_REFERRAL_QUARTERLY":
         return { showMin: true, showMax: true, showPercent: true, showFlat: false, unit: "Referrals" };
-      case "SALES_AGENT_FLAT":
+      case "SALES_AGENT_DIRECT":
+        return { showMin: true, showMax: true, showPercent: false, showFlat: true, unit: "Units" };
+      case "SALES_AGENT_INDIRECT":
         return { showMin: true, showMax: true, showPercent: false, showFlat: true, unit: "Units" };
       case "PARTNER_RESIDENTIAL_MW_ANNUAL":
         return { showMin: true, showMax: false, showPercent: true, showFlat: false, unit: "MW" };
@@ -160,13 +162,23 @@ const BonusCommissionSetup = ({ onClose, onSuccess }) => {
         </button>
         <button
           className={`px-4 py-3 rounded-md text-sm font-medium transition-colors ${
-            target === "SALES_AGENT_FLAT"
+            target === "SALES_AGENT_DIRECT"
               ? "bg-[#039994] text-white"
               : "bg-gray-200 text-gray-700 hover:bg-gray-300"
           }`}
-          onClick={() => handleTargetChange("SALES_AGENT_FLAT")}
+          onClick={() => handleTargetChange("SALES_AGENT_DIRECT")}
         >
-          Sales Agent Flat
+          Sales Agent Direct
+        </button>
+        <button
+          className={`px-4 py-3 rounded-md text-sm font-medium transition-colors ${
+            target === "SALES_AGENT_INDIRECT"
+              ? "bg-[#039994] text-white"
+              : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+          }`}
+          onClick={() => handleTargetChange("SALES_AGENT_INDIRECT")}
+        >
+          Sales Agent Indirect
         </button>
         <button
           className={`px-4 py-3 rounded-md text-sm font-medium transition-colors ${
@@ -214,6 +226,16 @@ const BonusCommissionSetup = ({ onClose, onSuccess }) => {
 
   const renderAddEntryForm = () => {
     const fields = getFieldsForTarget(target);
+    const getLabel = (fieldName) => {
+      if (fieldName === "minValue" && target === "COMMERCIAL_MW_QUARTERLY") return "Min MW Value";
+      if (fieldName === "maxValue" && target === "COMMERCIAL_MW_QUARTERLY") return "Top MW Value";
+      if (fieldName === "percent" && target === "RESIDENTIAL_REFERRAL_QUARTERLY") return "Bonus Points";
+      if (fieldName === "percent") return "Bonus (%)";
+      if (fieldName === "minValue") return "Min Value";
+      if (fieldName === "maxValue") return "Max Value";
+      if (fieldName === "flatValue") return "Flat Value ($)";
+      return fieldName;
+    };
 
     return (
       <div className="mb-6 p-4 border border-gray-200 rounded-lg">
@@ -221,7 +243,7 @@ const BonusCommissionSetup = ({ onClose, onSuccess }) => {
         <div className={`grid gap-4 text-xs items-end ${fields.showFlat ? 'grid-cols-5' : 'grid-cols-4'}`}>
           {fields.showMin && (
             <div className="flex flex-col">
-              <label className="mb-1 text-gray-600 text-xs">Min Value</label>
+              <label className="mb-1 text-gray-600 text-xs">{getLabel("minValue")}</label>
               <input
                 type="number"
                 value={newEntry.minValue}
@@ -235,7 +257,7 @@ const BonusCommissionSetup = ({ onClose, onSuccess }) => {
           
           {fields.showMax && fields.showMax !== false && (
             <div className="flex flex-col">
-              <label className="mb-1 text-gray-600 text-xs">Max Value</label>
+              <label className="mb-1 text-gray-600 text-xs">{getLabel("maxValue")}</label>
               <input
                 type="number"
                 value={newEntry.maxValue}
@@ -249,7 +271,7 @@ const BonusCommissionSetup = ({ onClose, onSuccess }) => {
           
           {fields.showPercent && (
             <div className="flex flex-col">
-              <label className="mb-1 text-gray-600 text-xs">Percent (%)</label>
+              <label className="mb-1 text-gray-600 text-xs">{getLabel("percent")}</label>
               <input
                 type="number"
                 step="0.1"
@@ -264,7 +286,7 @@ const BonusCommissionSetup = ({ onClose, onSuccess }) => {
           
           {fields.showFlat && (
             <div className="flex flex-col">
-              <label className="mb-1 text-gray-600 text-xs">Flat Value ($)</label>
+              <label className="mb-1 text-gray-600 text-xs">{getLabel("flatValue")}</label>
               <input
                 type="number"
                 value={newEntry.flatValue}
@@ -293,6 +315,17 @@ const BonusCommissionSetup = ({ onClose, onSuccess }) => {
   const renderBonusTable = () => {
     const fields = getFieldsForTarget(target);
     const filteredEntries = bonusEntries.filter(entry => entry.bonusType === target);
+    
+    const getHeaderLabel = (fieldName) => {
+      if (fieldName === "minValue" && target === "COMMERCIAL_MW_QUARTERLY") return "Min MW Value";
+      if (fieldName === "maxValue" && target === "COMMERCIAL_MW_QUARTERLY") return "Top MW Value";
+      if (fieldName === "percent" && target === "RESIDENTIAL_REFERRAL_QUARTERLY") return "Bonus Points";
+      if (fieldName === "percent") return "Bonus (%)";
+      if (fieldName === "minValue") return "Min Value";
+      if (fieldName === "maxValue") return "Max Value";
+      if (fieldName === "flatValue") return "Flat Value ($)";
+      return fieldName;
+    };
 
     return (
       <div className="mb-6">
@@ -303,15 +336,23 @@ const BonusCommissionSetup = ({ onClose, onSuccess }) => {
           <table className="w-full">
             <thead>
               <tr className="bg-gray-100">
-                <th className="text-left py-3 px-4 font-medium text-sm text-black border-b border-gray-200">Min Value</th>
+                <th className="text-left py-3 px-4 font-medium text-sm text-black border-b border-gray-200">
+                  {getHeaderLabel("minValue")}
+                </th>
                 {fields.showMax && fields.showMax !== false && (
-                  <th className="text-left py-3 px-4 font-medium text-sm text-black border-b border-gray-200">Max Value</th>
+                  <th className="text-left py-3 px-4 font-medium text-sm text-black border-b border-gray-200">
+                    {getHeaderLabel("maxValue")}
+                  </th>
                 )}
                 {fields.showPercent && (
-                  <th className="text-left py-3 px-4 font-medium text-sm text-black border-b border-gray-200">Percent (%)</th>
+                  <th className="text-left py-3 px-4 font-medium text-sm text-black border-b border-gray-200">
+                    {getHeaderLabel("percent")}
+                  </th>
                 )}
                 {fields.showFlat && (
-                  <th className="text-left py-3 px-4 font-medium text-sm text-black border-b border-gray-200">Flat Value ($)</th>
+                  <th className="text-left py-3 px-4 font-medium text-sm text-black border-b border-gray-200">
+                    {getHeaderLabel("flatValue")}
+                  </th>
                 )}
                 <th className="text-left py-3 px-4 font-medium text-sm text-black border-b border-gray-200">Actions</th>
               </tr>

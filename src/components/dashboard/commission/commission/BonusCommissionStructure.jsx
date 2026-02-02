@@ -210,7 +210,9 @@ const BonusCommissionStructure = ({ onSetupStructure, refreshTrigger }) => {
         return { showMin: true, showMax: true, showPercent: true, showFlat: false };
       case "RESIDENTIAL_REFERRAL_QUARTERLY":
         return { showMin: true, showMax: true, showPercent: true, showFlat: false };
-      case "SALES_AGENT_FLAT":
+      case "SALES_AGENT_DIRECT":
+        return { showMin: true, showMax: true, showPercent: false, showFlat: true };
+      case "SALES_AGENT_INDIRECT":
         return { showMin: true, showMax: true, showPercent: false, showFlat: true };
       case "PARTNER_RESIDENTIAL_MW_ANNUAL":
         return { showMin: true, showMax: false, showPercent: true, showFlat: false };
@@ -229,7 +231,8 @@ const BonusCommissionStructure = ({ onSetupStructure, refreshTrigger }) => {
     const grouped = {
       COMMERCIAL_MW_QUARTERLY: [],
       RESIDENTIAL_REFERRAL_QUARTERLY: [],
-      SALES_AGENT_FLAT: [],
+      SALES_AGENT_DIRECT: [],
+      SALES_AGENT_INDIRECT: [],
       PARTNER_RESIDENTIAL_MW_ANNUAL: [],
       PARTNER_COMMERCIAL_MW_ANNUAL: [],
       PARTNER_RESIDENTIAL_MW_QUARTER: [],
@@ -251,10 +254,12 @@ const BonusCommissionStructure = ({ onSetupStructure, refreshTrigger }) => {
     const getHeaders = () => {
       switch (bonusType) {
         case "COMMERCIAL_MW_QUARTERLY":
-          return ["MW Range", "Bonus (%)", "Actions"];
+          return ["Min MW Value", "Top MW Value", "Bonus (%)", "Actions"];
         case "RESIDENTIAL_REFERRAL_QUARTERLY":
-          return ["Referral Range", "Bonus (%)", "Actions"];
-        case "SALES_AGENT_FLAT":
+          return ["Referral Range", "Bonus Points", "Actions"];
+        case "SALES_AGENT_DIRECT":
+          return ["Range", "Flat Bonus ($)", "Actions"];
+        case "SALES_AGENT_INDIRECT":
           return ["Range", "Flat Bonus ($)", "Actions"];
         case "PARTNER_RESIDENTIAL_MW_ANNUAL":
           return ["Min MW", "Bonus (%)", "Actions"];
@@ -275,7 +280,9 @@ const BonusCommissionStructure = ({ onSetupStructure, refreshTrigger }) => {
           return { showMin: true, showMax: true, showPercent: true, showFlat: false };
         case "RESIDENTIAL_REFERRAL_QUARTERLY":
           return { showMin: true, showMax: true, showPercent: true, showFlat: false };
-        case "SALES_AGENT_FLAT":
+        case "SALES_AGENT_DIRECT":
+          return { showMin: true, showMax: true, showPercent: false, showFlat: true };
+        case "SALES_AGENT_INDIRECT":
           return { showMin: true, showMax: true, showPercent: false, showFlat: true };
         case "PARTNER_RESIDENTIAL_MW_ANNUAL":
           return { showMin: true, showMax: false, showPercent: true, showFlat: false };
@@ -391,11 +398,25 @@ const BonusCommissionStructure = ({ onSetupStructure, refreshTrigger }) => {
                       <td className="py-3 px-4 text-sm border-b border-gray-200">
                         {bonusType === "PARTNER_RESIDENTIAL_MW_ANNUAL" || bonusType === "PARTNER_COMMERCIAL_MW_ANNUAL" 
                           ? `${item.minValue}+ MW` 
-                          : `${item.minValue} - ${item.maxValue} ${bonusType === "RESIDENTIAL_REFERRAL_QUARTERLY" ? "Referrals" : "MW"}`
+                          : bonusType === "COMMERCIAL_MW_QUARTERLY"
+                          ? `${item.minValue} MW`
+                          : bonusType === "RESIDENTIAL_REFERRAL_QUARTERLY"
+                          ? `${item.minValue} - ${item.maxValue} Referrals`
+                          : `${item.minValue} - ${item.maxValue} Units`
                         }
                       </td>
+                      {bonusType === "COMMERCIAL_MW_QUARTERLY" && (
+                        <td className="py-3 px-4 text-sm border-b border-gray-200">
+                          {item.maxValue ? `${item.maxValue} MW` : "N/A"}
+                        </td>
+                      )}
                       <td className="py-3 px-4 text-sm border-b border-gray-200">
-                        {bonusType === "SALES_AGENT_FLAT" ? `$${item.flatValue}` : `${item.percent}%`}
+                        {bonusType === "SALES_AGENT_DIRECT" || bonusType === "SALES_AGENT_INDIRECT" 
+                          ? `$${item.flatValue}` 
+                          : bonusType === "RESIDENTIAL_REFERRAL_QUARTERLY"
+                          ? `${item.percent} Points`
+                          : `${item.percent}%`
+                        }
                       </td>
                       <td className="py-3 px-4 text-sm border-b border-gray-200">
                         <div className="flex space-x-2">
@@ -486,7 +507,8 @@ const BonusCommissionStructure = ({ onSetupStructure, refreshTrigger }) => {
 
       {renderTable("COMMERCIAL_MW_QUARTERLY", groupedData.COMMERCIAL_MW_QUARTERLY)}
       {renderTable("RESIDENTIAL_REFERRAL_QUARTERLY", groupedData.RESIDENTIAL_REFERRAL_QUARTERLY)}
-      {renderTable("SALES_AGENT_FLAT", groupedData.SALES_AGENT_FLAT)}
+      {renderTable("SALES_AGENT_DIRECT", groupedData.SALES_AGENT_DIRECT)}
+      {renderTable("SALES_AGENT_INDIRECT", groupedData.SALES_AGENT_INDIRECT)}
       {renderTable("PARTNER_RESIDENTIAL_MW_ANNUAL", groupedData.PARTNER_RESIDENTIAL_MW_ANNUAL)}
       {renderTable("PARTNER_COMMERCIAL_MW_ANNUAL", groupedData.PARTNER_COMMERCIAL_MW_ANNUAL)}
       {renderTable("PARTNER_RESIDENTIAL_MW_QUARTER", groupedData.PARTNER_RESIDENTIAL_MW_QUARTER)}
