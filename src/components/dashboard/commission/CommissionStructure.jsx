@@ -5,6 +5,7 @@ import CommissionSetupModal from "./CommissionSetupModal";
 import ManageTiersModal from "./ManageTiersModal";
 import BonusCommissionStructure from "./commission/BonusCommissionStructure";
 import BonusCommissionSetup from "./setupModals/BonusCommissionSetup";
+import ContractTermsTab from "./ContractTermsTab";
 
 const CommissionStructure = () => {
   const [activeTab, setActiveTab] = useState("COMMISSION");
@@ -200,6 +201,16 @@ const CommissionStructure = () => {
               </button>
               <button
                 className={`px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
+                  activeTab === "CONTRACT_TERMS"
+                    ? "text-[#039994] border-[#039994]"
+                    : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
+                }`}
+                onClick={() => setActiveTab("CONTRACT_TERMS")}
+              >
+                Commission Contract Terms
+              </button>
+              <button
+                className={`px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
                   activeTab === "BONUS"
                     ? "text-[#039994] border-[#039994]"
                     : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
@@ -284,6 +295,10 @@ const CommissionStructure = () => {
                   />
                 )}
               </>
+            )}
+
+            {activeTab === "CONTRACT_TERMS" && (
+              <ContractTermsTab />
             )}
 
             {activeTab === "BONUS" && (

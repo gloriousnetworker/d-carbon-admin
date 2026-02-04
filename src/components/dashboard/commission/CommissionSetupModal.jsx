@@ -19,12 +19,8 @@ const CommissionSetupModal = ({
     installerShare: "",
     salesAgentShare: "",
     financeShare: "",
-    maxDuration: "",
-    agreementYrs: "",
-    cancellationFee: "",
-    annualCap: "",
-    notes: "",
     label: "",
+    notes: "",
   });
   
   const [partnerFinanceData, setPartnerFinanceData] = useState({
@@ -49,12 +45,8 @@ const CommissionSetupModal = ({
         installerShare: editingCommission.installerShare || "",
         salesAgentShare: editingCommission.salesAgentShare || "",
         financeShare: editingCommission.financeShare || "",
-        maxDuration: editingCommission.maxDuration || "",
-        agreementYrs: editingCommission.agreementYrs || "",
-        cancellationFee: editingCommission.cancellationFee || "",
-        annualCap: editingCommission.annualCap || "",
-        notes: editingCommission.notes || "",
         label: editingCommission.label || "",
+        notes: editingCommission.notes || "",
       });
 
       if (editingCommission.mode === "PARTNER_FINANCE") {
@@ -275,12 +267,8 @@ const CommissionSetupModal = ({
       const basePayload = {
         propertyType: "RESIDENTIAL",
         tierId: formData.tierId,
-        maxDuration: formData.maxDuration ? parseInt(formData.maxDuration) : null,
-        agreementYrs: formData.agreementYrs ? parseInt(formData.agreementYrs) : null,
-        cancellationFee: formData.cancellationFee ? parseFloat(formData.cancellationFee) : null,
-        annualCap: formData.annualCap ? parseFloat(formData.annualCap) : null,
-        notes: formData.notes || "",
         label: formData.label || "",
+        notes: formData.notes || "",
       };
 
       const residentialData = allCommissionData.filter(item => item.propertyType === "RESIDENTIAL");
@@ -298,12 +286,8 @@ const CommissionSetupModal = ({
         salesAgentShare: null,
         financeShare: null,
         dcarbonShare: null,
-        maxDuration: basePayload.maxDuration,
-        agreementYrs: basePayload.agreementYrs,
-        cancellationFee: basePayload.cancellationFee,
-        annualCap: basePayload.annualCap,
-        notes: basePayload.notes,
         label: basePayload.label,
+        notes: basePayload.notes,
       };
 
       if (referredCommissionId) {
@@ -399,12 +383,8 @@ const CommissionSetupModal = ({
     const basePayload = {
       propertyType: formData.propertyType,
       tierId: formData.tierId,
-      maxDuration: formData.maxDuration ? parseInt(formData.maxDuration) : null,
-      agreementYrs: formData.agreementYrs ? parseInt(formData.agreementYrs) : null,
-      cancellationFee: formData.cancellationFee ? parseFloat(formData.cancellationFee) : null,
-      annualCap: formData.annualCap ? parseFloat(formData.annualCap) : null,
-      notes: formData.notes || "",
       label: formData.label || "",
+      notes: formData.notes || "",
     };
 
     const propertyData = allCommissionData.filter(item => item.propertyType === formData.propertyType);
@@ -540,12 +520,8 @@ const CommissionSetupModal = ({
       let basePayload = {
         propertyType: formData.propertyType,
         tierId: formData.tierId,
-        maxDuration: formData.maxDuration ? parseInt(formData.maxDuration) : null,
-        agreementYrs: formData.agreementYrs ? parseInt(formData.agreementYrs) : null,
-        cancellationFee: formData.cancellationFee ? parseFloat(formData.cancellationFee) : null,
-        annualCap: formData.annualCap ? parseFloat(formData.annualCap) : null,
-        notes: formData.notes || "",
         label: formData.label || "",
+        notes: formData.notes || "",
       };
 
       let payload = {
@@ -1012,62 +988,6 @@ const CommissionSetupModal = ({
                     For Sales Agent modes, only Sales Agent Share is applicable.
                   </p>
                 )}
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Max Duration (Years)
-                  </label>
-                  <input
-                    type="number"
-                    name="maxDuration"
-                    value={formData.maxDuration}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    min="0"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Agreement Years
-                  </label>
-                  <input
-                    type="number"
-                    name="agreementYrs"
-                    value={formData.agreementYrs}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    min="0"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Cancellation Fee
-                  </label>
-                  <input
-                    type="number"
-                    name="cancellationFee"
-                    value={formData.cancellationFee}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    min="0"
-                    step="0.01"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Annual Cap</label>
-                <input
-                  type="number"
-                  name="annualCap"
-                  value={formData.annualCap}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  min="0"
-                  step="0.01"
-                />
               </div>
 
               <div>

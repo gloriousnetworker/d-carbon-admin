@@ -10,9 +10,6 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
       'Property + Mode types',
       ...sortedTiers.map(t => `Tier ${t.order}: ${t.label}`),
       'Label',
-      'Max Duration',
-      'Agreement Years',
-      'Cancellation Fee',
       'Actions'
     ];
     return header;
@@ -82,9 +79,6 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
       salesAgentShare: item.salesAgentShare,
       financeShare: item.financeShare,
       dcarbonShare: item.dcarbonShare,
-      maxDuration: item.maxDuration,
-      agreementYrs: item.agreementYrs,
-      cancellationFee: item.cancellationFee,
       label: item.label,
       itemId: item.id
     };
@@ -494,27 +488,6 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
                 <td className="px-4 py-5 text-sm text-gray-900 whitespace-nowrap font-medium">
                   {group.items[0]?.label ? (
                     <span className="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-md font-medium">{group.items[0].label}</span>
-                  ) : (
-                    <span className="text-gray-400">-</span>
-                  )}
-                </td>
-                <td className="px-4 py-5 text-sm text-gray-900 whitespace-nowrap font-medium">
-                  {group.items[0]?.maxDuration ? (
-                    <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded-md">{group.items[0].maxDuration} yrs</span>
-                  ) : (
-                    <span className="text-gray-400">-</span>
-                  )}
-                </td>
-                <td className="px-4 py-5 text-sm text-gray-900 whitespace-nowrap font-medium">
-                  {group.items[0]?.agreementYrs ? (
-                    <span className="bg-green-50 text-green-700 px-2 py-1 rounded-md">{group.items[0].agreementYrs} yrs</span>
-                  ) : (
-                    <span className="text-gray-400">-</span>
-                  )}
-                </td>
-                <td className="px-4 py-5 text-sm text-gray-900 whitespace-nowrap font-medium">
-                  {group.items[0]?.cancellationFee ? (
-                    <span className="bg-amber-50 text-amber-700 px-2 py-1 rounded-md">${group.items[0].cancellationFee}</span>
                   ) : (
                     <span className="text-gray-400">-</span>
                   )}
