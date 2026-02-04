@@ -146,7 +146,7 @@ const ManageTiersModal = ({ onClose, onSuccess, tiers: initialTiers }) => {
               <form onSubmit={handleSubmitTier} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Label
+                    Label (e.g., "2 - 3 megawatt", "5.1+ MW")
                   </label>
                   <input
                     type="text"
@@ -155,7 +155,7 @@ const ManageTiersModal = ({ onClose, onSuccess, tiers: initialTiers }) => {
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                     required
-                    placeholder="e.g., <500k"
+                    placeholder="Enter range label"
                   />
                 </div>
                 <div>
@@ -188,7 +188,7 @@ const ManageTiersModal = ({ onClose, onSuccess, tiers: initialTiers }) => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Max Amount (optional)
+                    Max Amount (optional, leave empty for last range like "5.1+ MW")
                   </label>
                   <input
                     type="number"

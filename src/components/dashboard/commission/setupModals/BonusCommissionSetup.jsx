@@ -5,7 +5,7 @@ import { IoMdClose } from "react-icons/io";
 import { toast } from "react-hot-toast";
 
 const BonusCommissionSetup = ({ onClose, onSuccess }) => {
-  const [target, setTarget] = useState("COMMERCIAL_MW_QUARTERLY");
+  const [target, setTarget] = useState("SALES_AGENT_ACCOUNT_LEVEL"); // Updated default
   const [bonusEntries, setBonusEntries] = useState([]);
   const [newEntry, setNewEntry] = useState({
     minValue: "",
@@ -18,13 +18,13 @@ const BonusCommissionSetup = ({ onClose, onSuccess }) => {
 
   const getFieldsForTarget = (targetType) => {
     switch (targetType) {
-      case "COMMERCIAL_MW_QUARTERLY":
-        return { showMin: true, showMax: true, showPercent: true, showFlat: false, unit: "MW" };
+      // case "COMMERCIAL_MW_QUARTERLY": // Commented out as requested
+      //   return { showMin: true, showMax: true, showPercent: true, showFlat: false, unit: "MW" };
       case "RESIDENTIAL_REFERRAL_QUARTERLY":
         return { showMin: true, showMax: true, showPercent: true, showFlat: false, unit: "Referrals" };
-      case "SALES_AGENT_DIRECT":
+      case "SALES_AGENT_ACCOUNT_LEVEL": // Updated from SALES_AGENT_DIRECT
         return { showMin: true, showMax: true, showPercent: false, showFlat: true, unit: "Units" };
-      case "SALES_AGENT_INDIRECT":
+      case "SALES_AGENT_REFERRED": // Updated from SALES_AGENT_INDIRECT
         return { showMin: true, showMax: true, showPercent: false, showFlat: true, unit: "Units" };
       case "PARTNER_RESIDENTIAL_MW_ANNUAL":
         return { showMin: true, showMax: false, showPercent: true, showFlat: false, unit: "MW" };
@@ -56,32 +56,80 @@ const BonusCommissionSetup = ({ onClose, onSuccess }) => {
     }));
   };
 
-  const handleAddEntry = () => {
+  const validateNewEntry = () => {
     const fields = getFieldsForTarget(target);
-    let isValid = true;
+    let errors = [];
 
-    if (fields.showMin && !newEntry.minValue) isValid = false;
-    if (fields.showMax && fields.showMax !== false && !newEntry.maxValue) isValid = false;
-    if (fields.showPercent && !newEntry.percent) isValid = false;
-    if (fields.showFlat && !newEntry.flatValue) isValid = false;
-
-    if (isValid) {
-      const entry = {
-        bonusType: target,
-        minValue: newEntry.minValue ? parseFloat(newEntry.minValue) : null,
-        maxValue: newEntry.maxValue ? parseFloat(newEntry.maxValue) : null,
-        percent: newEntry.percent ? parseFloat(newEntry.percent) : null,
-        flatValue: newEntry.flatValue ? parseFloat(newEntry.flatValue) : null
-      };
-      
-      setBonusEntries(prev => [...prev, entry]);
-      setNewEntry({
-        minValue: "",
-        maxValue: "",
-        percent: 0,
-        flatValue: ""
-      });
+    if (fields.showMin && (!newEntry.minValue || newEntry.minValue === "")) {
+      errors.push("Minimum value is required");
     }
+
+    if (fields.showMax && fields.showMax !== false && (!newEntry.maxValue || newEntry.maxValue === "")) {
+      errors.push("Maximum value is required");
+    }
+
+    if (fields.showPercent && (!newEntry.percent || newEntry.percent === "")) {
+      errors.push("Percent value is required");
+    }
+
+    if (fields.showFlat && (!newEntry.flatValue || newEntry.flatValue === "")) {
+      errors.push("Flat value is required");
+    }
+
+    if (fields.showMin && fields.showMax && fields.showMax !== false) {
+      const min = parseFloat(newEntry.minValue);
+      const max = parseFloat(newEntry.maxValue);
+      if (min >= max) {
+        errors.push("Minimum value must be less than maximum value");
+      }
+    }
+
+    if (fields.showPercent && target === "RESIDENTIAL_REFERRAL_QUARTERLY") {
+      // Bonus Points cannot be floating number for residential referral
+      if (!Number.isInteger(parseFloat(newEntry.percent))) {
+        errors.push("Bonus Points must be a whole number");
+      }
+      if (newEntry.percent < 0) {
+        errors.push("Bonus Points cannot be negative");
+      }
+    } else if (fields.showPercent && (newEntry.percent < 0 || newEntry.percent > 100)) {
+      errors.push("Percent must be between 0 and 100");
+    }
+
+    if (fields.showFlat && newEntry.flatValue < 0) {
+      errors.push("Flat value cannot be negative");
+    }
+
+    if (errors.length > 0) {
+      errors.forEach(error => {
+        toast.error(error, { position: 'top-center', duration: 3000 });
+      });
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleAddEntry = () => {
+    if (!validateNewEntry()) {
+      return;
+    }
+
+    const entry = {
+      bonusType: target,
+      minValue: newEntry.minValue ? parseFloat(newEntry.minValue) : null,
+      maxValue: newEntry.maxValue ? parseFloat(newEntry.maxValue) : null,
+      percent: newEntry.percent ? (target === "RESIDENTIAL_REFERRAL_QUARTERLY" ? parseInt(newEntry.percent) : parseFloat(newEntry.percent)) : null,
+      flatValue: newEntry.flatValue ? parseFloat(newEntry.flatValue) : null
+    };
+    
+    setBonusEntries(prev => [...prev, entry]);
+    setNewEntry({
+      minValue: "",
+      maxValue: "",
+      percent: 0,
+      flatValue: ""
+    });
   };
 
   const handleRemoveEntry = (index) => {
@@ -89,6 +137,11 @@ const BonusCommissionSetup = ({ onClose, onSuccess }) => {
   };
 
   const handleUpdate = async () => {
+    if (bonusEntries.length === 0) {
+      toast.error("Please add at least one bonus entry", { position: 'top-center', duration: 3000 });
+      return;
+    }
+
     setUpdating(true);
     
     try {
@@ -140,7 +193,7 @@ const BonusCommissionSetup = ({ onClose, onSuccess }) => {
     <div className="mb-6">
       <label className="block text-sm font-medium text-gray-700 mb-3">Select Bonus Type</label>
       <div className="grid grid-cols-2 gap-3">
-        <button
+        {/* <button // Commented out as requested
           className={`px-4 py-3 rounded-md text-sm font-medium transition-colors ${
             target === "COMMERCIAL_MW_QUARTERLY"
               ? "bg-[#039994] text-white"
@@ -149,7 +202,7 @@ const BonusCommissionSetup = ({ onClose, onSuccess }) => {
           onClick={() => handleTargetChange("COMMERCIAL_MW_QUARTERLY")}
         >
           Commercial MW Quarterly
-        </button>
+        </button> */}
         <button
           className={`px-4 py-3 rounded-md text-sm font-medium transition-colors ${
             target === "RESIDENTIAL_REFERRAL_QUARTERLY"
@@ -162,23 +215,23 @@ const BonusCommissionSetup = ({ onClose, onSuccess }) => {
         </button>
         <button
           className={`px-4 py-3 rounded-md text-sm font-medium transition-colors ${
-            target === "SALES_AGENT_DIRECT"
+            target === "SALES_AGENT_ACCOUNT_LEVEL"
               ? "bg-[#039994] text-white"
               : "bg-gray-200 text-gray-700 hover:bg-gray-300"
           }`}
-          onClick={() => handleTargetChange("SALES_AGENT_DIRECT")}
+          onClick={() => handleTargetChange("SALES_AGENT_ACCOUNT_LEVEL")}
         >
-          Sales Agent Direct
+          Sales Agent Account Level
         </button>
         <button
           className={`px-4 py-3 rounded-md text-sm font-medium transition-colors ${
-            target === "SALES_AGENT_INDIRECT"
+            target === "SALES_AGENT_REFERRED"
               ? "bg-[#039994] text-white"
               : "bg-gray-200 text-gray-700 hover:bg-gray-300"
           }`}
-          onClick={() => handleTargetChange("SALES_AGENT_INDIRECT")}
+          onClick={() => handleTargetChange("SALES_AGENT_REFERRED")}
         >
-          Sales Agent Indirect
+          Sales Agent Referred
         </button>
         <button
           className={`px-4 py-3 rounded-md text-sm font-medium transition-colors ${
@@ -227,8 +280,8 @@ const BonusCommissionSetup = ({ onClose, onSuccess }) => {
   const renderAddEntryForm = () => {
     const fields = getFieldsForTarget(target);
     const getLabel = (fieldName) => {
-      if (fieldName === "minValue" && target === "COMMERCIAL_MW_QUARTERLY") return "Min MW Value";
-      if (fieldName === "maxValue" && target === "COMMERCIAL_MW_QUARTERLY") return "Top MW Value";
+      // if (fieldName === "minValue" && target === "COMMERCIAL_MW_QUARTERLY") return "Min MW Value"; // Commented out
+      // if (fieldName === "maxValue" && target === "COMMERCIAL_MW_QUARTERLY") return "Top MW Value"; // Commented out
       if (fieldName === "percent" && target === "RESIDENTIAL_REFERRAL_QUARTERLY") return "Bonus Points";
       if (fieldName === "percent") return "Bonus (%)";
       if (fieldName === "minValue") return "Min Value";
@@ -274,12 +327,12 @@ const BonusCommissionSetup = ({ onClose, onSuccess }) => {
               <label className="mb-1 text-gray-600 text-xs">{getLabel("percent")}</label>
               <input
                 type="number"
-                step="0.1"
+                step={target === "RESIDENTIAL_REFERRAL_QUARTERLY" ? "1" : "0.1"}
                 value={newEntry.percent}
                 onChange={(e) => handleNewEntryChange("percent", e.target.value)}
                 className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
                 min="0"
-                max="100"
+                max={target === "RESIDENTIAL_REFERRAL_QUARTERLY" ? "" : "100"}
               />
             </div>
           )}
@@ -317,8 +370,8 @@ const BonusCommissionSetup = ({ onClose, onSuccess }) => {
     const filteredEntries = bonusEntries.filter(entry => entry.bonusType === target);
     
     const getHeaderLabel = (fieldName) => {
-      if (fieldName === "minValue" && target === "COMMERCIAL_MW_QUARTERLY") return "Min MW Value";
-      if (fieldName === "maxValue" && target === "COMMERCIAL_MW_QUARTERLY") return "Top MW Value";
+      // if (fieldName === "minValue" && target === "COMMERCIAL_MW_QUARTERLY") return "Min MW Value"; // Commented out
+      // if (fieldName === "maxValue" && target === "COMMERCIAL_MW_QUARTERLY") return "Top MW Value"; // Commented out
       if (fieldName === "percent" && target === "RESIDENTIAL_REFERRAL_QUARTERLY") return "Bonus Points";
       if (fieldName === "percent") return "Bonus (%)";
       if (fieldName === "minValue") return "Min Value";

@@ -24,6 +24,7 @@ const CommissionSetupModal = ({
     cancellationFee: "",
     annualCap: "",
     notes: "",
+    label: "",
   });
   
   const [partnerFinanceData, setPartnerFinanceData] = useState({
@@ -53,6 +54,7 @@ const CommissionSetupModal = ({
         cancellationFee: editingCommission.cancellationFee || "",
         annualCap: editingCommission.annualCap || "",
         notes: editingCommission.notes || "",
+        label: editingCommission.label || "",
       });
 
       if (editingCommission.mode === "PARTNER_FINANCE") {
@@ -278,6 +280,7 @@ const CommissionSetupModal = ({
         cancellationFee: formData.cancellationFee ? parseFloat(formData.cancellationFee) : null,
         annualCap: formData.annualCap ? parseFloat(formData.annualCap) : null,
         notes: formData.notes || "",
+        label: formData.label || "",
       };
 
       const residentialData = allCommissionData.filter(item => item.propertyType === "RESIDENTIAL");
@@ -300,6 +303,7 @@ const CommissionSetupModal = ({
         cancellationFee: basePayload.cancellationFee,
         annualCap: basePayload.annualCap,
         notes: basePayload.notes,
+        label: basePayload.label,
       };
 
       if (referredCommissionId) {
@@ -400,6 +404,7 @@ const CommissionSetupModal = ({
       cancellationFee: formData.cancellationFee ? parseFloat(formData.cancellationFee) : null,
       annualCap: formData.annualCap ? parseFloat(formData.annualCap) : null,
       notes: formData.notes || "",
+      label: formData.label || "",
     };
 
     const propertyData = allCommissionData.filter(item => item.propertyType === formData.propertyType);
@@ -540,6 +545,7 @@ const CommissionSetupModal = ({
         cancellationFee: formData.cancellationFee ? parseFloat(formData.cancellationFee) : null,
         annualCap: formData.annualCap ? parseFloat(formData.annualCap) : null,
         notes: formData.notes || "",
+        label: formData.label || "",
       };
 
       let payload = {
@@ -950,6 +956,20 @@ const CommissionSetupModal = ({
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Label (e.g., "2 - 3 megawatt", "5.1+ MW")
+                </label>
+                <input
+                  type="text"
+                  name="label"
+                  value={formData.label}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  placeholder="Enter range label"
+                />
               </div>
 
               <div>
