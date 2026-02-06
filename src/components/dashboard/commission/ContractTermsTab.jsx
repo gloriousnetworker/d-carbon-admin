@@ -134,19 +134,19 @@ const ContractTermsTab = () => {
     
     if (!formData.maxDuration) {
       errors.maxDuration = "Max Duration is required";
-    } else if (isNaN(formData.maxDuration) || parseFloat(formData.maxDuration) <= 0) {
+    } else if (isNaN(formData.maxDuration) || parseInt(formData.maxDuration) <= 0) {
       errors.maxDuration = "Max Duration must be a positive number";
     }
     
     if (!formData.agreementYrs) {
       errors.agreementYrs = "Agreement Years is required";
-    } else if (isNaN(formData.agreementYrs) || parseFloat(formData.agreementYrs) <= 0) {
+    } else if (isNaN(formData.agreementYrs) || parseInt(formData.agreementYrs) <= 0) {
       errors.agreementYrs = "Agreement Years must be a positive number";
     }
     
     if (!formData.cancellationFee) {
       errors.cancellationFee = "Cancellation Fee is required";
-    } else if (isNaN(formData.cancellationFee) || parseFloat(formData.cancellationFee) <= 0) {
+    } else if (isNaN(formData.cancellationFee) || parseInt(formData.cancellationFee) < 0) {
       errors.cancellationFee = "Cancellation Fee must be a positive number";
     }
     
@@ -166,7 +166,7 @@ const ContractTermsTab = () => {
       mode: formData.mode,
       maxDuration: parseInt(formData.maxDuration),
       agreementYrs: parseInt(formData.agreementYrs),
-      cancellationFee: parseFloat(formData.cancellationFee)
+      cancellationFee: parseInt(formData.cancellationFee)
     };
 
     try {
@@ -216,10 +216,18 @@ const ContractTermsTab = () => {
         mode: "" 
       });
     } else {
-      setFormData({
-        ...formData,
-        [name]: value
-      });
+      if (name === "cancellationFee") {
+        const intValue = value === "" ? "" : Math.floor(Number(value));
+        setFormData({
+          ...formData,
+          [name]: intValue
+        });
+      } else {
+        setFormData({
+          ...formData,
+          [name]: value
+        });
+      }
     }
     
     if (formErrors[name]) {
@@ -370,7 +378,7 @@ const ContractTermsTab = () => {
                         formErrors.cancellationFee ? "border-red-500 bg-red-50" : "border-gray-300"
                       }`}
                       min="0"
-                      step="0.01"
+                      step="1"
                       placeholder="Enter amount"
                       required
                     />
