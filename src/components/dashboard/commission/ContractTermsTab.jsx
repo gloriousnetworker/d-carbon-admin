@@ -61,9 +61,7 @@ const ContractTermsTab = () => {
   ];
 
   const accountLevelModes = [
-    "ACCOUNT_LEVEL",
-    "SALES_AGENT_REFERRED_RESIDENTIAL",
-    "SALES_AGENT_REFERRED_COMMERCIAL"
+    "ACCOUNT_LEVEL"
   ];
 
   const getAvailableModes = () => {
@@ -134,15 +132,21 @@ const ContractTermsTab = () => {
       errors.mode = "Commission mode is required";
     }
     
-    if (formData.maxDuration && (isNaN(formData.maxDuration) || formData.maxDuration < 0)) {
+    if (!formData.maxDuration) {
+      errors.maxDuration = "Max Duration is required";
+    } else if (isNaN(formData.maxDuration) || parseFloat(formData.maxDuration) <= 0) {
       errors.maxDuration = "Max Duration must be a positive number";
     }
     
-    if (formData.agreementYrs && (isNaN(formData.agreementYrs) || formData.agreementYrs < 0)) {
+    if (!formData.agreementYrs) {
+      errors.agreementYrs = "Agreement Years is required";
+    } else if (isNaN(formData.agreementYrs) || parseFloat(formData.agreementYrs) <= 0) {
       errors.agreementYrs = "Agreement Years must be a positive number";
     }
     
-    if (formData.cancellationFee && (isNaN(formData.cancellationFee) || formData.cancellationFee < 0)) {
+    if (!formData.cancellationFee) {
+      errors.cancellationFee = "Cancellation Fee is required";
+    } else if (isNaN(formData.cancellationFee) || parseFloat(formData.cancellationFee) <= 0) {
       errors.cancellationFee = "Cancellation Fee must be a positive number";
     }
     
@@ -160,9 +164,9 @@ const ContractTermsTab = () => {
     const payload = {
       propertyType: formData.propertyType,
       mode: formData.mode,
-      maxDuration: formData.maxDuration ? parseInt(formData.maxDuration) : null,
-      agreementYrs: formData.agreementYrs ? parseInt(formData.agreementYrs) : null,
-      cancellationFee: formData.cancellationFee ? parseFloat(formData.cancellationFee) : null,
+      maxDuration: parseInt(formData.maxDuration),
+      agreementYrs: parseInt(formData.agreementYrs),
+      cancellationFee: parseFloat(formData.cancellationFee)
     };
 
     try {
@@ -311,7 +315,7 @@ const ContractTermsTab = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <label className="block text-sm font-semibold text-gray-800">
-                      Max Duration (Years)
+                      Max Duration (Years) <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="number"
@@ -321,8 +325,10 @@ const ContractTermsTab = () => {
                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#039994] focus:border-[#039994] transition-all ${
                         formErrors.maxDuration ? "border-red-500 bg-red-50" : "border-gray-300"
                       }`}
-                      min="0"
-                      placeholder="Optional"
+                      min="1"
+                      step="1"
+                      placeholder="Enter years"
+                      required
                     />
                     {formErrors.maxDuration && (
                       <p className="text-sm text-red-600 mt-1">{formErrors.maxDuration}</p>
@@ -331,7 +337,7 @@ const ContractTermsTab = () => {
 
                   <div className="space-y-2">
                     <label className="block text-sm font-semibold text-gray-800">
-                      Agreement Years
+                      Agreement Years <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="number"
@@ -341,8 +347,10 @@ const ContractTermsTab = () => {
                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#039994] focus:border-[#039994] transition-all ${
                         formErrors.agreementYrs ? "border-red-500 bg-red-50" : "border-gray-300"
                       }`}
-                      min="0"
-                      placeholder="Optional"
+                      min="1"
+                      step="1"
+                      placeholder="Enter years"
+                      required
                     />
                     {formErrors.agreementYrs && (
                       <p className="text-sm text-red-600 mt-1">{formErrors.agreementYrs}</p>
@@ -351,7 +359,7 @@ const ContractTermsTab = () => {
 
                   <div className="space-y-2">
                     <label className="block text-sm font-semibold text-gray-800">
-                      Cancellation Fee ($)
+                      Cancellation Fee ($) <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="number"
@@ -363,7 +371,8 @@ const ContractTermsTab = () => {
                       }`}
                       min="0"
                       step="0.01"
-                      placeholder="Optional"
+                      placeholder="Enter amount"
+                      required
                     />
                     {formErrors.cancellationFee && (
                       <p className="text-sm text-red-600 mt-1">{formErrors.cancellationFee}</p>
@@ -432,31 +441,19 @@ const ContractTermsTab = () => {
                           <span className="text-sm font-medium text-gray-900">{term.mode.replace(/_/g, ' ')}</span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {term.maxDuration ? (
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                              {term.maxDuration} years
-                            </span>
-                          ) : (
-                            <span className="text-gray-400 text-sm">-</span>
-                          )}
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                            {term.maxDuration} years
+                          </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {term.agreementYrs ? (
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                              {term.agreementYrs} years
-                            </span>
-                          ) : (
-                            <span className="text-gray-400 text-sm">-</span>
-                          )}
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                            {term.agreementYrs} years
+                          </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {term.cancellationFee ? (
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800">
-                              ${term.cancellationFee}
-                            </span>
-                          ) : (
-                            <span className="text-gray-400 text-sm">-</span>
-                          )}
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800">
+                            ${term.cancellationFee}
+                          </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-3">
@@ -527,31 +524,19 @@ const ContractTermsTab = () => {
                           <span className="text-sm font-medium text-gray-900">{term.mode.replace(/_/g, ' ')}</span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {term.maxDuration ? (
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                              {term.maxDuration} years
-                            </span>
-                          ) : (
-                            <span className="text-gray-400 text-sm">-</span>
-                          )}
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                            {term.maxDuration} years
+                          </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {term.agreementYrs ? (
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                              {term.agreementYrs} years
-                            </span>
-                          ) : (
-                            <span className="text-gray-400 text-sm">-</span>
-                          )}
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                            {term.agreementYrs} years
+                          </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {term.cancellationFee ? (
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800">
-                              ${term.cancellationFee}
-                            </span>
-                          ) : (
-                            <span className="text-gray-400 text-sm">-</span>
-                          )}
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800">
+                            ${term.cancellationFee}
+                          </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-3">
@@ -622,31 +607,19 @@ const ContractTermsTab = () => {
                           <span className="text-sm font-medium text-gray-900">{term.mode.replace(/_/g, ' ')}</span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {term.maxDuration ? (
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                              {term.maxDuration} years
-                            </span>
-                          ) : (
-                            <span className="text-gray-400 text-sm">-</span>
-                          )}
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                            {term.maxDuration} years
+                          </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {term.agreementYrs ? (
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                              {term.agreementYrs} years
-                            </span>
-                          ) : (
-                            <span className="text-gray-400 text-sm">-</span>
-                          )}
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                            {term.agreementYrs} years
+                          </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {term.cancellationFee ? (
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800">
-                              ${term.cancellationFee}
-                            </span>
-                          ) : (
-                            <span className="text-gray-400 text-sm">-</span>
-                          )}
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800">
+                            ${term.cancellationFee}
+                          </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-3">
