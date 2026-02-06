@@ -270,7 +270,7 @@ const ContractTermsTab = () => {
 
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl">
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold text-gray-900">
@@ -329,8 +329,8 @@ const ContractTermsTab = () => {
                   )}
                 </div>
 
-                <div className="space-y-5">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <label className="block text-sm font-semibold text-gray-800">
                         Max Duration (Years) <span className="text-red-500">*</span>
@@ -397,7 +397,8 @@ const ContractTermsTab = () => {
                       )}
                     </div>
                   </div>
-                  <div className="text-xs text-gray-500 text-center">
+                  
+                  <div className="text-xs text-gray-500 text-center pt-1">
                     All fields accept 0 as a valid value
                   </div>
                 </div>
