@@ -68,10 +68,23 @@ const ContractTermsTab = () => {
       );
     }
     
-    if (formData.propertyType === "COMMERCIAL" || formData.propertyType === "RESIDENTIAL") {
+    if (formData.propertyType === "COMMERCIAL") {
       return allModes.filter(mode => 
         !mode.includes("SALES_AGENT") && 
-        mode !== "ACCOUNT_LEVEL"
+        mode !== "ACCOUNT_LEVEL" &&
+        mode !== "EPC_ASSISTED_FINANCE" &&
+        mode !== "EPC_ASSISTED_INSTALLER"
+      );
+    }
+    
+    if (formData.propertyType === "RESIDENTIAL") {
+      return allModes.filter(mode => 
+        !mode.includes("SALES_AGENT") && 
+        mode !== "ACCOUNT_LEVEL" &&
+        mode !== "EPC_ASSISTED_FINANCE" &&
+        mode !== "EPC_ASSISTED_INSTALLER" &&
+        mode !== "PARTNER_FINANCE" &&
+        mode !== "PARTNER_INSTALLER"
       );
     }
     
@@ -133,22 +146,22 @@ const ContractTermsTab = () => {
       errors.mode = "Commission mode is required";
     }
     
-    if (!formData.maxDuration) {
+    if (!formData.maxDuration && formData.maxDuration !== 0) {
       errors.maxDuration = "Max Duration is required";
-    } else if (isNaN(formData.maxDuration) || parseInt(formData.maxDuration) <= 0) {
-      errors.maxDuration = "Max Duration must be a positive number";
+    } else if (isNaN(formData.maxDuration) || parseInt(formData.maxDuration) < 0) {
+      errors.maxDuration = "Max Duration must be 0 or a positive number";
     }
     
-    if (!formData.agreementYrs) {
+    if (!formData.agreementYrs && formData.agreementYrs !== 0) {
       errors.agreementYrs = "Agreement Years is required";
-    } else if (isNaN(formData.agreementYrs) || parseInt(formData.agreementYrs) <= 0) {
-      errors.agreementYrs = "Agreement Years must be a positive number";
+    } else if (isNaN(formData.agreementYrs) || parseInt(formData.agreementYrs) < 0) {
+      errors.agreementYrs = "Agreement Years must be 0 or a positive number";
     }
     
-    if (!formData.cancellationFee) {
+    if (!formData.cancellationFee && formData.cancellationFee !== 0) {
       errors.cancellationFee = "Cancellation Fee is required";
     } else if (isNaN(formData.cancellationFee) || parseInt(formData.cancellationFee) < 0) {
-      errors.cancellationFee = "Cancellation Fee must be a positive number";
+      errors.cancellationFee = "Cancellation Fee must be 0 or a positive number";
     }
     
     setFormErrors(errors);
@@ -275,7 +288,7 @@ const ContractTermsTab = () => {
 
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-1">
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">
                     Property Type
                   </label>
                   <select
@@ -316,71 +329,76 @@ const ContractTermsTab = () => {
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-800">
-                      Max Duration (Years) <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      name="maxDuration"
-                      value={formData.maxDuration}
-                      onChange={handleChange}
-                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#039994] focus:border-[#039994] transition-all ${
-                        formErrors.maxDuration ? "border-red-500 bg-red-50" : "border-gray-300"
-                      }`}
-                      min="1"
-                      step="1"
-                      placeholder="Enter years"
-                      required
-                    />
-                    {formErrors.maxDuration && (
-                      <p className="text-sm text-red-600 mt-1">{formErrors.maxDuration}</p>
-                    )}
-                  </div>
+                <div className="space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-semibold text-gray-800">
+                        Max Duration (Years) <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        name="maxDuration"
+                        value={formData.maxDuration}
+                        onChange={handleChange}
+                        className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#039994] focus:border-[#039994] transition-all ${
+                          formErrors.maxDuration ? "border-red-500 bg-red-50" : "border-gray-300"
+                        }`}
+                        min="0"
+                        step="1"
+                        placeholder="0"
+                        required
+                      />
+                      {formErrors.maxDuration && (
+                        <p className="text-sm text-red-600 mt-1">{formErrors.maxDuration}</p>
+                      )}
+                    </div>
 
-                  <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-800">
-                      Agreement Years <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      name="agreementYrs"
-                      value={formData.agreementYrs}
-                      onChange={handleChange}
-                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#039994] focus:border-[#039994] transition-all ${
-                        formErrors.agreementYrs ? "border-red-500 bg-red-50" : "border-gray-300"
-                      }`}
-                      min="1"
-                      step="1"
-                      placeholder="Enter years"
-                      required
-                    />
-                    {formErrors.agreementYrs && (
-                      <p className="text-sm text-red-600 mt-1">{formErrors.agreementYrs}</p>
-                    )}
-                  </div>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-semibold text-gray-800">
+                        Agreement Years <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        name="agreementYrs"
+                        value={formData.agreementYrs}
+                        onChange={handleChange}
+                        className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#039994] focus:border-[#039994] transition-all ${
+                          formErrors.agreementYrs ? "border-red-500 bg-red-50" : "border-gray-300"
+                        }`}
+                        min="0"
+                        step="1"
+                        placeholder="0"
+                        required
+                      />
+                      {formErrors.agreementYrs && (
+                        <p className="text-sm text-red-600 mt-1">{formErrors.agreementYrs}</p>
+                      )}
+                    </div>
 
-                  <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-800">
-                      Cancellation Fee ($) <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      name="cancellationFee"
-                      value={formData.cancellationFee}
-                      onChange={handleChange}
-                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#039994] focus:border-[#039994] transition-all ${
-                        formErrors.cancellationFee ? "border-red-500 bg-red-50" : "border-gray-300"
-                      }`}
-                      min="0"
-                      step="1"
-                      placeholder="Enter amount"
-                      required
-                    />
-                    {formErrors.cancellationFee && (
-                      <p className="text-sm text-red-600 mt-1">{formErrors.cancellationFee}</p>
-                    )}
+                    <div className="space-y-2">
+                      <label className="block text-sm font-semibold text-gray-800">
+                        Cancellation Fee ($) <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        name="cancellationFee"
+                        value={formData.cancellationFee}
+                        onChange={handleChange}
+                        className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#039994] focus:border-[#039994] transition-all ${
+                          formErrors.cancellationFee ? "border-red-500 bg-red-50" : "border-gray-300"
+                        }`}
+                        min="0"
+                        step="1"
+                        placeholder="0"
+                        required
+                      />
+                      {formErrors.cancellationFee && (
+                        <p className="text-sm text-red-600 mt-1">{formErrors.cancellationFee}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-500 text-center">
+                    All fields accept 0 as a valid value
                   </div>
                 </div>
 
