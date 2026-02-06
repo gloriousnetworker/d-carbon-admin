@@ -16,9 +16,11 @@ const ContractTermsTab = () => {
     cancellationFee: ""
   });
   const [formErrors, setFormErrors] = useState({});
+  const [availableModes, setAvailableModes] = useState([]);
 
   useEffect(() => {
     fetchContractTerms();
+    fetchModes();
   }, []);
 
   const fetchContractTerms = async () => {
@@ -41,40 +43,39 @@ const ContractTermsTab = () => {
     }
   };
 
-  const commercialModes = [
-    "DIRECT_CUSTOMER",
-    "REFERRED_CUSTOMER",
-    "PARTNER_INSTALLER",
-    "PARTNER_FINANCE",
-    "EPC_ASSISTED_FINANCE",
-    "EPC_ASSISTED_INSTALLER"
-  ];
-
-  const residentialModes = [
-    "DIRECT_CUSTOMER",
-    "REFERRED_CUSTOMER",
-    "PARTNER_INSTALLER",
-    "PARTNER_FINANCE",
-    "EPC_ASSISTED_FINANCE",
-    "EPC_ASSISTED_INSTALLER",
-    "SALES_AGENT_REFERRED_RESIDENTIAL"
-  ];
-
-  const accountLevelModes = [
-    "ACCOUNT_LEVEL"
-  ];
+  const fetchModes = async () => {
+    try {
+      const authToken = localStorage.getItem("authToken");
+      const response = await fetch("https://services.dcarbon.solutions/api/commission-structure/modes", {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableModes(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch modes:", error);
+    }
+  };
 
   const getAvailableModes = () => {
-    switch(formData.propertyType) {
-      case "COMMERCIAL":
-        return commercialModes;
-      case "RESIDENTIAL":
-        return residentialModes;
-      case "ACCOUNT_LEVEL":
-        return accountLevelModes;
-      default:
-        return [];
+    const allModes = availableModes;
+    
+    if (formData.propertyType === "ACCOUNT_LEVEL") {
+      return allModes.filter(mode => 
+        mode.includes("SALES_AGENT") || mode === "ACCOUNT_LEVEL"
+      );
     }
+    
+    if (formData.propertyType === "COMMERCIAL" || formData.propertyType === "RESIDENTIAL") {
+      return allModes.filter(mode => 
+        !mode.includes("SALES_AGENT") && 
+        mode !== "ACCOUNT_LEVEL"
+      );
+    }
+    
+    return [];
   };
 
   const handleCreateNew = () => {
@@ -273,26 +274,21 @@ const ContractTermsTab = () => {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-5">
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg">
-                  <label className="block text-sm font-semibold text-gray-800 mb-2">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-1">
                     Property Type
                   </label>
-                  <div className="flex space-x-3">
-                    {["COMMERCIAL", "RESIDENTIAL", "ACCOUNT_LEVEL"].map((type) => (
-                      <button
-                        key={type}
-                        type="button"
-                        onClick={() => handleChange({ target: { name: "propertyType", value: type } })}
-                        className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                          formData.propertyType === type
-                            ? "bg-[#039994] text-white shadow-md"
-                            : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-                        }`}
-                      >
-                        {type === "ACCOUNT_LEVEL" ? "Account Level" : type}
-                      </button>
-                    ))}
-                  </div>
+                  <select
+                    name="propertyType"
+                    value={formData.propertyType}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#039994] focus:border-[#039994] transition-all"
+                    required
+                  >
+                    <option value="COMMERCIAL">COMMERCIAL</option>
+                    <option value="RESIDENTIAL">RESIDENTIAL</option>
+                    <option value="ACCOUNT_LEVEL">ACCOUNT LEVEL</option>
+                  </select>
                 </div>
 
                 <div className="space-y-2">
