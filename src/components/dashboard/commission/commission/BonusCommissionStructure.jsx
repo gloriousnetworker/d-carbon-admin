@@ -258,46 +258,30 @@ const BonusCommissionStructure = ({ onSetupStructure, refreshTrigger }) => {
   const renderTable = (bonusType, data) => {
     if (!data || data.length === 0) return null;
 
-    const getHeaders = () => {
-      switch (bonusType) {
-        case "RESIDENTIAL_REFERRAL_QUARTERLY":
-          return ["Min Referrals", "Max Referrals", "Bonus Points", "Actions"];
-        case "SALES_AGENT_ACCOUNT_LEVEL":
-          return ["Min Value", "Max Value", "Flat Bonus ($)", "Actions"];
-        case "SALES_AGENT_REFERRED":
-          return ["Min Value", "Max Value", "Flat Bonus ($)", "Actions"];
-        case "PARTNER_RESIDENTIAL_MW_ANNUAL":
-          return ["Min Value", "Bonus (%)", "Actions"];
-        case "PARTNER_COMMERCIAL_MW_ANNUAL":
-          return ["Min Value", "Bonus (%)", "Actions"];
-        case "PARTNER_RESIDENTIAL_MW_QUARTER":
-          return ["Min Value", "Max Value", "Bonus (%)", "Actions"];
-        case "PARTNER_COMMERCIAL_MW_QUARTER":
-          return ["Min Value", "Max Value", "Bonus (%)", "Actions"];
-        default:
-          return ["Range", "Value", "Actions"];
-      }
-    };
+const getHeaders = () => {
+  switch (bonusType) {
+    case "RESIDENTIAL_REFERRAL_QUARTERLY":
+      return ["Min Referrals", "Max Referrals", "Bonus Points", "Actions"];
+    case "SALES_AGENT_ACCOUNT_LEVEL":
+      return ["Min Value", "Max Value", "Flat Bonus ($)", "Actions"];
+    case "SALES_AGENT_REFERRED":
+      return ["Min Value", "Max Value", "Flat Bonus ($)", "Actions"];
+    case "PARTNER_RESIDENTIAL_MW_ANNUAL":
+      return ["Min Value", "Bonus (%)", "Actions"];
+    case "PARTNER_COMMERCIAL_MW_ANNUAL":
+      return ["Min Value", "Bonus (%)", "Actions"];
+    case "PARTNER_RESIDENTIAL_MW_QUARTER":
+      return ["Min Value", "Max Value", "Bonus (%)", "Actions"];
+    case "PARTNER_COMMERCIAL_MW_QUARTER":
+      return ["Min Value", "Max Value", "Bonus (%)", "Actions"];
+    default:
+      return ["Range", "Value", "Actions"];
+  }
+};
 
-    const getFieldsForTarget = (targetType) => {
-      switch (targetType) {
-        case "COMMERCIAL_MW_QUARTERLY":
-          return { showMin: true, showMax: true, showPercent: true, showFlat: false };
-        case "RESIDENTIAL_REFERRAL_QUARTERLY":
-          return { showMin: true, showMax: true, showPercent: true, showFlat: false };
-        case "PARTNER_MW_ANNUAL":
-          return { showMin: true, showMax: false, showPercent: true, showFlat: false };
-        case "SALES_AGENT_FLAT":
-          return { showMin: true, showMax: true, showPercent: false, showFlat: true };
-        default:
-          return { showMin: true, showMax: true, showPercent: true, showFlat: false };
-      }
-    };
+const fields = getFieldsForTarget(bonusType);
 
-    const headers = getHeaders();
-    const fields = getFieldsForTarget(bonusType);
-
-    const headers = getHeaders();
+const headers = getHeaders();
 
     return (
       <div className="mb-8">
