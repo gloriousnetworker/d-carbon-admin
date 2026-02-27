@@ -1,188 +1,311 @@
 "use client";
-import React, { useState } from "react";
-import CommercialCommissionStructure from "./commission/CommercialCommissionStructure";
-import ResidentialCommissionStructure from "./commission/ResidentialCommissionStructure";
-import PartnerCommissionStructure from "./commission/PartnerCommissionStructure";
-import AccountLevelBasedCommissionStructure from "./commission/AccountLevelBasedReferralCommissionStructure";
+import React, { useState, useEffect } from "react";
+import CommissionTable from "./CommissionTable";
+import CommissionSetupModal from "./CommissionSetupModal";
+import ManageTiersModal from "./ManageTiersModal";
 import BonusCommissionStructure from "./commission/BonusCommissionStructure";
-import CommissionSummary from "./commission/CommissionSummary";
-import VersioningAndAudit from "./commission/VersioningAndAudit";
-import ValidationRules from "./commission/ValidationRules";
-import CommercialCommissionSetup from "./setupModals/CommercialCommissionSetup";
-import ResidentialCommissionSetup from "./setupModals/ResidentialCommissionSetup";
-import PartnerCommissionSetup from "./setupModals/PartnerCommissionSetup";
-import AccountLevelBasedCommissionSetup from "./setupModals/AccountLevelBasedReferralCommissionStructure";
 import BonusCommissionSetup from "./setupModals/BonusCommissionSetup";
-import InitiateCommissionModal from "./InitiateCommissionModal";
-import { Toaster } from "react-hot-toast";
+import ContractTermsTab from "./ContractTermsTab";
 
 const CommissionStructure = () => {
-  const [activeTab, setActiveTab] = useState("Commercial");
-  const [showCommercialSetup, setShowCommercialSetup] = useState(false);
-  const [showResidentialSetup, setShowResidentialSetup] = useState(false);
-  const [showPartnerSetup, setShowPartnerSetup] = useState(false);
-  const [showSalesAgentSetup, setShowSalesAgentSetup] = useState(false);
+  const [activeTab, setActiveTab] = useState("COMMISSION");
+  const [activePropertyTab, setActivePropertyTab] = useState("COMMERCIAL");
+  const [activeMode, setActiveMode] = useState("DIRECT_CUSTOMER");
+  const [showSetupModal, setShowSetupModal] = useState(false);
+  const [showTiersModal, setShowTiersModal] = useState(false);
   const [showBonusSetup, setShowBonusSetup] = useState(false);
-  const [showInitiateCommission, setShowInitiateCommission] = useState(false);
+  const [tiers, setTiers] = useState([]);
+  const [modes, setModes] = useState([]);
+  const [accountModes, setAccountModes] = useState([]);
+  const [commissionData, setCommissionData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [editingCommission, setEditingCommission] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  const handleCommercialSetup = () => setShowCommercialSetup(true);
-  const handleCloseCommercialSetup = () => setShowCommercialSetup(false);
-  const handleResidentialSetup = () => setShowResidentialSetup(true);
-  const handleCloseResidentialSetup = () => setShowResidentialSetup(false);
-  const handlePartnerSetup = () => setShowPartnerSetup(true);
-  const handleClosePartnerSetup = () => setShowPartnerSetup(false);
-  const handleSalesAgentSetup = () => setShowSalesAgentSetup(true);
-  const handleCloseSalesAgentSetup = () => setShowSalesAgentSetup(false);
-  const handleBonusSetup = () => setShowBonusSetup(true);
-  const handleCloseBonusSetup = () => setShowBonusSetup(false);
-  const handleInitiateCommission = () => setShowInitiateCommission(true);
-  const handleCloseInitiateCommission = () => setShowInitiateCommission(false);
+  useEffect(() => {
+    fetchTiers();
+    fetchModes();
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === "COMMISSION") {
+      fetchCommissionData();
+    }
+  }, [activeTab, activePropertyTab, activeMode, refreshTrigger]);
+
+  const fetchTiers = async () => {
+    try {
+      const authToken = localStorage.getItem("authToken");
+      const response = await fetch("https://services.dcarbon.solutions/api/commission-tier", {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setTiers(data.sort((a, b) => a.order - b.order));
+      }
+    } catch (error) {
+      console.error("Failed to fetch tiers:", error);
+    }
+  };
+
+  const fetchModes = async () => {
+    try {
+      const authToken = localStorage.getItem("authToken");
+      const response = await fetch("https://services.dcarbon.solutions/api/commission-structure/modes", {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const allModes = data;
+        const filteredModes = allModes.filter(mode => 
+          !mode.includes("SALES_AGENT") && 
+          mode !== "ACCOUNT_LEVEL" &&
+          mode !== "EPC_ASSISTED_FINANCE" && 
+          mode !== "EPC_ASSISTED_INSTALLER"
+        );
+        setModes(filteredModes);
+        setAccountModes(allModes.filter(mode => 
+          mode.includes("SALES_AGENT") || mode === "ACCOUNT_LEVEL"
+        ));
+      }
+    } catch (error) {
+      console.error("Failed to fetch modes:", error);
+    }
+  };
+
+  const fetchCommissionData = async () => {
+    try {
+      setLoading(true);
+      const authToken = localStorage.getItem("authToken");
+      
+      let url;
+      if (activePropertyTab === "ACCOUNT_LEVEL") {
+        url = "https://services.dcarbon.solutions/api/commission-structure/";
+      } else {
+        const property = activePropertyTab;
+        const mode = activeMode;
+        url = `https://services.dcarbon.solutions/api/commission-structure/filter/mode-property?mode=${mode}&property=${property}`;
+      }
+      
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setCommissionData(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch commission data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getAvailableModes = () => {
+    if (activePropertyTab === "ACCOUNT_LEVEL") {
+      return accountModes;
+    }
+    return modes;
+  };
+
+  const handleCreateCommission = () => {
+    setEditingCommission(null);
+    setShowSetupModal(true);
+  };
+
+  const handleEditCommission = (commission) => {
+    setEditingCommission(commission);
+    setShowSetupModal(true);
+  };
+
+  const handleDeleteCommission = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this commission structure?")) return;
+    
+    try {
+      const authToken = localStorage.getItem("authToken");
+      const response = await fetch(`https://services.dcarbon.solutions/api/commission-structure/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (response.ok) {
+        fetchCommissionData();
+      }
+    } catch (error) {
+      console.error("Failed to delete commission:", error);
+    }
+  };
 
   const handleSuccess = () => {
+    setShowSetupModal(false);
+    fetchCommissionData();
+  };
+
+  const handleTiersUpdated = () => {
+    setShowTiersModal(false);
+    fetchTiers();
     setRefreshTrigger(prev => prev + 1);
+  };
+
+  const handleBonusSuccess = () => {
+    setShowBonusSetup(false);
+    setRefreshTrigger(prev => prev + 1);
+  };
+
+  const getPropertyTypeForModal = () => {
+    return activePropertyTab === "ACCOUNT_LEVEL" ? "ACCOUNT_LEVEL" : activePropertyTab;
   };
 
   return (
     <div className="min-h-screen bg-[#F7F7F7] py-8 px-4">
-      <Toaster position="top-right" />
-      {showCommercialSetup && (
-        <CommercialCommissionSetup onClose={handleCloseCommercialSetup} onSuccess={handleSuccess} />
+      {showSetupModal && (
+        <CommissionSetupModal
+          onClose={() => setShowSetupModal(false)}
+          onSuccess={handleSuccess}
+          tiers={tiers}
+          modes={getAvailableModes()}
+          propertyType={getPropertyTypeForModal()}
+          mode={activeMode}
+          editingCommission={editingCommission}
+        />
       )}
-      {showResidentialSetup && (
-        <ResidentialCommissionSetup onClose={handleCloseResidentialSetup} onSuccess={handleSuccess} />
+
+      {showTiersModal && (
+        <ManageTiersModal
+          onClose={() => setShowTiersModal(false)}
+          onSuccess={handleTiersUpdated}
+          tiers={tiers}
+        />
       )}
-      {showPartnerSetup && (
-        <PartnerCommissionSetup onClose={handleClosePartnerSetup} onSuccess={handleSuccess} />
-      )}
-      {showSalesAgentSetup && (
-        <AccountLevelBasedCommissionSetup onClose={handleCloseSalesAgentSetup} onSuccess={handleSuccess} />
-      )}
+
       {showBonusSetup && (
-        <BonusCommissionSetup onClose={handleCloseBonusSetup} onSuccess={handleSuccess} />
+        <BonusCommissionSetup
+          onClose={() => setShowBonusSetup(false)}
+          onSuccess={handleBonusSuccess}
+        />
       )}
-      {showInitiateCommission && (
-        <InitiateCommissionModal onClose={handleCloseInitiateCommission} onSuccess={handleSuccess} />
-      )}
+
       <div className="max-w-6xl mx-auto">
-        <div className="flex justify-end mb-4">
-          <button
-            className="bg-[#1E1E1E] text-white px-6 py-3 rounded-md text-sm hover:bg-[#333333] transition-colors font-medium"
-            onClick={handleInitiateCommission}
-          >
-            Initiate Commission
-          </button>
-        </div>
         <div className="bg-white rounded-2xl shadow-sm border border-[#E8E8E8]">
           <div className="border-b border-gray-200">
             <div className="flex">
               <button
                 className={`px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
-                  activeTab === "Commercial"
+                  activeTab === "COMMISSION"
                     ? "text-[#039994] border-[#039994]"
                     : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
                 }`}
-                onClick={() => setActiveTab("Commercial")}
+                onClick={() => setActiveTab("COMMISSION")}
               >
-                Commercial
+                Commission Structure
               </button>
               <button
                 className={`px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
-                  activeTab === "Residential"
+                  activeTab === "CONTRACT_TERMS"
                     ? "text-[#039994] border-[#039994]"
                     : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
                 }`}
-                onClick={() => setActiveTab("Residential")}
+                onClick={() => setActiveTab("CONTRACT_TERMS")}
               >
-                Residential
+                Commission Contract Terms
               </button>
               <button
                 className={`px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
-                  activeTab === "Partner"
+                  activeTab === "BONUS"
                     ? "text-[#039994] border-[#039994]"
                     : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
                 }`}
-                onClick={() => setActiveTab("Partner")}
+                onClick={() => setActiveTab("BONUS")}
               >
-                Partner
-              </button>
-              <button
-                className={`px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
-                  activeTab === "SalesAgent"
-                    ? "text-[#039994] border-[#039994]"
-                    : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
-                }`}
-                onClick={() => setActiveTab("SalesAgent")}
-              >
-                Account Level Based Referral Commission Structure
-              </button>
-              <button
-                className={`px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
-                  activeTab === "Bonus"
-                    ? "text-[#039994] border-[#039994]"
-                    : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
-                }`}
-                onClick={() => setActiveTab("Bonus")}
-              >
-                Bonus
-              </button>
-              <button
-                className={`px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
-                  activeTab === "Summary"
-                    ? "text-[#039994] border-[#039994]"
-                    : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
-                }`}
-                onClick={() => setActiveTab("Summary")}
-              >
-                Summary
-              </button>
-              <button
-                className={`px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
-                  activeTab === "Versioning"
-                    ? "text-[#039994] border-[#039994]"
-                    : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
-                }`}
-                onClick={() => setActiveTab("Versioning")}
-              >
-                Versioning & Audit
-              </button>
-              <button
-                className={`px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
-                  activeTab === "Validation"
-                    ? "text-[#039994] border-[#039994]"
-                    : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
-                }`}
-                onClick={() => setActiveTab("Validation")}
-              >
-                Validation Rules
+                Bonus Structure
               </button>
             </div>
           </div>
 
           <div className="p-6">
-            {activeTab === "Commercial" && (
-              <CommercialCommissionStructure onSetupStructure={handleCommercialSetup} refreshTrigger={refreshTrigger} />
+            {activeTab === "COMMISSION" && (
+              <>
+                <div className="mb-6">
+                  <h3 className="text-sm font-medium text-gray-700 mb-2">Property Type</h3>
+                  <div className="flex space-x-2">
+                    {["COMMERCIAL", "RESIDENTIAL", "ACCOUNT_LEVEL"].map((property) => (
+                      <button
+                        key={property}
+                        onClick={() => {
+                          setActivePropertyTab(property);
+                          if (property === "ACCOUNT_LEVEL") {
+                            setActiveMode("SALES_AGENT_REFERRED_RESIDENTIAL");
+                          } else {
+                            setActiveMode("DIRECT_CUSTOMER");
+                          }
+                        }}
+                        className={`px-4 py-2 rounded-md text-sm font-medium ${
+                          activePropertyTab === property
+                            ? "bg-[#039994] text-white"
+                            : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                        }`}
+                      >
+                        {property === "ACCOUNT_LEVEL" ? "Account Level" : property}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {activePropertyTab !== "ACCOUNT_LEVEL" && (
+                  <div className="mb-6">
+                    <h3 className="text-sm font-medium text-gray-700 mb-2">Commission Mode</h3>
+                    <select
+                      value={activeMode}
+                      onChange={(e) => setActiveMode(e.target.value)}
+                      className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-md bg-white"
+                    >
+                      {getAvailableModes().map((mode) => (
+                        <option key={mode} value={mode}>
+                          {mode.replace(/_/g, " ")}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center mb-6">
+                  <button
+                    onClick={handleCreateCommission}
+                    className="px-4 py-2 bg-[#039994] text-white rounded-md hover:bg-[#028884]"
+                  >
+                    Create Commission Structure
+                  </button>
+                  <button
+                    onClick={() => setShowTiersModal(true)}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+                  >
+                    Manage Tiers
+                  </button>
+                </div>
+
+                {loading ? (
+                  <div className="text-center py-8">Loading...</div>
+                ) : (
+                  <CommissionTable
+                    data={commissionData}
+                    tiers={tiers}
+                    propertyType={activePropertyTab}
+                    onEdit={handleEditCommission}
+                    onDelete={handleDeleteCommission}
+                  />
+                )}
+              </>
             )}
-            {activeTab === "Residential" && (
-              <ResidentialCommissionStructure onSetupStructure={handleResidentialSetup} refreshTrigger={refreshTrigger} />
+
+            {activeTab === "CONTRACT_TERMS" && (
+              <ContractTermsTab />
             )}
-            {activeTab === "Partner" && (
-              <PartnerCommissionStructure onSetupStructure={handlePartnerSetup} refreshTrigger={refreshTrigger} />
-            )}
-            {activeTab === "SalesAgent" && (
-              <AccountLevelBasedCommissionStructure onSetupStructure={handleSalesAgentSetup} refreshTrigger={refreshTrigger} />
-            )}
-            {activeTab === "Bonus" && (
-              <BonusCommissionStructure onSetupStructure={handleBonusSetup} refreshTrigger={refreshTrigger} />
-            )}
-            {activeTab === "Summary" && (
-              <CommissionSummary />
-            )}
-            {activeTab === "Versioning" && (
-              <VersioningAndAudit />
-            )}
-            {activeTab === "Validation" && (
-              <ValidationRules />
+
+            {activeTab === "BONUS" && (
+              <BonusCommissionStructure
+                onSetupStructure={() => setShowBonusSetup(true)}
+                refreshTrigger={refreshTrigger}
+              />
             )}
           </div>
         </div>

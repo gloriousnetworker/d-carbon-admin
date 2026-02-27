@@ -363,6 +363,13 @@ export default function UtilityProviderManagement({ onViewChange }) {
                     >
                       Finance Types
                     </button>
+                    <button
+                      className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 ${styles.labelClass} relative`}
+                      onClick={() => onViewChange("auth-management")}
+                    >
+                      Manage Authorizations
+                      <NotificationBadge count={authsCount} show={showAuthsNotification} />
+                    </button>
                   </div>
                 </div>
               )}

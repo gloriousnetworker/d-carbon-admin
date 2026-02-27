@@ -96,7 +96,16 @@ const BonusCommissionStructure = ({ onSetupStructure, refreshTrigger }) => {
       }
     }
 
-    if (fields.showPercent && (editForm.percent < 0 || editForm.percent > 100)) {
+    if (fields.showPercent && bonusType === "RESIDENTIAL_REFERRAL_QUARTERLY") {
+      if (!Number.isInteger(parseFloat(editForm.percent))) {
+        toast.error("Bonus Points must be a whole number", { position: 'top-center', duration: 3000 });
+        return false;
+      }
+      if (editForm.percent < 0) {
+        toast.error("Bonus Points cannot be negative", { position: 'top-center', duration: 3000 });
+        return false;
+      }
+    } else if (fields.showPercent && (editForm.percent < 0 || editForm.percent > 100)) {
       toast.error("Percent must be between 0 and 100", { position: 'top-center', duration: 3000 });
       return false;
     }
@@ -123,7 +132,7 @@ const BonusCommissionStructure = ({ onSetupStructure, refreshTrigger }) => {
       const payload = {
         minValue: editForm.minValue ? parseFloat(editForm.minValue) : null,
         maxValue: editForm.maxValue ? parseFloat(editForm.maxValue) : null,
-        percent: editForm.percent ? parseFloat(editForm.percent) : null,
+        percent: editForm.percent ? (bonusType === "RESIDENTIAL_REFERRAL_QUARTERLY" ? parseInt(editForm.percent) : parseFloat(editForm.percent)) : null,
         flatValue: editForm.flatValue ? parseFloat(editForm.flatValue) : null
       };
 
@@ -207,14 +216,20 @@ const BonusCommissionStructure = ({ onSetupStructure, refreshTrigger }) => {
 
   const getFieldsForTarget = (targetType) => {
     switch (targetType) {
-      case "COMMERCIAL_MW_QUARTERLY":
-        return { showMin: true, showMax: true, showPercent: true, showFlat: false };
       case "RESIDENTIAL_REFERRAL_QUARTERLY":
         return { showMin: true, showMax: true, showPercent: true, showFlat: false };
-      case "PARTNER_MW_ANNUAL":
-        return { showMin: true, showMax: false, showPercent: true, showFlat: false };
-      case "SALES_AGENT_FLAT":
+      case "SALES_AGENT_ACCOUNT_LEVEL":
         return { showMin: true, showMax: true, showPercent: false, showFlat: true };
+      case "SALES_AGENT_REFERRED":
+        return { showMin: true, showMax: true, showPercent: false, showFlat: true };
+      case "PARTNER_RESIDENTIAL_MW_ANNUAL":
+        return { showMin: true, showMax: false, showPercent: true, showFlat: false };
+      case "PARTNER_COMMERCIAL_MW_ANNUAL":
+        return { showMin: true, showMax: false, showPercent: true, showFlat: false };
+      case "PARTNER_RESIDENTIAL_MW_QUARTER":
+        return { showMin: true, showMax: true, showPercent: true, showFlat: false };
+      case "PARTNER_COMMERCIAL_MW_QUARTER":
+        return { showMin: true, showMax: true, showPercent: true, showFlat: false };
       default:
         return { showMin: true, showMax: true, showPercent: true, showFlat: false };
     }
@@ -222,10 +237,13 @@ const BonusCommissionStructure = ({ onSetupStructure, refreshTrigger }) => {
 
   const groupDataByBonusType = (data) => {
     const grouped = {
-      COMMERCIAL_MW_QUARTERLY: [],
       RESIDENTIAL_REFERRAL_QUARTERLY: [],
-      PARTNER_MW_ANNUAL: [],
-      SALES_AGENT_FLAT: []
+      SALES_AGENT_ACCOUNT_LEVEL: [],
+      SALES_AGENT_REFERRED: [],
+      PARTNER_RESIDENTIAL_MW_ANNUAL: [],
+      PARTNER_COMMERCIAL_MW_ANNUAL: [],
+      PARTNER_RESIDENTIAL_MW_QUARTER: [],
+      PARTNER_COMMERCIAL_MW_QUARTER: []
     };
 
     data.forEach(item => {
@@ -242,19 +260,41 @@ const BonusCommissionStructure = ({ onSetupStructure, refreshTrigger }) => {
 
     const getHeaders = () => {
       switch (bonusType) {
-        case "COMMERCIAL_MW_QUARTERLY":
-          return ["MW Range", "Bonus (%)", "Actions"];
         case "RESIDENTIAL_REFERRAL_QUARTERLY":
-          return ["Referral Range", "Bonus (%)", "Actions"];
-        case "PARTNER_MW_ANNUAL":
-          return ["Min MW", "Bonus (%)", "Actions"];
-        case "SALES_AGENT_FLAT":
-          return ["Range", "Flat Bonus ($)", "Actions"];
+          return ["Min Referrals", "Max Referrals", "Bonus Points", "Actions"];
+        case "SALES_AGENT_ACCOUNT_LEVEL":
+          return ["Min Value", "Max Value", "Flat Bonus ($)", "Actions"];
+        case "SALES_AGENT_REFERRED":
+          return ["Min Value", "Max Value", "Flat Bonus ($)", "Actions"];
+        case "PARTNER_RESIDENTIAL_MW_ANNUAL":
+          return ["Min Value", "Bonus (%)", "Actions"];
+        case "PARTNER_COMMERCIAL_MW_ANNUAL":
+          return ["Min Value", "Bonus (%)", "Actions"];
+        case "PARTNER_RESIDENTIAL_MW_QUARTER":
+          return ["Min Value", "Max Value", "Bonus (%)", "Actions"];
+        case "PARTNER_COMMERCIAL_MW_QUARTER":
+          return ["Min Value", "Max Value", "Bonus (%)", "Actions"];
         default:
           return ["Range", "Value", "Actions"];
       }
     };
 
+    const getFieldsForTarget = (targetType) => {
+      switch (targetType) {
+        case "COMMERCIAL_MW_QUARTERLY":
+          return { showMin: true, showMax: true, showPercent: true, showFlat: false };
+        case "RESIDENTIAL_REFERRAL_QUARTERLY":
+          return { showMin: true, showMax: true, showPercent: true, showFlat: false };
+        case "PARTNER_MW_ANNUAL":
+          return { showMin: true, showMax: false, showPercent: true, showFlat: false };
+        case "SALES_AGENT_FLAT":
+          return { showMin: true, showMax: true, showPercent: false, showFlat: true };
+        default:
+          return { showMin: true, showMax: true, showPercent: true, showFlat: false };
+      }
+    };
+
+    const headers = getHeaders();
     const fields = getFieldsForTarget(bonusType);
 
     const headers = getHeaders();
@@ -290,10 +330,11 @@ const BonusCommissionStructure = ({ onSetupStructure, refreshTrigger }) => {
                           value={editForm.minValue || ""}
                           onChange={(e) => handleEditChange("minValue", e.target.value)}
                           className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-1 px-2 text-xs"
-                          step="0.1"
+                          step={bonusType === "RESIDENTIAL_REFERRAL_QUARTERLY" ? "1" : "0.1"}
                           required
                         />
                       </td>
+                      
                       {fields.showMax && fields.showMax !== false && (
                         <td className="py-3 px-4 text-sm border-b border-gray-200">
                           <input
@@ -301,25 +342,27 @@ const BonusCommissionStructure = ({ onSetupStructure, refreshTrigger }) => {
                             value={editForm.maxValue || ""}
                             onChange={(e) => handleEditChange("maxValue", e.target.value)}
                             className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-1 px-2 text-xs"
-                            step="0.1"
+                            step={bonusType === "RESIDENTIAL_REFERRAL_QUARTERLY" ? "1" : "0.1"}
                             required
                           />
                         </td>
                       )}
+                      
                       {fields.showPercent && (
                         <td className="py-3 px-4 text-sm border-b border-gray-200">
                           <input
-                            type="number"
+                            type={bonusType === "RESIDENTIAL_REFERRAL_QUARTERLY" ? "number" : "number"}
                             value={editForm.percent || ""}
                             onChange={(e) => handleEditChange("percent", e.target.value)}
                             className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-1 px-2 text-xs"
-                            step="0.1"
+                            step={bonusType === "RESIDENTIAL_REFERRAL_QUARTERLY" ? "1" : "0.1"}
                             min="0"
-                            max="100"
+                            max={bonusType === "RESIDENTIAL_REFERRAL_QUARTERLY" ? "" : "100"}
                             required
                           />
                         </td>
                       )}
+                      
                       {fields.showFlat && (
                         <td className="py-3 px-4 text-sm border-b border-gray-200">
                           <input
@@ -333,6 +376,7 @@ const BonusCommissionStructure = ({ onSetupStructure, refreshTrigger }) => {
                           />
                         </td>
                       )}
+                      
                       <td className="py-3 px-4 text-sm border-b border-gray-200">
                         <div className="flex space-x-2">
                           <button
@@ -355,11 +399,25 @@ const BonusCommissionStructure = ({ onSetupStructure, refreshTrigger }) => {
                   ) : (
                     <>
                       <td className="py-3 px-4 text-sm border-b border-gray-200">
-                        {bonusType === "PARTNER_MW_ANNUAL" ? `${item.minValue}+ MW` : `${item.minValue} - ${item.maxValue} ${bonusType === "RESIDENTIAL_REFERRAL_QUARTERLY" ? "Referrals" : "MW"}`}
+                        {item.minValue}
+                        {(bonusType === "PARTNER_RESIDENTIAL_MW_ANNUAL" || bonusType === "PARTNER_COMMERCIAL_MW_ANNUAL") && "+ MW"}
                       </td>
+                      
+                      {fields.showMax && fields.showMax !== false && (
+                        <td className="py-3 px-4 text-sm border-b border-gray-200">
+                          {item.maxValue || "N/A"}
+                        </td>
+                      )}
+                      
                       <td className="py-3 px-4 text-sm border-b border-gray-200">
-                        {bonusType === "SALES_AGENT_FLAT" ? `$${item.flatValue}` : `${item.percent}%`}
+                        {bonusType === "SALES_AGENT_ACCOUNT_LEVEL" || bonusType === "SALES_AGENT_REFERRED" 
+                          ? `$${item.flatValue}` 
+                          : bonusType === "RESIDENTIAL_REFERRAL_QUARTERLY"
+                          ? `${item.percent} Points`
+                          : `${item.percent}%`
+                        }
                       </td>
+                      
                       <td className="py-3 px-4 text-sm border-b border-gray-200">
                         <div className="flex space-x-2">
                           <button
@@ -407,8 +465,27 @@ const BonusCommissionStructure = ({ onSetupStructure, refreshTrigger }) => {
 
   if (!tableData || tableData.length === 0) {
     return (
-      <div className="w-full flex items-center justify-center py-8">
-        <div className="text-gray-500">No bonus structure data available</div>
+      <div className="w-full">
+        <div className="flex items-center justify-between pb-4">
+          <h2 className="text-[#039994] font-semibold text-lg">Bonus Commission Structure</h2>
+          <button
+            className="flex items-center bg-[#039994] text-white px-4 py-2 rounded-full text-sm hover:bg-[#028B86] transition-colors"
+            onClick={onSetupStructure}
+          >
+            <IoSettingsSharp className="mr-2" size={16} />
+            Setup Structure
+          </button>
+        </div>
+        <div className="w-full flex flex-col items-center justify-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
+          <div className="text-gray-500 mb-4">No bonus structure data available</div>
+          <button
+            className="flex items-center bg-[#039994] text-white px-4 py-2 rounded-md text-sm hover:bg-[#028B86] transition-colors"
+            onClick={onSetupStructure}
+          >
+            <IoSettingsSharp className="mr-2" size={16} />
+            Create Bonus Structure
+          </button>
+        </div>
       </div>
     );
   }
@@ -418,9 +495,7 @@ const BonusCommissionStructure = ({ onSetupStructure, refreshTrigger }) => {
   return (
     <div className="w-full">
       <div className="flex items-center justify-between pb-4">
-        <h2 className="text-[#039994] font-semibold text-lg">
-          Bonus Commission Structure
-        </h2>
+        <h2 className="text-[#039994] font-semibold text-lg">Bonus Commission Structure</h2>
         <button
           className="flex items-center bg-[#039994] text-white px-4 py-2 rounded-full text-sm hover:bg-[#028B86] transition-colors"
           onClick={onSetupStructure}
@@ -430,10 +505,13 @@ const BonusCommissionStructure = ({ onSetupStructure, refreshTrigger }) => {
         </button>
       </div>
 
-      {renderTable("COMMERCIAL_MW_QUARTERLY", groupedData.COMMERCIAL_MW_QUARTERLY)}
       {renderTable("RESIDENTIAL_REFERRAL_QUARTERLY", groupedData.RESIDENTIAL_REFERRAL_QUARTERLY)}
-      {renderTable("PARTNER_MW_ANNUAL", groupedData.PARTNER_MW_ANNUAL)}
-      {renderTable("SALES_AGENT_FLAT", groupedData.SALES_AGENT_FLAT)}
+      {renderTable("SALES_AGENT_ACCOUNT_LEVEL", groupedData.SALES_AGENT_ACCOUNT_LEVEL)}
+      {renderTable("SALES_AGENT_REFERRED", groupedData.SALES_AGENT_REFERRED)}
+      {renderTable("PARTNER_RESIDENTIAL_MW_ANNUAL", groupedData.PARTNER_RESIDENTIAL_MW_ANNUAL)}
+      {renderTable("PARTNER_COMMERCIAL_MW_ANNUAL", groupedData.PARTNER_COMMERCIAL_MW_ANNUAL)}
+      {renderTable("PARTNER_RESIDENTIAL_MW_QUARTER", groupedData.PARTNER_RESIDENTIAL_MW_QUARTER)}
+      {renderTable("PARTNER_COMMERCIAL_MW_QUARTER", groupedData.PARTNER_COMMERCIAL_MW_QUARTER)}
 
       <div className="text-xs text-gray-500 mt-2">
         All bonuses are calculated based on the specified ranges and criteria.

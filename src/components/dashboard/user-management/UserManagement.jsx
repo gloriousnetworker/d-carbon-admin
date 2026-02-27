@@ -13,6 +13,7 @@ import {
   ChevronDown,
   Info,
   Mail,
+  Check,
 } from "lucide-react";
 import CommercialDetails from "./customer-details/commercial-details/CommercialDetails";
 import ResidentialDetails from "./customer-details/residential-details/ResidentialDetails";
@@ -24,6 +25,7 @@ import FilterByModal from "./modals/customerManagement/FilterBy";
 import PartnerManagement from "./partner-management/PartnerManagement";
 import UtilityProviderManagement from "./utility-provider-management/UtilityProviderManagement";
 import FinanceTypes from "./partner-management/finance-types/FinanceType";
+import UtilityAuthManagement from "./utility-provider-management/UtilityAuthManagement";
 import * as styles from "./styles";
 import CONFIG from "../../../../lib/config";
 
@@ -53,6 +55,9 @@ export default function CustomerManagement() {
   const [totalCount, setTotalCount] = useState(0);
   const [utilityProviders, setUtilityProviders] = useState([]);
   const [resending, setResending] = useState(false);
+  const [authsCount, setAuthsCount] = useState(0);
+  const [previousAuthsCount, setPreviousAuthsCount] = useState(0);
+  const [showAuthsNotification, setShowAuthsNotification] = useState(false);
 
   const fetchCustomers = async (page = 1, limit = 50) => {
     try {
@@ -117,6 +122,33 @@ export default function CustomerManagement() {
     }
   };
 
+  const fetchAuthsCount = async () => {
+    try {
+      const authToken = localStorage.getItem("authToken");
+      if (!authToken) return;
+      const response = await fetch("https://services.dcarbon.solutions/api/auth/utility-auth", {
+        method: "GET",
+        headers: { 
+          "Authorization": `Bearer ${authToken}`, 
+          "Content-Type": "application/json" 
+        }
+      });
+      if (response.ok) {
+        const result = await response.json();
+        if (result.status === "success") {
+          const newCount = result.data?.length || 0;
+          if (newCount > previousAuthsCount && previousAuthsCount > 0) {
+            setShowAuthsNotification(true);
+          }
+          setAuthsCount(newCount);
+          setPreviousAuthsCount(newCount);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching auths count:", err);
+    }
+  };
+
   const handleResendESignature = async (email) => {
     try {
       setResending(true);
@@ -166,6 +198,17 @@ export default function CustomerManagement() {
   useEffect(() => {
     applyFilters(filters);
   }, [customers]);
+
+  useEffect(() => {
+    const initializeCounts = async () => {
+      await fetchAuthsCount();
+    };
+    initializeCounts();
+    const interval = setInterval(() => {
+      fetchAuthsCount();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [previousAuthsCount]);
 
   const applyFilters = (newFilters) => {
     let results = [...customers];
@@ -303,6 +346,15 @@ export default function CustomerManagement() {
     }
   };
 
+  const NotificationBadge = ({ count, show }) => {
+    if (!show || count === 0) return null;
+    return (
+      <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+        {count > 99 ? '99+' : count}
+      </span>
+    );
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-white">
       <div className="flex-1 overflow-hidden p-4">
@@ -318,6 +370,10 @@ export default function CustomerManagement() {
 
         {currentView === "finance-types" && (
           <FinanceTypes onBack={() => handleViewChange("management")} />
+        )}
+
+        {currentView === "auth-management" && (
+          <UtilityAuthManagement onBack={() => handleViewChange("management")} />
         )}
         
         {currentView === "management" && (
@@ -410,6 +466,16 @@ export default function CustomerManagement() {
                         onClick={() => handleViewChange("finance-types")}
                       >
                         Finance Types
+                      </button>
+                      <button
+                        className="w-full px-3 py-2 text-left text-xs hover:bg-gray-50 relative"
+                        onClick={() => {
+                          setShowAuthsNotification(false);
+                          handleViewChange("auth-management");
+                        }}
+                      >
+                        Manage Authorizations
+                        <NotificationBadge count={authsCount} show={showAuthsNotification} />
                       </button>
                     </div>
                   </div>
