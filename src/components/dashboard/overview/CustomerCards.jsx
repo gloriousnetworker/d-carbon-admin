@@ -16,7 +16,6 @@ export default function CustomerVisualizationCard() {
   const timeFrameOptions = ["Yearly", "Monthly", "Quarterly"];
   const yearOptions = ["2025", "2024", "2023"];
 
-  // Mock data for different partner types
   const mockData = {
     Partner: {
       Jan: { below500k: 50, between500kAnd2_5m: 15, above2_5m: 10 },
@@ -81,10 +80,8 @@ export default function CustomerVisualizationCard() {
       try {
         setLoading(true);
         
-        // Always show data even when loading by using the mock data immediately
         setCustomerData(mockData[partnerType]);
         
-        // Simulate API call with timeout for when real data would be fetched
         setTimeout(() => {
           setLoading(false);
         }, 500);
@@ -100,9 +97,8 @@ export default function CustomerVisualizationCard() {
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const yAxisLabels = [0, 25, 50, 75, 100];
 
-  // Calculate total height of each bar (for scaling purposes)
   const getMaxTotal = () => {
-    if (!customerData) return 100; // Default max
+    if (!customerData) return 100;
     
     let max = 0;
     months.forEach(month => {
@@ -115,16 +111,14 @@ export default function CustomerVisualizationCard() {
       }
     });
     
-    return max > 100 ? max : 100; // Ensure we have at least 100 as max for scaling
+    return max > 100 ? max : 100;
   };
 
   const maxTotal = getMaxTotal();
 
   return (
     <div className="bg-white rounded-lg shadow-md p-4 flex flex-col w-full">
-      {/* Header with dropdowns */}
       <div className="flex justify-between items-center mb-4">
-        {/* Partner dropdown */}
         <div className="relative">
           <button
             onClick={() => setShowPartnerDropdown(!showPartnerDropdown)}
@@ -153,9 +147,7 @@ export default function CustomerVisualizationCard() {
           )}
         </div>
 
-        {/* Time frame and year dropdowns */}
         <div className="flex space-x-2">
-          {/* Time frame dropdown */}
           <div className="relative">
             <button
               onClick={() => setShowTimeFrameDropdown(!showTimeFrameDropdown)}
@@ -184,7 +176,6 @@ export default function CustomerVisualizationCard() {
             )}
           </div>
 
-          {/* Year dropdown */}
           <div className="relative">
             <button
               onClick={() => setShowYearDropdown(!showYearDropdown)}
@@ -217,9 +208,7 @@ export default function CustomerVisualizationCard() {
 
       <hr className="border-gray-300 w-full mb-6" />
 
-      {/* Chart area with y-axis labels and chart */}
       <div className="flex">
-        {/* Y-axis labels */}
         <div className="flex flex-col justify-between h-64 pr-2 text-sm text-gray-600">
           {yAxisLabels.reverse().map((label) => (
             <div key={label} className="text-right">
@@ -228,10 +217,8 @@ export default function CustomerVisualizationCard() {
           ))}
         </div>
 
-        {/* Chart */}
         <div className="flex-1">
           <div className="flex h-64 justify-between">
-        {/* Month data columns */}
             {months.map((month) => (
               <div key={month} className="flex flex-col items-center justify-end flex-1">
                 <div 
@@ -241,7 +228,6 @@ export default function CustomerVisualizationCard() {
                     height: "100%"
                   }}
                 >
-                  {/* Below $500k - Yellow (at the bottom) */}
                   <div 
                     className="w-full" 
                     style={{ 
@@ -252,7 +238,6 @@ export default function CustomerVisualizationCard() {
                     }}
                   />
                   
-                  {/* $500k-$2.5M - Dark Teal (middle) */}
                   <div 
                     className="w-full" 
                     style={{ 
@@ -261,7 +246,6 @@ export default function CustomerVisualizationCard() {
                     }}
                   />
                   
-                  {/* Above $2.5M - Light Teal (top) */}
                   <div 
                     className="w-full" 
                     style={{ 
@@ -276,7 +260,6 @@ export default function CustomerVisualizationCard() {
             ))}
           </div>
 
-          {/* X-axis month labels */}
           <div className="flex justify-between mt-2 text-sm text-gray-600">
             {months.map((month) => (
               <div key={month} className="text-center px-2">
@@ -289,7 +272,6 @@ export default function CustomerVisualizationCard() {
 
       <hr className="border-gray-300 w-full my-4" />
 
-      {/* Legend */}
       <div className="flex justify-end space-x-4 text-sm">
         <div className="flex items-center">
           <div className="h-3 w-3 rounded-full mr-2" style={{ backgroundColor: "#FFB200" }}></div>

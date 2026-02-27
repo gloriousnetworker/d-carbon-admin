@@ -1,9 +1,6 @@
-// src/components/QuickActions.jsx
-
 import React, { useState, useEffect } from 'react';
 import { FiChevronDown } from 'react-icons/fi';
-
-const API_BASE = 'https://services.dcarbon.solutions';
+import CONFIG from '../../../../../lib/config';
 
 export default function QuickActions() {
   const [filter, setFilter] = useState('total');
@@ -16,14 +13,13 @@ export default function QuickActions() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch data on mount
   useEffect(() => {
     const fetchStats = async () => {
       setLoading(true);
       setError(null);
       try {
         const token = localStorage.getItem('authToken');
-        const res = await fetch(`${API_BASE}/api/rec/overview/stats`, {
+        const res = await fetch(`${CONFIG.API_BASE_URL}/api/rec/overview/stats`, {
           headers: {
             'Content-Type': 'application/json',
             Authorization: token ? `Bearer ${token}` : '',
@@ -54,7 +50,6 @@ export default function QuickActions() {
     fetchStats();
   }, []);
 
-  // Build cards array with dynamic values
   const cards = [
     {
       key: 'totalRecsAvailable',
@@ -81,7 +76,7 @@ export default function QuickActions() {
       value: stats.totalRecsGenerated,
     },
     {
-      key: 'recsSold', // duplicate key removed; if you need extra cards adjust accordingly
+      key: 'recsSold',
       icon: '/vectors/ArrowLineUpRight.png',
       label: 'Total RECs Sold',
       value: stats.totalRecsSold,
@@ -92,23 +87,18 @@ export default function QuickActions() {
 
   return (
     <div className="w-full py-4 px-4">
-      {/* Filter dropdown */}
       <div className="flex justify-end mb-4">
         <div className="relative inline-block">
           <button
-            onClick={() => {
-              /* toggle dropdown here if needed */
-            }}
+            onClick={() => {}}
             className="flex items-center text-black text-sm font-semibold"
           >
             {filter === 'total' ? 'Total' : filter}
             <FiChevronDown className="ml-1 w-4 h-4" />
           </button>
-          {/* You can render your dropdown menu here */}
         </div>
       </div>
 
-      {/* Loading/Error states */}
       {loading ? (
         <div className="text-center py-8">Loading overview…</div>
       ) : error ? (
@@ -116,7 +106,6 @@ export default function QuickActions() {
           Error: {error}
         </div>
       ) : (
-        /* Cards Container */
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {visibleCards.map(({ key, icon, label, value }) => (
             <div

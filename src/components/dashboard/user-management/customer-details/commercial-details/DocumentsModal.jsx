@@ -5,6 +5,7 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/comp
 import { toast } from "react-hot-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import CONFIG from "../../../../../../lib/config";
 
 const getStatusColor = (status) => {
   switch (status) {
@@ -234,7 +235,7 @@ export default function DocumentsModal({ facility, onVerifyFacility, verifyingFa
       const authToken = localStorage.getItem('authToken');
       if (!authToken) throw new Error('No authentication token found');
 
-      const endpoint = `https://services.dcarbon.solutions/api/admin/commercial-facility/${facility.id}/document/${currentDocument.type}/status`;
+      const endpoint = `${CONFIG.API_BASE_URL}/api/admin/commercial-facility/${facility.id}/document/${currentDocument.type}/status`;
 
       const body = {
         status: actionType === "APPROVE" ? "APPROVED" : "REJECTED",

@@ -6,8 +6,7 @@ import { Input } from "@/components/ui/input"
 import BuyerManagement from "./BuyerManagement"
 import { format } from "date-fns"
 import toast from "react-hot-toast"
-
-const API_URL = "https://services.dcarbon.solutions"
+import CONFIG from "../../../../../lib/config"
 
 const styles = {
   mainContainer: 'min-h-screen w-full flex flex-col items-center justify-center py-8 px-4 bg-white',
@@ -235,7 +234,7 @@ export default function RecEntries() {
   const fetchRecEntries = async () => {
     try {
       const token = localStorage.getItem('authToken')
-      const response = await fetch(`${API_URL}/api/rec`, {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/rec`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -261,7 +260,7 @@ export default function RecEntries() {
     try {
       setBuyersLoading(true)
       const token = localStorage.getItem('authToken')
-      const response = await fetch(`${API_URL}/api/rec/buyers`, {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/rec/buyers`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -288,7 +287,7 @@ export default function RecEntries() {
   const fetchCurrentPrice = async () => {
     try {
       const token = localStorage.getItem('authToken')
-      const response = await fetch(`${API_URL}/api/rec/price/current`, {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/rec/price/current`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -318,7 +317,7 @@ export default function RecEntries() {
       }
 
       const token = localStorage.getItem('authToken')
-      const response = await fetch(`${API_URL}/api/rec/create`, {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/rec/create`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -360,7 +359,7 @@ export default function RecEntries() {
   const handleSetPrice = async (price) => {
     try {
       const token = localStorage.getItem('authToken')
-      const response = await fetch(`${API_URL}/api/rec/price/set`, {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/rec/price/set`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

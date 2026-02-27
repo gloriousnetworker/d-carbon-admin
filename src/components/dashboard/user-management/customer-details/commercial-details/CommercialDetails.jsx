@@ -5,6 +5,7 @@ import { toast } from "react-hot-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import DocumentsModal from "./DocumentsModal";
+import CONFIG from "../../../../../../lib/config";
 
 export const mainContainer = 'min-h-screen w-full flex flex-col items-center justify-center py-8 px-4 bg-white';
 export const labelClass = 'block mb-2 font-sfpro text-[14px] leading-[100%] tracking-[-0.05em] font-[400] text-[#1E1E1E]';
@@ -41,7 +42,7 @@ export default function CommercialDetails({ customer, onBack }) {
       if (!authToken) throw new Error('No authentication token found');
 
       const response = await fetch(
-        `https://services.dcarbon.solutions/api/facility/get-user-facilities-by-userId/${customer.id}`,
+        `${CONFIG.API_BASE_URL}/api/facility/get-user-facilities-by-userId/${customer.id}`,
         {
           method: 'GET',
           headers: {
@@ -187,7 +188,7 @@ export default function CommercialDetails({ customer, onBack }) {
       const authToken = localStorage.getItem('authToken');
       if (!authToken) throw new Error('No authentication token found');
 
-      const endpoint = `https://services.dcarbon.solutions/api/admin/commercial-facility/${facilityId}/verify`;
+      const endpoint = `${CONFIG.API_BASE_URL}/api/admin/commercial-facility/${facilityId}/verify`;
 
       const response = await fetch(endpoint, {
         method: 'PUT',
@@ -226,7 +227,7 @@ export default function CommercialDetails({ customer, onBack }) {
       const authToken = localStorage.getItem('authToken');
       if (!authToken) throw new Error('No authentication token found');
 
-      const endpoint = `https://services.dcarbon.solutions/api/admin/update-wregis-info/${currentFacility.id}`;
+      const endpoint = `${CONFIG.API_BASE_URL}/api/admin/update-wregis-info/${currentFacility.id}`;
 
       const body = {
         wregisEligibilityDate: wregisForm.wregisEligibilityDate ? `${wregisForm.wregisEligibilityDate}T00:00:00Z` : null,
@@ -277,7 +278,7 @@ export default function CommercialDetails({ customer, onBack }) {
       const formData = new FormData();
       formData.append('file', selectedFile);
 
-      const endpoint = `https://services.dcarbon.solutions/api/admin/update-acknowledgement-of-station-service/${currentFacility.id}`;
+      const endpoint = `${CONFIG.API_BASE_URL}/api/admin/update-acknowledgement-of-station-service/${currentFacility.id}`;
 
       const response = await fetch(endpoint, {
         method: 'PUT',

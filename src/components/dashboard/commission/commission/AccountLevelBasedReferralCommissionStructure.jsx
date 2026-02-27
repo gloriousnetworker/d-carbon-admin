@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { IoSettingsSharp } from "react-icons/io5";
+import CONFIG from "../../../../../lib/config";
 
 const AccountLevelBasedCommissionStructure = ({ onSetupStructure }) => {
   const [activeSubTab, setActiveSubTab] = useState("sales-agent");
@@ -68,30 +69,6 @@ const AccountLevelBasedCommissionStructure = ({ onSetupStructure }) => {
 
       <div className="border-b border-gray-200 mb-4">
         <div className="flex">
-          {/* Commercial Tab - Commented Out */}
-          {/* <button
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeSubTab === "commercial"
-                ? "text-[#039994] border-[#039994]"
-                : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
-            }`}
-            onClick={() => setActiveSubTab("commercial")}
-          >
-            Commercial Referrals
-          </button> */}
-          
-          {/* Residential Tab - Commented Out */}
-          {/* <button
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeSubTab === "residential"
-                ? "text-[#039994] border-[#039994]"
-                : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
-            }`}
-            onClick={() => setActiveSubTab("residential")}
-          >
-            Residential Referrals
-          </button> */}
-          
           <button
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeSubTab === "sales-agent"
@@ -104,28 +81,6 @@ const AccountLevelBasedCommissionStructure = ({ onSetupStructure }) => {
           </button>
         </div>
       </div>
-
-      {/* Commercial Content - Commented Out */}
-      {/* {activeSubTab === "commercial" && (
-        <div>
-          <h3 className="text-[#039994] font-medium mb-2">Commercial Account Referrals</h3>
-          <p className="text-xs text-gray-500 mb-4">
-            Commission structure for commercial users who refer other commercial or residential accounts.
-          </p>
-          {renderTable(COMMERCIAL_DATA, "commercial")}
-        </div>
-      )} */}
-
-      {/* Residential Content - Commented Out */}
-      {/* {activeSubTab === "residential" && (
-        <div>
-          <h3 className="text-[#039994] font-medium mb-2">Residential Account Referrals</h3>
-          <p className="text-xs text-gray-500 mb-4">
-            Commission structure for residential users who refer other commercial or residential accounts.
-          </p>
-          {renderTable(RESIDENTIAL_DATA, "residential")}
-        </div>
-      )} */}
 
       {activeSubTab === "sales-agent" && (
         <div>

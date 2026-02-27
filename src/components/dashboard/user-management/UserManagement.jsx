@@ -25,6 +25,7 @@ import PartnerManagement from "./partner-management/PartnerManagement";
 import UtilityProviderManagement from "./utility-provider-management/UtilityProviderManagement";
 import FinanceTypes from "./partner-management/finance-types/FinanceType";
 import * as styles from "./styles";
+import CONFIG from "../../../../lib/config";
 
 export default function CustomerManagement() {
   const [currentPage, setCurrentPage] = useState(1);
@@ -60,7 +61,7 @@ export default function CustomerManagement() {
       if (!authToken) throw new Error("Authentication token not found");
 
       const response = await fetch(
-        `https://services.dcarbon.solutions/api/admin/get-all-users?page=${page}&limit=${limit}`,
+        `${CONFIG.API_BASE_URL}/api/admin/get-all-users?page=${page}&limit=${limit}`,
         {
           headers: {
             Authorization: `Bearer ${authToken}`,
@@ -96,7 +97,7 @@ export default function CustomerManagement() {
       if (!authToken) return;
 
       const response = await fetch(
-        "https://services.dcarbon.solutions/api/auth/utility-providers",
+        `${CONFIG.API_BASE_URL}/api/auth/utility-providers`,
         {
           headers: {
             Authorization: `Bearer ${authToken}`,
@@ -127,7 +128,7 @@ export default function CustomerManagement() {
       }
 
       const response = await fetch(
-        `https://services.dcarbon.solutions/api/admin/${userId}/request-agreement-resign`,
+        `${CONFIG.API_BASE_URL}/api/admin/${userId}/request-agreement-resign`,
         {
           method: "POST",
           headers: {

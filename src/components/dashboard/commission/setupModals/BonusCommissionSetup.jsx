@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { IoSettingsSharp } from "react-icons/io5";
 import { IoMdClose } from "react-icons/io";
 import { toast } from "react-hot-toast";
+import CONFIG from "../../../../../lib/config";
 
 const BonusCommissionSetup = ({ onClose, onSuccess }) => {
   const [target, setTarget] = useState("COMMERCIAL_MW_QUARTERLY");
@@ -90,7 +91,7 @@ const BonusCommissionSetup = ({ onClose, onSuccess }) => {
       }
 
       const requests = bonusEntries.map(entry => 
-        fetch("https://services.dcarbon.solutions/api/bonus-structure", {
+        fetch(`${CONFIG.API_BASE_URL}/api/bonus-structure`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

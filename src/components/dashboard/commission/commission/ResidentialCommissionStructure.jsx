@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { IoSettingsSharp } from "react-icons/io5";
 import { toast } from "react-hot-toast";
+import CONFIG from "../../../../../lib/config";
 
 const ResidentialCommissionStructure = ({ onSetupStructure, refreshData }) => {
   const [tableData, setTableData] = useState(null);
@@ -12,7 +13,7 @@ const ResidentialCommissionStructure = ({ onSetupStructure, refreshData }) => {
       setLoading(true);
       const authToken = localStorage.getItem('authToken');
       
-      const response = await fetch('https://services.dcarbon.solutions/api/commission-structure/residential', {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-structure/residential`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -152,7 +153,7 @@ const ResidentialCommissionStructure = ({ onSetupStructure, refreshData }) => {
           Residential Commission Structure
         </h2>
         <button
-          className="flex items-center bg[#039994] text-white px-4 py-2 rounded-full text-sm hover:bg-[#028B86] transition-colors"
+          className="flex items-center bg-[#039994] text-white px-4 py-2 rounded-full text-sm hover:bg-[#028B86] transition-colors"
           onClick={onSetupStructure}
         >
           <IoSettingsSharp className="mr-2" size={16} />

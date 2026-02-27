@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { FaBars, FaSearch, FaBell, FaHeadset, FaComments } from "react-icons/fa";
+import CONFIG from '../../../lib/config';
 
 const DashboardNavbar = ({
   toggleSidebar,
@@ -26,7 +27,7 @@ const DashboardNavbar = ({
     const fetchFeedback = async () => {
       try {
         const authToken = localStorage.getItem('authToken');
-        const response = await fetch('https://services.dcarbon.solutions/api/feature-suggestion', {
+        const response = await fetch(`${CONFIG.API_BASE_URL}/api/feature-suggestion`, {
           headers: {
             'Authorization': `Bearer ${authToken}`
           }

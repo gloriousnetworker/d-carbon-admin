@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { IoSettingsSharp } from "react-icons/io5";
 import { IoMdClose } from "react-icons/io";
 import { toast } from "react-hot-toast";
+import CONFIG from "../../../../../lib/config";
 
 const ResidentialCommissionSetup = ({ onClose, onSuccess }) => {
   const [formValues, setFormValues] = useState({
@@ -48,7 +49,7 @@ const ResidentialCommissionSetup = ({ onClose, onSuccess }) => {
       setLoading(true);
       const authToken = localStorage.getItem('authToken');
       
-      const response = await fetch('https://services.dcarbon.solutions/api/commission-structure/residential', {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-structure/residential`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -139,7 +140,7 @@ const ResidentialCommissionSetup = ({ onClose, onSuccess }) => {
   const updatePartnerInstaller = async () => {
     const authToken = localStorage.getItem('authToken');
     
-    const response = await fetch('https://services.dcarbon.solutions/api/commission-structure/residential/partner-installer', {
+    const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-structure/residential/partner-installer`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -166,7 +167,7 @@ const ResidentialCommissionSetup = ({ onClose, onSuccess }) => {
   const updatePartnerFinance = async () => {
     const authToken = localStorage.getItem('authToken');
     
-    const response = await fetch('https://services.dcarbon.solutions/api/commission-structure/residential/partner-finance', {
+    const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-structure/residential/partner-finance`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -193,7 +194,7 @@ const ResidentialCommissionSetup = ({ onClose, onSuccess }) => {
   const updateDirectCommission = async () => {
     const authToken = localStorage.getItem('authToken');
     
-    const response = await fetch('https://services.dcarbon.solutions/api/commission-structure/residential/direct', {
+    const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-structure/residential/direct`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -217,7 +218,7 @@ const ResidentialCommissionSetup = ({ onClose, onSuccess }) => {
   const updateCommissionTerms = async () => {
     const authToken = localStorage.getItem('authToken');
     
-    const response = await fetch('https://services.dcarbon.solutions/api/commission-structure/residential/terms', {
+    const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-structure/residential/terms`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',

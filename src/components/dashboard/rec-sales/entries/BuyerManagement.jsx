@@ -5,8 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/use-toast"
-
-const API_URL = "https://services.dcarbon.solutions"
+import CONFIG from "../../../../../lib/config"
 
 export default function BuyerManagement({ onBack }) {
   const { toast } = useToast()
@@ -42,7 +41,7 @@ export default function BuyerManagement({ onBack }) {
         throw new Error('No authentication token found')
       }
 
-      const response = await fetch(`${API_URL}/api/rec/buyers?page=${currentPage}&limit=10`, {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/rec/buyers?page=${currentPage}&limit=10`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -87,7 +86,7 @@ export default function BuyerManagement({ onBack }) {
       }
 
       const token = localStorage.getItem('authToken')
-      const response = await fetch(`${API_URL}/api/rec/buyers`, {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/rec/buyers`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -144,7 +143,7 @@ export default function BuyerManagement({ onBack }) {
       }
 
       const token = localStorage.getItem('authToken')
-      const response = await fetch(`${API_URL}/api/rec/buyers/${selectedBuyer.id}`, {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/rec/buyers/${selectedBuyer.id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -334,7 +333,6 @@ export default function BuyerManagement({ onBack }) {
         )}
       </div>
 
-      {/* New Buyer Modal */}
       <Dialog open={isNewBuyerModalOpen} onOpenChange={setIsNewBuyerModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -406,7 +404,6 @@ export default function BuyerManagement({ onBack }) {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Buyer Modal */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

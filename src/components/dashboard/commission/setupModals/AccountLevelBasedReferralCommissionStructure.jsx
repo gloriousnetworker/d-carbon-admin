@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { IoSettingsSharp } from "react-icons/io5";
 import { IoMdClose } from "react-icons/io";
 import { toast } from "react-hot-toast";
+import CONFIG from "../../../../../lib/config";
 
 const AccountLevelBasedCommissionSetup = ({ onClose }) => {
   const [activeTab, setActiveTab] = useState("sales-agent");
@@ -32,7 +33,6 @@ const AccountLevelBasedCommissionSetup = ({ onClose }) => {
       
       const validationErrors = [];
       
-      // Validation for sales agent form
       ["lessThan500k", "between500kTo2_5m", "moreThan2_5m"].forEach(tier => {
         if (salesAgentForm.salesAgentToCommercial[tier] > 100 || salesAgentForm.salesAgentToCommercial[tier] < 0) {
           validationErrors.push(`Sales Agent → Commercial ${tier} must be between 0-100%`);
@@ -127,30 +127,6 @@ const AccountLevelBasedCommissionSetup = ({ onClose }) => {
 
         <div className="border-b border-gray-200 mb-6">
           <div className="flex">
-            {/* Commercial Tab - Commented Out */}
-            {/* <button
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === "commercial"
-                  ? "text-[#039994] border-[#039994]"
-                  : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
-              }`}
-              onClick={() => setActiveTab("commercial")}
-            >
-              Commercial Referrals
-            </button> */}
-            
-            {/* Residential Tab - Commented Out */}
-            {/* <button
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === "residential"
-                  ? "text-[#039994] border-[#039994]"
-                  : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
-              }`}
-              onClick={() => setActiveTab("residential")}
-            >
-              Residential Referrals
-            </button> */}
-            
             <button
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === "sales-agent"
@@ -163,12 +139,6 @@ const AccountLevelBasedCommissionSetup = ({ onClose }) => {
             </button>
           </div>
         </div>
-
-        {/* Commercial Content - Commented Out */}
-        {/* {activeTab === "commercial" && renderCommercialTab()} */}
-        
-        {/* Residential Content - Commented Out */}
-        {/* {activeTab === "residential" && renderResidentialTab()} */}
         
         {activeTab === "sales-agent" && renderSalesAgentTab()}
 

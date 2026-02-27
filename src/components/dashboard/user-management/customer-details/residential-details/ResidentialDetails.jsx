@@ -5,6 +5,7 @@ import { toast } from "react-hot-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import DocumentsModal from "./DocumentsModal";
+import CONFIG from "../../../../../../lib/config";
 
 export default function ResidentialDetails({ customer, onBack }) {
   const [facilities, setFacilities] = useState([]);
@@ -42,7 +43,7 @@ export default function ResidentialDetails({ customer, onBack }) {
       if (!authToken) throw new Error('No authentication token found');
 
       const response = await fetch(
-        `https://services.dcarbon.solutions/api/residential-facility/get-user-facilities/${customer.id}`,
+        `${CONFIG.API_BASE_URL}/api/residential-facility/get-user-facilities/${customer.id}`,
         {
           method: 'GET',
           headers: {
@@ -74,7 +75,7 @@ export default function ResidentialDetails({ customer, onBack }) {
       if (!authToken) throw new Error('No authentication token found');
 
       const response = await fetch(
-        `https://services.dcarbon.solutions/api/residential-facility/residential-docs/${facilityId}`,
+        `${CONFIG.API_BASE_URL}/api/residential-facility/residential-docs/${facilityId}`,
         {
           method: 'GET',
           headers: {
@@ -204,7 +205,7 @@ export default function ResidentialDetails({ customer, onBack }) {
       const authToken = localStorage.getItem('authToken');
       if (!authToken) throw new Error('No authentication token found');
 
-      const endpoint = `https://services.dcarbon.solutions/api/admin/residential-facility/${currentFacility.id}/verify`;
+      const endpoint = `${CONFIG.API_BASE_URL}/api/admin/residential-facility/${currentFacility.id}/verify`;
 
       const requestBody = {
         status: "VERIFIED"
@@ -249,7 +250,7 @@ export default function ResidentialDetails({ customer, onBack }) {
       const authToken = localStorage.getItem('authToken');
       if (!authToken) throw new Error('No authentication token found');
 
-      const endpoint = `https://services.dcarbon.solutions/api/admin/update-residential-wregis-info/${currentFacility.id}`;
+      const endpoint = `${CONFIG.API_BASE_URL}/api/admin/update-residential-wregis-info/${currentFacility.id}`;
 
       const body = {
         wregisEligibilityDate: wregisForm.wregisEligibilityDate ? `${wregisForm.wregisEligibilityDate}T00:00:00Z` : null,
@@ -299,7 +300,7 @@ export default function ResidentialDetails({ customer, onBack }) {
       const formData = new FormData();
       formData.append('file', selectedFile);
 
-      const endpoint = `https://services.dcarbon.solutions/api/admin/residential-docs/acknowledgement-of-station-service/${currentFacility.id}`;
+      const endpoint = `${CONFIG.API_BASE_URL}/api/admin/residential-docs/acknowledgement-of-station-service/${currentFacility.id}`;
 
       const response = await fetch(endpoint, {
         method: 'PUT',

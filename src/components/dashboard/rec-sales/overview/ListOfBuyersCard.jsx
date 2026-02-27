@@ -1,12 +1,10 @@
-// src/components/ListOfBuyersCard.jsx
 "use client";
 
 import React, { useState, useEffect } from "react";
 import * as styles from "../styles";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-
-const API_BASE = "https://services.dcarbon.solutions";
+import CONFIG from "../../../../../lib/config";
 
 export default function ListOfBuyersCard() {
   const [buyers, setBuyers] = useState([]);
@@ -21,7 +19,7 @@ export default function ListOfBuyersCard() {
 
       try {
         const token = localStorage.getItem("authToken");
-        const res = await fetch(`${API_BASE}/api/rec/buyers`, {
+        const res = await fetch(`${CONFIG.API_BASE_URL}/api/rec/buyers`, {
           headers: {
             "Content-Type": "application/json",
             Authorization: token ? `Bearer ${token}` : "",
@@ -53,10 +51,8 @@ export default function ListOfBuyersCard() {
   return (
     <div className="w-full">
       <Card className="w-full p-4 border border-gray-200 rounded-lg shadow-sm">
-        {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            {/* Icon */}
             <svg
               width="16"
               height="16"
@@ -88,19 +84,16 @@ export default function ListOfBuyersCard() {
           </span>
         </div>
 
-        {/* Loading Spinner */}
         {loading && (
           <div className={styles.spinnerOverlay}>
             <div className={styles.spinner}></div>
           </div>
         )}
 
-        {/* Error */}
         {error && (
           <div className="text-red-500 text-center py-4">Error: {error}</div>
         )}
 
-        {/* Buyers List */}
         {!loading && !error && (
           <div className="space-y-4">
             {buyers.map((buyer) => (
@@ -117,7 +110,6 @@ export default function ListOfBuyersCard() {
           </div>
         )}
 
-        {/* View More Button */}
         <div className="mt-6">
           <Button
             variant="outline"

@@ -16,6 +16,7 @@ import {
 } from 'react-icons/fi';
 import Image from 'next/image';
 import { useProfile } from '@/components/contexts/ProfileContext';
+import CONFIG from '../../../lib/config';
 
 const DashboardSidebar = ({
   onSectionChange,
@@ -33,7 +34,7 @@ const DashboardSidebar = ({
     const fetchFeedback = async () => {
       try {
         const authToken = localStorage.getItem('authToken');
-        const response = await fetch('https://services.dcarbon.solutions/api/feature-suggestion', {
+        const response = await fetch(`${CONFIG.API_BASE_URL}/api/feature-suggestion`, {
           headers: {
             'Authorization': `Bearer ${authToken}`
           }

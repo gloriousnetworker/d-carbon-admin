@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { IoSettingsSharp } from "react-icons/io5";
 import { toast } from "react-hot-toast";
+import CONFIG from "../../../../../lib/config";
 
 const CommercialCommissionStructure = ({ onSetupStructure, refreshData }) => {
   const [tableData, setTableData] = useState(null);
@@ -12,7 +13,7 @@ const CommercialCommissionStructure = ({ onSetupStructure, refreshData }) => {
       setLoading(true);
       const authToken = localStorage.getItem('authToken');
       
-      const response = await fetch('https://services.dcarbon.solutions/api/commission-structure/commercial', {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-structure/commercial`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

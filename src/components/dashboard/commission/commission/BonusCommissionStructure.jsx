@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { IoSettingsSharp } from "react-icons/io5";
 import { FiEdit, FiTrash2, FiSave, FiX } from "react-icons/fi";
 import { toast } from "react-hot-toast";
+import CONFIG from "../../../../../lib/config";
 
 const BonusCommissionStructure = ({ onSetupStructure, refreshTrigger }) => {
   const [tableData, setTableData] = useState(null);
@@ -22,7 +23,7 @@ const BonusCommissionStructure = ({ onSetupStructure, refreshTrigger }) => {
         throw new Error("Authentication token not found");
       }
 
-      const response = await fetch("https://services.dcarbon.solutions/api/bonus-structure", {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/bonus-structure`, {
         headers: {
           "Authorization": `Bearer ${authToken}`
         }
@@ -126,7 +127,7 @@ const BonusCommissionStructure = ({ onSetupStructure, refreshTrigger }) => {
         flatValue: editForm.flatValue ? parseFloat(editForm.flatValue) : null
       };
 
-      const response = await fetch(`https://services.dcarbon.solutions/api/bonus-structure/${id}`, {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/bonus-structure/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -168,7 +169,7 @@ const BonusCommissionStructure = ({ onSetupStructure, refreshTrigger }) => {
         throw new Error("Authentication token not found");
       }
 
-      const response = await fetch(`https://services.dcarbon.solutions/api/bonus-structure/${id}`, {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/bonus-structure/${id}`, {
         method: "DELETE",
         headers: {
           "Authorization": `Bearer ${authToken}`
@@ -254,23 +255,9 @@ const BonusCommissionStructure = ({ onSetupStructure, refreshTrigger }) => {
       }
     };
 
-    const getFieldsForTarget = (targetType) => {
-      switch (targetType) {
-        case "COMMERCIAL_MW_QUARTERLY":
-          return { showMin: true, showMax: true, showPercent: true, showFlat: false };
-        case "RESIDENTIAL_REFERRAL_QUARTERLY":
-          return { showMin: true, showMax: true, showPercent: true, showFlat: false };
-        case "PARTNER_MW_ANNUAL":
-          return { showMin: true, showMax: false, showPercent: true, showFlat: false };
-        case "SALES_AGENT_FLAT":
-          return { showMin: true, showMax: true, showPercent: false, showFlat: true };
-        default:
-          return { showMin: true, showMax: true, showPercent: true, showFlat: false };
-      }
-    };
+    const fields = getFieldsForTarget(bonusType);
 
     const headers = getHeaders();
-    const fields = getFieldsForTarget(bonusType);
 
     return (
       <div className="mb-8">

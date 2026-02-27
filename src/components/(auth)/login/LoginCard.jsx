@@ -4,6 +4,8 @@ import { useState } from 'react';
 import axios from 'axios';
 import Loader from '../../../components/loader/Loader';
 import toast from 'react-hot-toast';
+// IMPORT CONFIG - NEW LINE
+import CONFIG from '../../../../lib/config';
 
 export default function AdminLoginCard() {
   const [loading, setLoading] = useState(false);
@@ -27,8 +29,10 @@ export default function AdminLoginCard() {
     setError('');
     
     try {
-      const baseUrl = 'https://services.dcarbon.solutions';
-      const url = `${baseUrl}/api/auth/admin/login`;
+      // REPLACED: const baseUrl = 'https://services.dcarbon.solutions';
+      // REPLACED: const url = `${baseUrl}/api/auth/admin/login`;
+      // NEW - Using config
+      const url = `${CONFIG.API_BASE_URL}/api/auth/admin/login`;
 
       const response = await axios.post(
         url,

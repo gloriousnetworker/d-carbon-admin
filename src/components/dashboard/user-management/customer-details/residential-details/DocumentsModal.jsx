@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import CONFIG from "../../../../../../lib/config";
 
 const DOCUMENT_TYPES = {
   wregisAssignment: { 
@@ -323,7 +324,7 @@ export default function DocumentsModal({ facility, documents, onVerifyFacility, 
       const authToken = localStorage.getItem('authToken');
       if (!authToken) throw new Error('No authentication token found');
 
-      const endpoint = `https://services.dcarbon.solutions/api/admin/residential-facility/${facility.id}/document/${currentDocument.type}/status`;
+      const endpoint = `${CONFIG.API_BASE_URL}/api/admin/residential-facility/${facility.id}/document/${currentDocument.type}/status`;
       
       const requestBody = {
         status: actionType === "APPROVE" ? "APPROVED" : "REJECTED",

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { IoSettingsSharp } from "react-icons/io5";
 import { toast } from "react-hot-toast";
+import CONFIG from "../../../../../lib/config";
 
 const PartnerCommissionStructure = ({ onSetupStructure, refreshData }) => {
   const [activeSubTab, setActiveSubTab] = useState("salesAgentUpline");
@@ -14,7 +15,7 @@ const PartnerCommissionStructure = ({ onSetupStructure, refreshData }) => {
   const fetchSalesAgentData = async () => {
     try {
       const authToken = localStorage.getItem('authToken');
-      const response = await fetch('https://services.dcarbon.solutions/api/commission-structure/sales-agent-referral', {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-structure/sales-agent-referral`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -40,7 +41,7 @@ const PartnerCommissionStructure = ({ onSetupStructure, refreshData }) => {
   const fetchEpcAssistedData = async () => {
     try {
       const authToken = localStorage.getItem('authToken');
-      const response = await fetch('https://services.dcarbon.solutions/api/commission-structure/epc-assisted', {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-structure/epc-assisted`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -66,7 +67,7 @@ const PartnerCommissionStructure = ({ onSetupStructure, refreshData }) => {
   const fetchCommercialData = async () => {
     try {
       const authToken = localStorage.getItem('authToken');
-      const response = await fetch('https://services.dcarbon.solutions/api/commission-structure/commercial', {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-structure/commercial`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -88,7 +89,7 @@ const PartnerCommissionStructure = ({ onSetupStructure, refreshData }) => {
   const fetchResidentialData = async () => {
     try {
       const authToken = localStorage.getItem('authToken');
-      const response = await fetch('https://services.dcarbon.solutions/api/commission-structure/residential', {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-structure/residential`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -105,12 +106,6 @@ const PartnerCommissionStructure = ({ onSetupStructure, refreshData }) => {
     } catch (error) {
       console.error('Error fetching residential data:', error);
     }
-  };
-
-  const calculateEpcSplit = (financeCommission, ratio = 0.6) => {
-    const financeShare = Math.round(financeCommission * ratio * 10) / 10;
-    const installerShare = Math.round((financeCommission - financeShare) * 10) / 10;
-    return { finance: financeShare, installer: installerShare };
   };
 
   const fetchCommissionData = async () => {

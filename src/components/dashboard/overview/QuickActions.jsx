@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FiChevronDown, FiLoader } from 'react-icons/fi';
 import axios from 'axios';
+import CONFIG from '../../../../lib/config';
 
 export default function QuickActions() {
   const [filter, setFilter] = useState('total');
@@ -19,7 +20,7 @@ export default function QuickActions() {
           return;
         }
 
-        const response = await axios.get('https://services.dcarbon.solutions/api/admin/analytics', {
+        const response = await axios.get(`${CONFIG.API_BASE_URL}/api/admin/analytics`, {
           headers: {
             Authorization: `Bearer ${authToken}`
           }

@@ -12,13 +12,13 @@ import {
 } from "recharts";
 import { ChevronDown } from "lucide-react";
 import Image from "next/image";
+import CONFIG from "../../../../../lib/config";
 
 const MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 
-// Color constants
 const COLORS = {
   customers: "#039994",
   salesReport: "#039994",
@@ -28,35 +28,27 @@ const COLORS = {
 };
 
 export default function DashboardCharts() {
-  // State for view controls
   const [leftChartView, setLeftChartView] = useState("Yearly");
   const [leftChartYear, setLeftChartYear] = useState(new Date().getFullYear().toString());
   const [salesYear, setSalesYear] = useState(new Date().getFullYear().toString());
   
-  // State for data loading
   const [loadingLeftChartData, setLoadingLeftChartData] = useState(true);
   const [loadingSalesData, setLoadingSalesData] = useState(true);
   
-  // State for display type
   const [displayType, setDisplayType] = useState("Customers");
   
-  // State for chart data
   const [customersData, setCustomersData] = useState([]);
   const [recsGeneratedData, setRecsGeneratedData] = useState([]);
   const [partnersData, setPartnersData] = useState([]);
   const [resiGroupsData, setResiGroupsData] = useState([]);
   const [salesData, setSalesData] = useState([]);
 
-  // Dropdown state
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  // Generate left chart data
   useEffect(() => {
     setLoadingLeftChartData(true);
     
-    // Generate realistic data for different metrics
     setTimeout(() => {
-      // Customers data
       const customers = MONTHS.map((month, index) => {
         const monthIndex = index;
         let value = 50 + Math.sin((monthIndex / 11) * Math.PI * 2) * 30;
@@ -68,7 +60,6 @@ export default function DashboardCharts() {
       });
       setCustomersData(customers);
       
-      // RECs Generated data
       const recsData = MONTHS.map((month, index) => {
         const monthIndex = index;
         let value = 60 + Math.cos((monthIndex / 11) * Math.PI * 2) * 25;
@@ -80,7 +71,6 @@ export default function DashboardCharts() {
       });
       setRecsGeneratedData(recsData);
       
-      // Partners data
       const partners = MONTHS.map((month, index) => {
         const monthIndex = index;
         let value = 40 + Math.sin((monthIndex / 11) * Math.PI * 1.5) * 35;
@@ -92,7 +82,6 @@ export default function DashboardCharts() {
       });
       setPartnersData(partners);
       
-      // Residential Groups data
       const resiGroups = MONTHS.map((month, index) => {
         const monthIndex = index;
         let value = 30 + Math.cos((monthIndex / 11) * Math.PI * 1.8) * 30;
@@ -108,14 +97,11 @@ export default function DashboardCharts() {
     }, 600);
   }, [leftChartYear, leftChartView]);
 
-  // Generate sales data
   useEffect(() => {
     setLoadingSalesData(true);
     
-    // Generate realistic sales data
     setTimeout(() => {
       const data = MONTHS.map((month, index) => {
-        // Pattern with peaks and valleys
         let value;
         
         switch (month) {
@@ -134,7 +120,6 @@ export default function DashboardCharts() {
           default: value = 50;
         }
         
-        // Add some randomness
         value += Math.floor(Math.random() * 10) - 5;
         
         return {
@@ -148,7 +133,6 @@ export default function DashboardCharts() {
     }, 600);
   }, [salesYear]);
 
-  // Get current chart data based on selected display type
   const getCurrentChartData = () => {
     switch (displayType) {
       case "Customers":
@@ -164,7 +148,6 @@ export default function DashboardCharts() {
     }
   };
 
-  // Get current chart color based on selected display type
   const getCurrentChartColor = () => {
     switch (displayType) {
       case "Customers":
@@ -180,7 +163,6 @@ export default function DashboardCharts() {
     }
   };
 
-  // Get current chart unit based on selected display type
   const getCurrentChartUnit = () => {
     switch (displayType) {
       case "Customers":
@@ -196,12 +178,10 @@ export default function DashboardCharts() {
     }
   };
 
-  // Toggle dropdown
   const toggleDropdown = () => {
     setDropdownOpen(!dropdownOpen);
   };
 
-  // Select display type
   const selectDisplayType = (type) => {
     setDisplayType(type);
     setDropdownOpen(false);
@@ -209,7 +189,6 @@ export default function DashboardCharts() {
 
   return (
     <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Left Chart Card */}
       <div className="bg-white rounded-2xl shadow-lg p-6 flex flex-col">
         <div className="flex justify-between items-center">
           <div className="relative">
@@ -222,7 +201,6 @@ export default function DashboardCharts() {
               <ChevronDown className="h-5 w-5 ml-1" />
             </h3>
             
-            {/* Dropdown menu */}
             {dropdownOpen && (
               <div className="absolute z-10 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200">
                 <div className="py-1">
@@ -337,7 +315,6 @@ export default function DashboardCharts() {
         )}
       </div>
 
-      {/* Sales Report Card */}
       <div className="bg-white rounded-2xl shadow-lg p-6 flex flex-col">
         <div className="flex justify-between items-center">
           <h3 
