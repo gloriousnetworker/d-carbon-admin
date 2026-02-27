@@ -25,7 +25,7 @@ export default function CommercialStatementReport() {
     try {
       const authToken = localStorage.getItem('authToken')
       const userResponse = await fetch(
-        `https://services.dcarbon.solutions/api/user/${email}`,
+        `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/user/${email}`,
         {
           method: 'GET',
           headers: {
@@ -43,7 +43,7 @@ export default function CommercialStatementReport() {
       const userId = userResult.data.id
       
       const payoutResponse = await fetch(
-        `https://services.dcarbon.solutions/api/payout-request?userId=${userId}&userType=COMMERCIAL`,
+        `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/payout-request?userId=${userId}&userType=COMMERCIAL`,
         {
           method: 'GET',
           headers: {
@@ -90,7 +90,7 @@ export default function CommercialStatementReport() {
 
       while (hasMore) {
         const response = await fetch(
-          `https://services.dcarbon.solutions/api/user/get-all-users?page=${currentPage}&limit=50`,
+          `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/user/get-all-users?page=${currentPage}&limit=50`,
           {
             method: 'GET',
             headers: {
@@ -251,7 +251,7 @@ export default function CommercialStatementReport() {
     try {
       const authToken = localStorage.getItem('authToken')
       const response = await fetch(
-        `https://services.dcarbon.solutions/api/user/${item.email}`,
+        `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/user/${item.email}`,
         {
           method: 'GET',
           headers: {

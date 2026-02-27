@@ -19,7 +19,7 @@ export default function LoginCard() {
     const handleLogin = async () => {
         setLoading(true);
         try {
-            const baseUrl = 'https://services.dcarbon.solutions';
+            const baseUrl = 'https://naijatrips-app-dcarbon-server.cafyit.easypanel.host';
             const url = `${baseUrl}/api/auth/login`;
 
             const response = await axios.post(

@@ -37,7 +37,7 @@ export default function AddCommercialFacilityModal({ isOpen, onClose }) {
 
     try {
       const response = await axios.post(
-        `https://services.dcarbon.solutions/api/facility/create-new-facility/${userId}`,
+        `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/facility/create-new-facility/${userId}`,
         formData,
         {
           headers: {

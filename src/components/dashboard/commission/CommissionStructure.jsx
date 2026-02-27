@@ -36,7 +36,7 @@ const CommissionStructure = () => {
   const fetchTiers = async () => {
     try {
       const authToken = localStorage.getItem("authToken");
-      const response = await fetch("https://services.dcarbon.solutions/api/commission-tier", {
+      const response = await fetch("https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-tier", {
         headers: { Authorization: `Bearer ${authToken}` },
       });
       if (response.ok) {
@@ -51,7 +51,7 @@ const CommissionStructure = () => {
   const fetchModes = async () => {
     try {
       const authToken = localStorage.getItem("authToken");
-      const response = await fetch("https://services.dcarbon.solutions/api/commission-structure/modes", {
+      const response = await fetch("https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-structure/modes", {
         headers: { Authorization: `Bearer ${authToken}` },
       });
       if (response.ok) {
@@ -80,11 +80,11 @@ const CommissionStructure = () => {
       
       let url;
       if (activePropertyTab === "ACCOUNT_LEVEL") {
-        url = "https://services.dcarbon.solutions/api/commission-structure/";
+        url = "https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-structure/";
       } else {
         const property = activePropertyTab;
         const mode = activeMode;
-        url = `https://services.dcarbon.solutions/api/commission-structure/filter/mode-property?mode=${mode}&property=${property}`;
+        url = `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-structure/filter/mode-property?mode=${mode}&property=${property}`;
       }
       
       const response = await fetch(url, {
@@ -124,7 +124,7 @@ const CommissionStructure = () => {
     
     try {
       const authToken = localStorage.getItem("authToken");
-      const response = await fetch(`https://services.dcarbon.solutions/api/commission-structure/${id}`, {
+      const response = await fetch(`https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-structure/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${authToken}` },
       });

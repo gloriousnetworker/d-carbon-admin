@@ -28,7 +28,7 @@ export default function ResidentGroupDetails({
         const authToken = localStorage.getItem('authToken')
         
         const response = await fetch(
-          `https://services.dcarbon.solutions/api/residential-facility/groups/${initialGroup.id}`, 
+          `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/residential-facility/groups/${initialGroup.id}`, 
           {
             method: 'GET',
             headers: {
@@ -69,7 +69,7 @@ export default function ResidentGroupDetails({
       const authToken = localStorage.getItem('authToken')
       
       const response = await fetch(
-        `https://services.dcarbon.solutions/api/residential-facility/groups/${group.id}/remove-facilities`, 
+        `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/residential-facility/groups/${group.id}/remove-facilities`, 
         {
           method: 'POST',
           headers: {
@@ -109,7 +109,7 @@ export default function ResidentGroupDetails({
       const authToken = localStorage.getItem('authToken')
       
       const response = await fetch(
-        `https://services.dcarbon.solutions/api/admin/ddg/${group.id}/wregis`, 
+        `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/admin/ddg/${group.id}/wregis`, 
         {
           method: 'PUT',
           headers: {

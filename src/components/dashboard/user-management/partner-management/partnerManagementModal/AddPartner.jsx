@@ -68,7 +68,7 @@ export default function AddPartnerModal({ isOpen, onClose, onSuccess }) {
       }
 
       const response = await axios.post(
-        'https://services.dcarbon.solutions/api/user/create-installer-partner-by-user',
+        'https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/user/create-installer-partner-by-user',
         formData,
         {
           headers: {

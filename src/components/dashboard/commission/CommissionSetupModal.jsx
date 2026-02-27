@@ -77,7 +77,7 @@ const CommissionSetupModal = ({
     try {
       const authToken = localStorage.getItem("authToken");
       const response = await fetch(
-        `https://services.dcarbon.solutions/api/commission-structure`,
+        `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-structure`,
         {
           headers: { Authorization: `Bearer ${authToken}` },
         }
@@ -227,7 +227,7 @@ const CommissionSetupModal = ({
   const createCommissionStructure = async (payload) => {
     const authToken = localStorage.getItem("authToken");
     
-    const response = await fetch("https://services.dcarbon.solutions/api/commission-structure", {
+    const response = await fetch("https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-structure", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -242,7 +242,7 @@ const CommissionSetupModal = ({
   const updateCommissionStructure = async (id, payload) => {
     const authToken = localStorage.getItem("authToken");
     
-    const response = await fetch(`https://services.dcarbon.solutions/api/commission-structure/${id}`, {
+    const response = await fetch(`https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-structure/${id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -481,7 +481,7 @@ const CommissionSetupModal = ({
 
   const deleteCommissionStructure = async (id) => {
     const authToken = localStorage.getItem("authToken");
-    const response = await fetch(`https://services.dcarbon.solutions/api/commission-structure/${id}`, {
+    const response = await fetch(`https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-structure/${id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${authToken}` },
     });

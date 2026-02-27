@@ -22,7 +22,7 @@ const FeedbackPage = () => {
   const fetchSuggestions = async () => {
     try {
       const authToken = localStorage.getItem('authToken');
-      const response = await fetch('https://services.dcarbon.solutions/api/feature-suggestion', {
+      const response = await fetch('https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/feature-suggestion', {
         headers: {
           'Authorization': `Bearer ${authToken}`
         }

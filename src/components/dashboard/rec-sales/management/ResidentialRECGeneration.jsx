@@ -59,7 +59,7 @@ export default function ResidentialMeterRecords() {
       
       // Make the API call
       const response = await fetch(
-        `https://services.dcarbon.solutions/api/admin/meter-records/residential?${params.toString()}`,
+        `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/admin/meter-records/residential?${params.toString()}`,
         {
           headers: {
             Authorization: `Bearer ${authToken}`,

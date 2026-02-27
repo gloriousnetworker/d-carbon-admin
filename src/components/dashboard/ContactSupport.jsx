@@ -27,7 +27,7 @@ const DashboardContactSupport = () => {
     const loadingToast = toast.loading('Submitting your request...');
 
     try {
-      const response = await fetch(`https://services.dcarbon.solutions/api/contact/${userId}`, {
+      const response = await fetch(`https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/contact/${userId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

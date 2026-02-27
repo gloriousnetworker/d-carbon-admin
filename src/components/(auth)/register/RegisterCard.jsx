@@ -64,7 +64,7 @@ function AdminRegisterCardContent() {
   
     try {
       const response = await axios.post(
-        'https://services.dcarbon.solutions/api/admin/create',
+        'https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/admin/create',
         payload,
         { headers: { 'Content-Type': 'application/json' } }
       );

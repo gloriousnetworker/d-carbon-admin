@@ -24,7 +24,7 @@ const TwoFactorAuth = ({ onBack }) => {
     const getQRCode = async () => {
       try {
         const response = await fetch(
-          `https://services.dcarbon.solutions/api/auth/2fa/generate/${userId}`,
+          `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/auth/2fa/generate/${userId}`,
           {
             method: "GET",
             headers: {
@@ -95,7 +95,7 @@ const TwoFactorAuth = ({ onBack }) => {
 
     try {
       const response = await fetch(
-        `https://services.dcarbon.solutions/api/auth/2fa/verify/${userId}`,
+        `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/auth/2fa/verify/${userId}`,
         {
           method: "POST",
           headers: {

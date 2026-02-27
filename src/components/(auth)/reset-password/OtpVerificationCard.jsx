@@ -55,7 +55,7 @@ export default function ResetPasswordCard() {
     setLoading(true);
     try {
       await axios.post(
-        'https://services.dcarbon.solutions/api/auth/reset-password',
+        'https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/auth/reset-password',
         { email, otp: Number(enteredOtp), password: newPassword },
         { headers: { 'Content-Type': 'application/json' } }
       );

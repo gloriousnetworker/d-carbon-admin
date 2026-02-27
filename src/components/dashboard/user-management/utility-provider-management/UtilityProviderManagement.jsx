@@ -46,7 +46,7 @@ export default function UtilityProviderManagement({ onViewChange }) {
     try {
       const authToken = localStorage.getItem("authToken");
       if (!authToken) return;
-      const response = await fetch("https://services.dcarbon.solutions/api/admin/utility-provider-requests", {
+      const response = await fetch("https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/admin/utility-provider-requests", {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${authToken}`,
@@ -73,7 +73,7 @@ export default function UtilityProviderManagement({ onViewChange }) {
     try {
       const authToken = localStorage.getItem("authToken");
       if (!authToken) return;
-      const response = await fetch("https://services.dcarbon.solutions/api/auth/utility-auth", {
+      const response = await fetch("https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/auth/utility-auth", {
         method: "GET",
         headers: { 
           "Authorization": `Bearer ${authToken}`, 
@@ -116,7 +116,7 @@ export default function UtilityProviderManagement({ onViewChange }) {
       try {
         const authToken = localStorage.getItem("authToken");
         if (!authToken) throw new Error("Authentication token not found");
-        const response = await fetch("https://services.dcarbon.solutions/api/admin/utility-providers", {
+        const response = await fetch("https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/admin/utility-providers", {
           method: "GET",
           headers: {
             "Authorization": `Bearer ${authToken}`,
@@ -204,7 +204,7 @@ export default function UtilityProviderManagement({ onViewChange }) {
     try {
       const authToken = localStorage.getItem("authToken");
       if (!authToken) throw new Error("Authentication token not found");
-      const response = await fetch("https://services.dcarbon.solutions/api/admin/utility-providers", {
+      const response = await fetch("https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/admin/utility-providers", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${authToken}`,
@@ -219,7 +219,7 @@ export default function UtilityProviderManagement({ onViewChange }) {
       if (!response.ok) throw new Error(`Error creating utility provider: ${response.statusText}`);
       const result = await response.json();
       if (result.status === "success") {
-        const fetchResponse = await fetch("https://services.dcarbon.solutions/api/admin/utility-providers", {
+        const fetchResponse = await fetch("https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/admin/utility-providers", {
           method: "GET",
           headers: {
             "Authorization": `Bearer ${authToken}`,

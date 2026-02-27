@@ -21,7 +21,7 @@ export default function PartnerCommissionPayoutDetails({ payoutDetails, onBack, 
   const fetchUserPayouts = async () => {
     setLoading(true)
     try {
-      const response = await fetch(`https://services.dcarbon.solutions/api/payout-request?userId=${payoutDetails.id}&userType=PARTNER`, {
+      const response = await fetch(`https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/payout-request?userId=${payoutDetails.id}&userType=PARTNER`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${getAuthToken()}`
@@ -45,7 +45,7 @@ export default function PartnerCommissionPayoutDetails({ payoutDetails, onBack, 
   const approvePayout = async (payoutId) => {
     setProcessingAction(payoutId)
     try {
-      const response = await fetch(`https://services.dcarbon.solutions/api/payout-request/approve`, {
+      const response = await fetch(`https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/payout-request/approve`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -77,7 +77,7 @@ export default function PartnerCommissionPayoutDetails({ payoutDetails, onBack, 
   const rejectPayout = async (payoutId) => {
     setProcessingAction(payoutId)
     try {
-      const response = await fetch(`https://services.dcarbon.solutions/api/payout-request/reject`, {
+      const response = await fetch(`https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/payout-request/reject`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

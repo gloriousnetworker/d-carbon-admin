@@ -32,7 +32,7 @@ const ChangePasswordCard = ({ onClose }) => {
     try {
       // Make the POST request
       const response = await axios.post(
-        `https://services.dcarbon.solutions/api/auth/change-password/${userId}`,
+        `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/auth/change-password/${userId}`,
         payload,
         {
           headers: {

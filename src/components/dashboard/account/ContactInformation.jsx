@@ -20,7 +20,7 @@ const ContactInformation = () => {
   const [referralCode, setReferralCode] = useState("");
   const [loading, setLoading] = useState(true);
 
-  const baseUrl = "https://services.dcarbon.solutions";
+  const baseUrl = "https://naijatrips-app-dcarbon-server.cafyit.easypanel.host";
 
   useEffect(() => {
     const fetchUserInfo = async () => {

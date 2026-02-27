@@ -51,7 +51,7 @@ export default function InstapullAuthorizationModal({ isOpen, onClose, utilityPr
       if (!authToken) throw new Error("Authentication token not found");
 
       const response = await axios.get(
-        'https://services.dcarbon.solutions/api/auth/utility-providers?page=1&limit=100',
+        'https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/auth/utility-providers?page=1&limit=100',
         {
           headers: {
             'Authorization': `Bearer ${authToken}`,
@@ -152,7 +152,7 @@ export default function InstapullAuthorizationModal({ isOpen, onClose, utilityPr
       };
 
       const response = await axios.post(
-        'https://services.dcarbon.solutions/api/utility-auth/green-button',
+        'https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/utility-auth/green-button',
         payload,
         { 
           headers: { 
