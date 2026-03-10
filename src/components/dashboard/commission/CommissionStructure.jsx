@@ -6,6 +6,7 @@ import ManageTiersModal from "./ManageTiersModal";
 import BonusCommissionStructure from "./commission/BonusCommissionStructure";
 import BonusCommissionSetup from "./setupModals/BonusCommissionSetup";
 import ContractTermsTab from "./ContractTermsTab";
+import CalculationTriggers from "./CalculationTriggers";
 
 const CommissionStructure = () => {
   const [activeTab, setActiveTab] = useState("COMMISSION");
@@ -269,18 +270,21 @@ const CommissionStructure = () => {
                 )}
 
                 <div className="flex justify-between items-center mb-6">
-                  <button
-                    onClick={handleCreateCommission}
-                    className="px-4 py-2 bg-[#039994] text-white rounded-md hover:bg-[#028884]"
-                  >
-                    Create Commission Structure
-                  </button>
-                  <button
-                    onClick={() => setShowTiersModal(true)}
-                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
-                  >
-                    Manage Tiers
-                  </button>
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={handleCreateCommission}
+                      className="px-4 py-2 bg-[#039994] text-white rounded-md hover:bg-[#028884]"
+                    >
+                      Create Commission Structure
+                    </button>
+                    <button
+                      onClick={() => setShowTiersModal(true)}
+                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+                    >
+                      Manage Tiers
+                    </button>
+                  </div>
+                  <CalculationTriggers />
                 </div>
 
                 {loading ? (
