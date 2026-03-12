@@ -10,27 +10,39 @@ const ChangePasswordCard = ({ onClose }) => {
   const [showOldPassword, setShowOldPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
 
-  // Handle password change
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
 
-    // Retrieve userId and authToken from localStorage
-    const userId = localStorage.getItem("userId");
+    const loginResponse = localStorage.getItem("loginResponse");
     const authToken = localStorage.getItem("authToken");
 
-    if (!userId || !authToken) {
+    if (!loginResponse || !authToken) {
       toast.error("User not authenticated");
       return;
     }
 
-    // Prepare the payload
+    let userId = null;
+    try {
+      const parsedResponse = JSON.parse(loginResponse);
+      if (parsedResponse.data && parsedResponse.data.admin) {
+        userId = parsedResponse.data.admin.id;
+      }
+    } catch (error) {
+      toast.error("Failed to parse user data");
+      return;
+    }
+
+    if (!userId) {
+      toast.error("User ID not found");
+      return;
+    }
+
     const payload = {
       oldPassword,
       newPassword,
     };
 
     try {
-      // Make the POST request
       const response = await axios.post(
         `https://api.dev.dcarbon.solutions/api/auth/change-password/${userId}`,
         payload,
@@ -43,8 +55,6 @@ const ChangePasswordCard = ({ onClose }) => {
       );
 
       toast.success(response.data.message || "Password changed successfully");
-
-      // Close the modal (if you want that behavior)
       onClose && onClose();
     } catch (error) {
       const errorMessage =
@@ -54,7 +64,6 @@ const ChangePasswordCard = ({ onClose }) => {
     }
   };
 
-  // Inline styles
   const styles = {
     mainContainer: "min-h-screen w-full flex flex-col items-center justify-center py-8 px-4 bg-white",
     modalOverlay: "fixed inset-0 z-50 bg-black bg-opacity-40 flex justify-center items-center",
@@ -78,7 +87,6 @@ const ChangePasswordCard = ({ onClose }) => {
           Change Password
         </h2>
         <form onSubmit={handlePasswordSubmit} className={styles.formWrapper}>
-          {/* Old Password */}
           <div>
             <label className={styles.labelClass}>
               Old Password
@@ -90,7 +98,6 @@ const ChangePasswordCard = ({ onClose }) => {
                 value={oldPassword}
                 onChange={(e) => setOldPassword(e.target.value)}
               />
-              {/* Eye Icon Toggle */}
               <div
                 className={styles.eyeIcon}
                 onClick={() => setShowOldPassword(!showOldPassword)}
@@ -98,17 +105,13 @@ const ChangePasswordCard = ({ onClose }) => {
                 {showOldPassword ? <FaEyeSlash /> : <FaEye />}
               </div>
             </div>
-            {/* Forgot Password Link */}
             <div className={styles.forgotPasswordLink}>
-              <a
-                href="/forgot-password"
-              >
+              <a href="/forgot-password">
                 Forgot Password?
               </a>
             </div>
           </div>
 
-          {/* New Password */}
           <div>
             <label className={styles.labelClass}>
               New Password
@@ -120,7 +123,6 @@ const ChangePasswordCard = ({ onClose }) => {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
               />
-              {/* Eye Icon Toggle */}
               <div
                 className={styles.eyeIcon}
                 onClick={() => setShowNewPassword(!showNewPassword)}
@@ -130,7 +132,6 @@ const ChangePasswordCard = ({ onClose }) => {
             </div>
           </div>
 
-          {/* Save Button */}
           <button
             type="submit"
             className={`mt-4 ${styles.buttonPrimary}`}
@@ -139,7 +140,6 @@ const ChangePasswordCard = ({ onClose }) => {
           </button>
         </form>
 
-        {/* Optional "Cancel" button if you want a modal-like behavior */}
         {onClose && (
           <button
             type="button"
