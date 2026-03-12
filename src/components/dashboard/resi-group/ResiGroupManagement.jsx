@@ -54,7 +54,7 @@ export default function ResiGroupManagement() {
       setLoading(true)
       const authToken = localStorage.getItem('authToken')
       
-      const response = await fetch('https://app.dev.dcarbon.solutions/api/residential-facility/groups', {
+      const response = await fetch('https://api.dev.dcarbon.solutions/api/residential-facility/groups', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -82,7 +82,7 @@ export default function ResiGroupManagement() {
       setFacilitiesLoading(true)
       const authToken = localStorage.getItem('authToken')
       
-      const response = await fetch('https://app.dev.dcarbon.solutions/api/residential-facility/get-all-residential-facility', {
+      const response = await fetch('https://api.dev.dcarbon.solutions/api/residential-facility/get-all-residential-facility', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -110,7 +110,7 @@ export default function ResiGroupManagement() {
       setDetailsLoading(true)
       const authToken = localStorage.getItem('authToken')
       
-      const response = await fetch(`https://app.dev.dcarbon.solutions/api/residential-facility/groups/${groupId}`, {
+      const response = await fetch(`https://api.dev.dcarbon.solutions/api/residential-facility/groups/${groupId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -138,7 +138,7 @@ export default function ResiGroupManagement() {
       setCreatingGroup(true)
       const authToken = localStorage.getItem('authToken')
       
-      const response = await fetch('https://app.dev.dcarbon.solutions/api/residential-facility/group-facilities', {
+      const response = await fetch('https://api.dev.dcarbon.solutions/api/residential-facility/group-facilities', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -178,7 +178,7 @@ export default function ResiGroupManagement() {
       setDetailsLoading(true)
       const authToken = localStorage.getItem('authToken')
       
-      const response = await fetch(`https://app.dev.dcarbon.solutions/api/residential-facility/groups/${selectedGroup.id}`, {
+      const response = await fetch(`https://api.dev.dcarbon.solutions/api/residential-facility/groups/${selectedGroup.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -224,7 +224,7 @@ export default function ResiGroupManagement() {
     try {
       const authToken = localStorage.getItem('authToken')
       
-      const response = await fetch(`https://app.dev.dcarbon.solutions/api/residential-facility/groups/${selectedGroup.id}/remove-facilities`, {
+      const response = await fetch(`https://api.dev.dcarbon.solutions/api/residential-facility/groups/${selectedGroup.id}/remove-facilities`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authToken}`,

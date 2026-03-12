@@ -35,7 +35,7 @@ const ManageTiersModal = ({ onClose, onSuccess, tiers: initialTiers }) => {
     
     const authToken = localStorage.getItem("authToken");
     try {
-      const response = await fetch(`https://app.dev.dcarbon.solutions/api/commission-tier/${id}`, {
+      const response = await fetch(`https://api.dev.dcarbon.solutions/api/commission-tier/${id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${authToken}`,
@@ -68,7 +68,7 @@ const ManageTiersModal = ({ onClose, onSuccess, tiers: initialTiers }) => {
     try {
       let response;
       if (editingTier) {
-        response = await fetch(`https://app.dev.dcarbon.solutions/api/commission-tier/${editingTier.id}`, {
+        response = await fetch(`https://api.dev.dcarbon.solutions/api/commission-tier/${editingTier.id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -77,7 +77,7 @@ const ManageTiersModal = ({ onClose, onSuccess, tiers: initialTiers }) => {
           body: JSON.stringify(payload),
         });
       } else {
-        response = await fetch("https://app.dev.dcarbon.solutions/api/commission-tier", {
+        response = await fetch("https://api.dev.dcarbon.solutions/api/commission-tier", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

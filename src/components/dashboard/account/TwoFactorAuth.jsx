@@ -24,7 +24,7 @@ const TwoFactorAuth = ({ onBack }) => {
     const getQRCode = async () => {
       try {
         const response = await fetch(
-          `https://app.dev.dcarbon.solutions/api/auth/2fa/generate/${userId}`,
+          `https://api.dev.dcarbon.solutions/api/auth/2fa/generate/${userId}`,
           {
             method: "GET",
             headers: {
@@ -95,7 +95,7 @@ const TwoFactorAuth = ({ onBack }) => {
 
     try {
       const response = await fetch(
-        `https://app.dev.dcarbon.solutions/api/auth/2fa/verify/${userId}`,
+        `https://api.dev.dcarbon.solutions/api/auth/2fa/verify/${userId}`,
         {
           method: "POST",
           headers: {

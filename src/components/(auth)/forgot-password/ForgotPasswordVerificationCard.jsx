@@ -32,7 +32,7 @@ export default function ForgotPasswordCard() {
     setLoading(true);
     try {
       await axios.post(
-        'https://app.dev.dcarbon.solutions/api/auth/forgot-password',
+        'https://api.dev.dcarbon.solutions/api/auth/forgot-password',
         { email },
         { headers: { 'Content-Type': 'application/json' } }
       );

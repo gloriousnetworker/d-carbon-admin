@@ -68,7 +68,7 @@ export default function AddPartnerModal({ isOpen, onClose, onSuccess }) {
       }
 
       const response = await axios.post(
-        'https://app.dev.dcarbon.solutions/api/user/create-installer-partner-by-user',
+        'https://api.dev.dcarbon.solutions/api/user/create-installer-partner-by-user',
         formData,
         {
           headers: {

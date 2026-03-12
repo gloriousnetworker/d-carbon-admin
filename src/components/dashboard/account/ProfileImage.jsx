@@ -45,7 +45,7 @@ const ProfileImage = () => {
     try {
       setIsLoading(true);
       const response = await fetch(
-        `https://app.dev.dcarbon.solutions/api/user/upload-profile-picture/${userId}`,
+        `https://api.dev.dcarbon.solutions/api/user/upload-profile-picture/${userId}`,
         {
           method: "POST",
           headers: {

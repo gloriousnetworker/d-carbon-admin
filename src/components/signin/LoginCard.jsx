@@ -19,7 +19,7 @@ export default function LoginCard() {
     const handleLogin = async () => {
         setLoading(true);
         try {
-            const baseUrl = 'https://app.dev.dcarbon.solutions';
+            const baseUrl = 'https://api.dev.dcarbon.solutions';
             const url = `${baseUrl}/api/auth/login`;
 
             const response = await axios.post(

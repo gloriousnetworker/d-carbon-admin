@@ -129,7 +129,7 @@ const SendReminderModal = ({ isOpen, onClose }) => {
       };
 
       const response = await axios.post(
-        `https://app.dev.dcarbon.solutions/api/user/referral-reminders/${userId}`,
+        `https://api.dev.dcarbon.solutions/api/user/referral-reminders/${userId}`,
         body,
         {
           headers: {

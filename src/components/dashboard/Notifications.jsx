@@ -35,7 +35,7 @@ const DashboardNotifications = () => {
         }
 
         const response = await fetch(
-          `https://app.dev.dcarbon.solutions/api/user/notifications/${userId}`,
+          `https://api.dev.dcarbon.solutions/api/user/notifications/${userId}`,
           {
             headers: {
               'Authorization': `Bearer ${authToken}`
@@ -66,7 +66,7 @@ const DashboardNotifications = () => {
       const authToken = localStorage.getItem('authToken');
       
       const response = await fetch(
-        `https://app.dev.dcarbon.solutions/api/user/notifications/${notificationId}/mark-read`,
+        `https://api.dev.dcarbon.solutions/api/user/notifications/${notificationId}/mark-read`,
         {
           method: 'PUT',
           headers: {

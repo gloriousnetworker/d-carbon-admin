@@ -49,7 +49,7 @@ const FinanceTypeModal = ({ isOpen, onClose, onSuccess }) => {
 
     try {
       const authToken = localStorage.getItem('authToken');
-      const response = await fetch('https://app.dev.dcarbon.solutions/api/admin/financial-types', {
+      const response = await fetch('https://api.dev.dcarbon.solutions/api/admin/financial-types', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -155,7 +155,7 @@ const EditFinanceTypeModal = ({ isOpen, onClose, financeType, onSuccess }) => {
 
     try {
       const authToken = localStorage.getItem('authToken');
-      const response = await fetch(`https://app.dev.dcarbon.solutions/api/admin/financial-types/${financeType.id}`, {
+      const response = await fetch(`https://api.dev.dcarbon.solutions/api/admin/financial-types/${financeType.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -321,7 +321,7 @@ export default function FinanceTypes({ onBack, onViewChange }) {
     try {
       setLoading(true);
       const authToken = localStorage.getItem('authToken');
-      const response = await fetch('https://app.dev.dcarbon.solutions/api/user/financial-types', {
+      const response = await fetch('https://api.dev.dcarbon.solutions/api/user/financial-types', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -352,7 +352,7 @@ export default function FinanceTypes({ onBack, onViewChange }) {
       try {
         const authToken = localStorage.getItem("authToken");
         if (!authToken) return;
-        const response = await fetch("https://app.dev.dcarbon.solutions/api/auth/utility-auth", {
+        const response = await fetch("https://api.dev.dcarbon.solutions/api/auth/utility-auth", {
           method: "GET",
           headers: { 
             "Authorization": `Bearer ${authToken}`, 
@@ -390,7 +390,7 @@ export default function FinanceTypes({ onBack, onViewChange }) {
       setUpdatingStatus(id);
       const authToken = localStorage.getItem('authToken');
       
-      const response = await fetch(`https://app.dev.dcarbon.solutions/api/admin/financial-types/${id}/review`, {
+      const response = await fetch(`https://api.dev.dcarbon.solutions/api/admin/financial-types/${id}/review`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -422,7 +422,7 @@ export default function FinanceTypes({ onBack, onViewChange }) {
       setUpdatingStatus(id);
       const authToken = localStorage.getItem('authToken');
       
-      const response = await fetch(`https://app.dev.dcarbon.solutions/api/admin/financial-types/${id}/review`, {
+      const response = await fetch(`https://api.dev.dcarbon.solutions/api/admin/financial-types/${id}/review`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -455,7 +455,7 @@ export default function FinanceTypes({ onBack, onViewChange }) {
       setUpdatingStatus(id);
       const authToken = localStorage.getItem('authToken');
       
-      const response = await fetch(`https://app.dev.dcarbon.solutions/api/admin/financial-types/${id}`, {
+      const response = await fetch(`https://api.dev.dcarbon.solutions/api/admin/financial-types/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${authToken}`

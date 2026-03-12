@@ -51,7 +51,7 @@ export default function InstapullAuthorizationModal({ isOpen, onClose, utilityPr
       if (!authToken) throw new Error("Authentication token not found");
 
       const response = await axios.get(
-        'https://app.dev.dcarbon.solutions/api/auth/utility-providers?page=1&limit=100',
+        'https://api.dev.dcarbon.solutions/api/auth/utility-providers?page=1&limit=100',
         {
           headers: {
             'Authorization': `Bearer ${authToken}`,
@@ -152,7 +152,7 @@ export default function InstapullAuthorizationModal({ isOpen, onClose, utilityPr
       };
 
       const response = await axios.post(
-        'https://app.dev.dcarbon.solutions/api/utility-auth/green-button',
+        'https://api.dev.dcarbon.solutions/api/utility-auth/green-button',
         payload,
         { 
           headers: { 

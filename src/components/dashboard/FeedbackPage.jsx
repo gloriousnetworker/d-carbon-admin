@@ -22,7 +22,7 @@ const FeedbackPage = () => {
   const fetchSuggestions = async () => {
     try {
       const authToken = localStorage.getItem('authToken');
-      const response = await fetch('https://app.dev.dcarbon.solutions/api/feature-suggestion', {
+      const response = await fetch('https://api.dev.dcarbon.solutions/api/feature-suggestion', {
         headers: {
           'Authorization': `Bearer ${authToken}`
         }

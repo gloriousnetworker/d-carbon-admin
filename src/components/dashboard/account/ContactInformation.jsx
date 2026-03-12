@@ -20,7 +20,7 @@ const ContactInformation = () => {
   const [referralCode, setReferralCode] = useState("");
   const [loading, setLoading] = useState(true);
 
-  const baseUrl = "https://app.dev.dcarbon.solutions";
+  const baseUrl = "https://api.dev.dcarbon.solutions";
 
   useEffect(() => {
     const fetchUserInfo = async () => {

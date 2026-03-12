@@ -64,7 +64,7 @@ function AdminRegisterCardContent() {
   
     try {
       const response = await axios.post(
-        'https://app.dev.dcarbon.solutions/api/admin/create',
+        'https://api.dev.dcarbon.solutions/api/admin/create',
         payload,
         { headers: { 'Content-Type': 'application/json' } }
       );

@@ -33,7 +33,7 @@ export default function PartnerDetails({ partner, onBack }) {
         }
 
         const encodedEmail = encodeURIComponent(partnerEmail);
-        const apiUrl = `https://app.dev.dcarbon.solutions/api/admin/customer/${encodedEmail}`;
+        const apiUrl = `https://api.dev.dcarbon.solutions/api/admin/customer/${encodedEmail}`;
 
         const response = await fetch(apiUrl, {
           headers: {

@@ -126,7 +126,7 @@ export default function CustomerManagement() {
     try {
       const authToken = localStorage.getItem("authToken");
       if (!authToken) return;
-      const response = await fetch("https://app.dev.dcarbon.solutions/api/auth/utility-auth", {
+      const response = await fetch("https://api.dev.dcarbon.solutions/api/auth/utility-auth", {
         method: "GET",
         headers: { 
           "Authorization": `Bearer ${authToken}`, 

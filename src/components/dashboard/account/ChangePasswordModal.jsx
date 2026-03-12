@@ -32,7 +32,7 @@ const ChangePasswordCard = ({ onClose }) => {
     try {
       // Make the POST request
       const response = await axios.post(
-        `https://app.dev.dcarbon.solutions/api/auth/change-password/${userId}`,
+        `https://api.dev.dcarbon.solutions/api/auth/change-password/${userId}`,
         payload,
         {
           headers: {

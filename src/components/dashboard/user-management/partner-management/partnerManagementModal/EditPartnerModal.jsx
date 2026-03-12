@@ -53,7 +53,7 @@ export default function EditPartnerModal({ isOpen, onClose, partner }) {
 
       // Assuming there's an update endpoint - adjust this based on your actual API
       const response = await fetch(
-        `https://app.dev.dcarbon.solutions/api/admin/customer/${partner.id}`, 
+        `https://api.dev.dcarbon.solutions/api/admin/customer/${partner.id}`, 
         {
           method: "PUT",
           headers: {

@@ -59,7 +59,7 @@ export default function ResidentialMeterRecords() {
       
       // Make the API call
       const response = await fetch(
-        `https://app.dev.dcarbon.solutions/api/admin/meter-records/residential?${params.toString()}`,
+        `https://api.dev.dcarbon.solutions/api/admin/meter-records/residential?${params.toString()}`,
         {
           headers: {
             Authorization: `Bearer ${authToken}`,

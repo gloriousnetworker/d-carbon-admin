@@ -41,7 +41,7 @@ export default function FAQManagement() {
     try {
       setLoading(true)
       const token = localStorage.getItem('authToken')
-      const response = await fetch('https://app.dev.dcarbon.solutions/api/faq/faqs', {
+      const response = await fetch('https://api.dev.dcarbon.solutions/api/faq/faqs', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -67,8 +67,8 @@ export default function FAQManagement() {
     try {
       const token = localStorage.getItem('authToken')
       const url = editMode 
-        ? `https://app.dev.dcarbon.solutions/api/faq/faqs/${currentFaq.id}`
-        : 'https://app.dev.dcarbon.solutions/api/faq/faqs'
+        ? `https://api.dev.dcarbon.solutions/api/faq/faqs/${currentFaq.id}`
+        : 'https://api.dev.dcarbon.solutions/api/faq/faqs'
 
       const method = editMode ? 'PUT' : 'POST'
 
@@ -109,7 +109,7 @@ export default function FAQManagement() {
     if (window.confirm('Are you sure you want to delete this FAQ?')) {
       try {
         const token = localStorage.getItem('authToken')
-        const response = await fetch(`https://app.dev.dcarbon.solutions/api/faq/faqs/${id}`, {
+        const response = await fetch(`https://api.dev.dcarbon.solutions/api/faq/faqs/${id}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`

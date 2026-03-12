@@ -68,7 +68,7 @@ export default function EmailVerificationModal({ closeModal, onSkip }) {
 
     try {
       const response = await axios.post(
-        `https://app.dev.dcarbon.solutions/api/user/invite-user/${userId}`,
+        `https://api.dev.dcarbon.solutions/api/user/invite-user/${userId}`,
         payload,
         {
           headers: {

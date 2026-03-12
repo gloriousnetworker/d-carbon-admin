@@ -37,7 +37,7 @@ export default function AddCommercialFacilityModal({ isOpen, onClose }) {
 
     try {
       const response = await axios.post(
-        `https://app.dev.dcarbon.solutions/api/facility/create-new-facility/${userId}`,
+        `https://api.dev.dcarbon.solutions/api/facility/create-new-facility/${userId}`,
         formData,
         {
           headers: {

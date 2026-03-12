@@ -13,7 +13,7 @@ const AccountLevelBasedCommissionStructure = ({ onSetupStructure, refreshData })
   const fetchTiers = async () => {
     try {
       const authToken = localStorage.getItem('authToken');
-      const response = await fetch('https://app.dev.dcarbon.solutions/api/commission-tier', {
+      const response = await fetch('https://api.dev.dcarbon.solutions/api/commission-tier', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -45,7 +45,7 @@ const AccountLevelBasedCommissionStructure = ({ onSetupStructure, refreshData })
   const fetchSalesAgentData = async () => {
     try {
       const authToken = localStorage.getItem('authToken');
-      const response = await fetch('https://app.dev.dcarbon.solutions/api/commission-structure/sales-agent-account-level', {
+      const response = await fetch('https://api.dev.dcarbon.solutions/api/commission-structure/sales-agent-account-level', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

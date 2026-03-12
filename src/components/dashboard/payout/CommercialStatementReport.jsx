@@ -25,7 +25,7 @@ export default function CommercialStatementReport() {
     try {
       const authToken = localStorage.getItem('authToken')
       const userResponse = await fetch(
-        `https://app.dev.dcarbon.solutions/api/user/${email}`,
+        `https://api.dev.dcarbon.solutions/api/user/${email}`,
         {
           method: 'GET',
           headers: {
@@ -43,7 +43,7 @@ export default function CommercialStatementReport() {
       const userId = userResult.data.id
       
       const payoutResponse = await fetch(
-        `https://app.dev.dcarbon.solutions/api/payout-request?userId=${userId}&userType=COMMERCIAL`,
+        `https://api.dev.dcarbon.solutions/api/payout-request?userId=${userId}&userType=COMMERCIAL`,
         {
           method: 'GET',
           headers: {
@@ -90,7 +90,7 @@ export default function CommercialStatementReport() {
 
       while (hasMore) {
         const response = await fetch(
-          `https://app.dev.dcarbon.solutions/api/user/get-all-users?page=${currentPage}&limit=50`,
+          `https://api.dev.dcarbon.solutions/api/user/get-all-users?page=${currentPage}&limit=50`,
           {
             method: 'GET',
             headers: {
@@ -251,7 +251,7 @@ export default function CommercialStatementReport() {
     try {
       const authToken = localStorage.getItem('authToken')
       const response = await fetch(
-        `https://app.dev.dcarbon.solutions/api/user/${item.email}`,
+        `https://api.dev.dcarbon.solutions/api/user/${item.email}`,
         {
           method: 'GET',
           headers: {

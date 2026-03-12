@@ -29,7 +29,7 @@ export const ProfileProvider = ({ children }) => {
       }
 
       const response = await fetch(
-        `https://app.dev.dcarbon.solutions/api/user/get-one-user/${userId}`,
+        `https://api.dev.dcarbon.solutions/api/user/get-one-user/${userId}`,
         {
           method: 'GET',
           headers: {

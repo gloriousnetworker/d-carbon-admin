@@ -42,7 +42,7 @@ export default function GetAllInstallers({ onBack }) {
       }
 
       const response = await axios.get(
-        `https://app.dev.dcarbon.solutions/api/user/partner/get-all-installer?page=${currentPage}&limit=${installersPerPage}`,
+        `https://api.dev.dcarbon.solutions/api/user/partner/get-all-installer?page=${currentPage}&limit=${installersPerPage}`,
         {
           headers: {
             Authorization: `Bearer ${authToken}`,
