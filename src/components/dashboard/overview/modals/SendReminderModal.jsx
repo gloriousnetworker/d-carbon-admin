@@ -89,7 +89,7 @@ const SendReminderModal = ({ isOpen, onClose, initialEmail = '' }) => {
       };
 
       const response = await axios.post(
-        'https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/user/referral-reminders',
+        'https://app.dev.dcarbon.solutions/api/user/referral-reminders',
         body,
         {
           headers: {

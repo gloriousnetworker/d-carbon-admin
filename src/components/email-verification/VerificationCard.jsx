@@ -82,7 +82,7 @@ export default function EmailVerificationCard() {
     }
     try {
       await axios.post(
-        'https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/user/verify-otp',
+        'https://app.dev.dcarbon.solutions/api/user/verify-otp',
         { email: userEmail, otp: Number(enteredOtp) },
         { headers: { 'Content-Type': 'application/json' } }
       );
@@ -104,7 +104,7 @@ export default function EmailVerificationCard() {
     setLoading(true);
     try {
       await axios.post(
-        'https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/user/resend-otp',
+        'https://app.dev.dcarbon.solutions/api/user/resend-otp',
         { email: userEmail },
         { headers: { 'Content-Type': 'application/json' } }
       );

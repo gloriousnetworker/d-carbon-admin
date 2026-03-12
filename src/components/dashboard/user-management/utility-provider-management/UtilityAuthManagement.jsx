@@ -76,7 +76,7 @@ export default function UtilityAuthManagement({ onBack }) {
       if (!authToken) throw new Error("Authentication token not found");
       
       const response = await fetch(
-        "https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/auth/utility-providers",
+        "https://app.dev.dcarbon.solutions/api/auth/utility-providers",
         {
           method: "GET",
           headers: { 
@@ -131,7 +131,7 @@ export default function UtilityAuthManagement({ onBack }) {
       
       const queryString = buildQueryString(page);
       const response = await fetch(
-        `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/utility-auth/list?${queryString}`,
+        `https://app.dev.dcarbon.solutions/api/utility-auth/list?${queryString}`,
         {
           method: "GET",
           headers: { 
@@ -193,7 +193,7 @@ export default function UtilityAuthManagement({ onBack }) {
       if (!authToken) return;
       
       const response = await fetch(
-        `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/auth/user-meters/${userId}`,
+        `https://app.dev.dcarbon.solutions/api/auth/user-meters/${userId}`,
         {
           method: "GET",
           headers: { 
@@ -248,7 +248,7 @@ export default function UtilityAuthManagement({ onBack }) {
       if (!authToken) throw new Error("Authentication token not found");
       
       const response = await fetch(
-        `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/utility-auth/delete/${authId}`,
+        `https://app.dev.dcarbon.solutions/api/utility-auth/delete/${authId}`,
         {
           method: "DELETE",
           headers: { 

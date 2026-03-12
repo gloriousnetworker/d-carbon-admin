@@ -14,7 +14,7 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess, redirectPa
     setLoading(true);
     try {
       const response = await axios.post(
-        'https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/auth/login',
+        'https://app.dev.dcarbon.solutions/api/auth/login',
         { email, password },
         { headers: { 'Content-Type': 'application/json' } }
       );

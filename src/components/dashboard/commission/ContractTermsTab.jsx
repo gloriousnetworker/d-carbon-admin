@@ -27,7 +27,7 @@ const ContractTermsTab = () => {
     try {
       setLoading(true);
       const authToken = localStorage.getItem("authToken");
-      const response = await fetch("https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-contract-terms", {
+      const response = await fetch("https://app.dev.dcarbon.solutions/api/commission-contract-terms", {
         headers: { Authorization: `Bearer ${authToken}` },
       });
       
@@ -46,7 +46,7 @@ const ContractTermsTab = () => {
   const fetchModes = async () => {
     try {
       const authToken = localStorage.getItem("authToken");
-      const response = await fetch("https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-structure/modes", {
+      const response = await fetch("https://app.dev.dcarbon.solutions/api/commission-structure/modes", {
         headers: { Authorization: `Bearer ${authToken}` },
       });
       
@@ -122,7 +122,7 @@ const ContractTermsTab = () => {
     
     try {
       const authToken = localStorage.getItem("authToken");
-      const response = await fetch(`https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-contract-terms/${id}`, {
+      const response = await fetch(`https://app.dev.dcarbon.solutions/api/commission-contract-terms/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${authToken}` },
       });
@@ -188,7 +188,7 @@ const ContractTermsTab = () => {
       let response;
       
       if (editingTerm) {
-        response = await fetch(`https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-contract-terms/${editingTerm.id}`, {
+        response = await fetch(`https://app.dev.dcarbon.solutions/api/commission-contract-terms/${editingTerm.id}`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
@@ -197,7 +197,7 @@ const ContractTermsTab = () => {
           body: JSON.stringify(payload),
         });
       } else {
-        response = await fetch("https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-contract-terms", {
+        response = await fetch("https://app.dev.dcarbon.solutions/api/commission-contract-terms", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

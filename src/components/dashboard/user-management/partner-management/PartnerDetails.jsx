@@ -33,7 +33,7 @@ export default function PartnerDetails({ partner, onBack }) {
         }
 
         const encodedEmail = encodeURIComponent(partnerEmail);
-        const apiUrl = `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/admin/customer/${encodedEmail}`;
+        const apiUrl = `https://app.dev.dcarbon.solutions/api/admin/customer/${encodedEmail}`;
 
         const response = await fetch(apiUrl, {
           headers: {

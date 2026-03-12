@@ -110,7 +110,7 @@ export default function TwoFactorAuthentication() {
 
     try {
       const response = await axios.post(
-        "https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/auth/verify-2fa-login",
+        "https://app.dev.dcarbon.solutions/api/auth/verify-2fa-login",
         {
           userId,
           token: enteredOtp,

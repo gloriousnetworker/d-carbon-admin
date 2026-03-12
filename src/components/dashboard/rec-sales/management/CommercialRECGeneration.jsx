@@ -29,7 +29,7 @@ export default function CommercialRECGeneration() {
         throw new Error("Authentication token not found")
       }
 
-      const response = await fetch(`https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/admin/meter-records/commercial?page=${page}`, {
+      const response = await fetch(`https://app.dev.dcarbon.solutions/api/admin/meter-records/commercial?page=${page}`, {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${authToken}`,

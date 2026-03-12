@@ -165,7 +165,7 @@ const SignatureModal = ({ isOpen, onClose, onSaveSignature }) => {
       formData.append("agreementCompleted", "true");
 
       const response = await fetch(
-        `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/user/update-user-agreement/${userId}`,
+        `https://app.dev.dcarbon.solutions/api/user/update-user-agreement/${userId}`,
         {
           method: 'PUT',
           headers: {

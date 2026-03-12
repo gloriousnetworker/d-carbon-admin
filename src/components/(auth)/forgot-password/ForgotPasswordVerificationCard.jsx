@@ -32,7 +32,7 @@ export default function ForgotPasswordCard() {
     setLoading(true);
     try {
       await axios.post(
-        'https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/auth/forgot-password',
+        'https://app.dev.dcarbon.solutions/api/auth/forgot-password',
         { email },
         { headers: { 'Content-Type': 'application/json' } }
       );

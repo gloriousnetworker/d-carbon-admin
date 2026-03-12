@@ -35,7 +35,7 @@ export default function AdminLoginCard() {
     setError('');
     
     try {
-      // REPLACED: const baseUrl = 'https://naijatrips-app-dcarbon-server.cafyit.easypanel.host';
+      // REPLACED: const baseUrl = 'https://app.dev.dcarbon.solutions';
       // REPLACED: const url = `${baseUrl}/api/auth/admin/login`;
       // NEW - Using config
       const url = `${CONFIG.API_BASE_URL}/api/auth/admin/login`;

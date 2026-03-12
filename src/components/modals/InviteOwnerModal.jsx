@@ -35,7 +35,7 @@ export default function EmailVerificationModal({ closeModal }) {
 
     try {
       const response = await fetch(
-        `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/user/invite-user/${userId}`,
+        `https://app.dev.dcarbon.solutions/api/user/invite-user/${userId}`,
         {
           method: 'POST',
           headers: {

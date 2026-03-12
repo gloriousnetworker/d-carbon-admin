@@ -13,7 +13,7 @@ const ResidentialCommissionStructure = ({ onSetupStructure, refreshData }) => {
   const fetchTiers = async () => {
     try {
       const authToken = localStorage.getItem('authToken');
-      const response = await fetch('https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-tier', {
+      const response = await fetch('https://app.dev.dcarbon.solutions/api/commission-tier', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

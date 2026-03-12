@@ -68,7 +68,7 @@ export default function EmailVerificationModal({ closeModal, onSkip }) {
 
     try {
       const response = await axios.post(
-        `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/user/invite-user/${userId}`,
+        `https://app.dev.dcarbon.solutions/api/user/invite-user/${userId}`,
         payload,
         {
           headers: {

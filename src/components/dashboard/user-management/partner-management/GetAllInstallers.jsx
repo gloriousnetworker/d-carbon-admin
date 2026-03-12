@@ -42,7 +42,7 @@ export default function GetAllInstallers({ onBack }) {
       }
 
       const response = await axios.get(
-        `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/user/partner/get-all-installer?page=${currentPage}&limit=${installersPerPage}`,
+        `https://app.dev.dcarbon.solutions/api/user/partner/get-all-installer?page=${currentPage}&limit=${installersPerPage}`,
         {
           headers: {
             Authorization: `Bearer ${authToken}`,

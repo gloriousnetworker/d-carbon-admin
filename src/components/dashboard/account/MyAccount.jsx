@@ -30,7 +30,7 @@ const MyAccount = () => {
         }
 
         const response = await fetch(
-          `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/user/get-one-user/${userId}`,
+          `https://app.dev.dcarbon.solutions/api/user/get-one-user/${userId}`,
           {
             method: "GET",
             headers: { Authorization: `Bearer ${authToken}` },
