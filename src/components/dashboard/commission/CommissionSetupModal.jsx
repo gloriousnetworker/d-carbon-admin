@@ -19,7 +19,6 @@ const CommissionSetupModal = ({
     installerShare: "",
     salesAgentShare: "",
     financeShare: "",
-    label: "",
     notes: "",
   });
   
@@ -45,7 +44,6 @@ const CommissionSetupModal = ({
         installerShare: editingCommission.installerShare || "",
         salesAgentShare: editingCommission.salesAgentShare || "",
         financeShare: editingCommission.financeShare || "",
-        label: editingCommission.label || "",
         notes: editingCommission.notes || "",
       });
 
@@ -267,7 +265,6 @@ const CommissionSetupModal = ({
       const basePayload = {
         propertyType: "RESIDENTIAL",
         tierId: formData.tierId,
-        label: formData.label || "",
         notes: formData.notes || "",
       };
 
@@ -286,7 +283,6 @@ const CommissionSetupModal = ({
         salesAgentShare: null,
         financeShare: null,
         dcarbonShare: null,
-        label: basePayload.label,
         notes: basePayload.notes,
       };
 
@@ -383,7 +379,6 @@ const CommissionSetupModal = ({
     const basePayload = {
       propertyType: formData.propertyType,
       tierId: formData.tierId,
-      label: formData.label || "",
       notes: formData.notes || "",
     };
 
@@ -520,7 +515,6 @@ const CommissionSetupModal = ({
       let basePayload = {
         propertyType: formData.propertyType,
         tierId: formData.tierId,
-        label: formData.label || "",
         notes: formData.notes || "",
       };
 
@@ -932,20 +926,6 @@ const CommissionSetupModal = ({
                     </option>
                   ))}
                 </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Label (e.g., "2 - 3 megawatt", "5.1+ MW")
-                </label>
-                <input
-                  type="text"
-                  name="label"
-                  value={formData.label}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  placeholder="Enter range label"
-                />
               </div>
 
               <div>
