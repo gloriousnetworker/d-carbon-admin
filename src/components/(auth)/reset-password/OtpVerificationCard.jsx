@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import Loader from '../../../components/loader/Loader';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 export default function ResetPasswordCard() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [otp, setOtp] = useState(Array(6).fill(''));
   const [newPassword, setNewPassword] = useState('');
@@ -61,7 +63,7 @@ export default function ResetPasswordCard() {
       );
       toast.success('Password reset successfully');
       setTimeout(() => {
-        window.location.href = '/login';
+        router.push('/login');
       }, 1500);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to reset password');

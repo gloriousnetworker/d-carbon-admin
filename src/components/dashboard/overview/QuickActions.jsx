@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { FiChevronDown, FiLoader } from 'react-icons/fi';
 import axios from 'axios';
 import CONFIG from '../../../../lib/config';
 
 export default function QuickActions() {
+  const router = useRouter();
   const [filter, setFilter] = useState('total');
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -16,7 +18,7 @@ export default function QuickActions() {
         const authToken = localStorage.getItem('authToken');
         
         if (!authToken) {
-          window.location.href = '/login';
+          router.push('/login');
           return;
         }
 
@@ -32,7 +34,7 @@ export default function QuickActions() {
         console.error('Error fetching analytics:', err);
         setError('Failed to fetch analytics data');
         localStorage.clear();
-        window.location.href = '/login';
+        router.push('/login');
       } finally {
         setLoading(false);
       }

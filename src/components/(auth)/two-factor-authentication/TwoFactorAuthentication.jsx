@@ -1,5 +1,6 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import axios from "axios";
 import Loader from "../../loader/Loader";
 import toast from "react-hot-toast";
@@ -20,6 +21,7 @@ const spinnerOverlay =
   "fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-20";
 
 export default function TwoFactorAuthentication() {
+  const router = useRouter();
   const [otp, setOtp] = useState(Array(6).fill(""));
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(30);
@@ -68,25 +70,24 @@ export default function TwoFactorAuthentication() {
 
     if (user.userType === "COMMERCIAL") {
       if (financeDetailsIncomplete) {
-        window.location.href = "/register/commercial-user-registration";
+        router.push("/register/commercial-user-registration");
       } else {
-        window.location.href = "/commercial-dashboard";
+        router.push("/commercial-dashboard");
       }
     } else if (user.userType === "RESIDENTIAL") {
       if (financeDetailsIncomplete) {
-        window.location.href =
-          "/register/residence-user-registration/step-one";
+        router.push("/register/residence-user-registration/step-one");
       } else {
-        window.location.href = "/residence-dashboard";
+        router.push("/residence-dashboard");
       }
     } else if (user.userType === "PARTNER") {
       if (financeDetailsIncomplete) {
-        window.location.href = "/register/partner-user-registration/step-one";
+        router.push("/register/partner-user-registration/step-one");
       } else {
-        window.location.href = "/partner-dashboard";
+        router.push("/partner-dashboard");
       }
     } else {
-      window.location.href = "/dashboard";
+      router.push("/dashboard");
     }
   };
 

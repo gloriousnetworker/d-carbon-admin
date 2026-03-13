@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { Suspense, useState, useEffect, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
 import DashboardNavbar from '@/components/dashboard/DashboardNavbar';
 import DashboardOverview from '@/components/dashboard/overview/DashboardOverview';
@@ -13,7 +13,7 @@ import PayoutProcessing from '@/components/dashboard/payout/PayoutProcessing';
 import DashboardContactSupport from '@/components/dashboard/ContactSupport';
 import DashboardHelpCentre from '@/components/dashboard/HelpCentre';
 import DashboardNotifications from '@/components/dashboard/Notifications';
-import DashboardLogout from '@/components/dashboard/Logout';
+import LogoutModal from '@/components/dashboard/Logout';
 import MyAccount from '@/components/dashboard/account/MyAccount';
 import AgreementManagement from '@/components/dashboard/agreement/AgreementManagement';
 import UserSupport from '@/components/dashboard/user-support/UserSupport';
@@ -21,9 +21,56 @@ import UserManagement from '@/components/dashboard/user-management/UserManagemen
 import Faq from '@/components/dashboard/faq/Faq';
 import FeedbackPage from '@/components/dashboard/FeedbackPage';
 
-export default function UserDashboard() {
-  const [activeSection, setActiveSection] = useState('overview');
+const VALID_SECTIONS = [
+  'overview', 'userManagement', 'recSalesManagement', 'resiGroupManagement',
+  'commissionStructure', 'payoutProcessing', 'reporting', 'myAccount',
+  'agreementManagement', 'userSupport', 'notifications', 'helpCenter',
+  'contactSupport', 'faq', 'feedback',
+];
+
+const SECTION_COMPONENTS = {
+  overview: DashboardOverview,
+  userManagement: UserManagement,
+  recSalesManagement: RECManagement,
+  resiGroupManagement: ResiGroupManagement,
+  commissionStructure: CommissionStructure,
+  payoutProcessing: PayoutProcessing,
+  reporting: Reporting,
+  myAccount: MyAccount,
+  agreementManagement: AgreementManagement,
+  userSupport: UserSupport,
+  notifications: DashboardNotifications,
+  helpCenter: DashboardHelpCentre,
+  contactSupport: DashboardContactSupport,
+  faq: Faq,
+  feedback: FeedbackPage,
+};
+
+const sectionDisplayMap = {
+  overview: 'Overview',
+  userManagement: 'User Management',
+  recSalesManagement: 'REC Sales Management',
+  resiGroupManagement: 'Resi. Group Management',
+  commissionStructure: 'Commission Structure',
+  payoutProcessing: 'Payout Processing',
+  reporting: 'Reporting',
+  myAccount: 'My Account',
+  agreementManagement: 'Agreement Management',
+  userSupport: 'User Support',
+  notifications: 'Notification',
+  helpCenter: 'Help Centre (FAQs)',
+  contactSupport: 'Contact Support',
+  faq: 'FAQs',
+  feedback: 'Feedback',
+};
+
+function DashboardContent() {
+  const searchParams = useSearchParams();
+  const sectionFromUrl = searchParams.get('section');
+  const activeSection = VALID_SECTIONS.includes(sectionFromUrl) ? sectionFromUrl : 'overview';
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
@@ -36,56 +83,22 @@ export default function UserDashboard() {
         setIsLoading(false);
       }
     };
-    
+
     checkAuth();
   }, [router]);
 
-  const handleSectionChange = (section) => {
-    setActiveSection(section);
+  const handleSectionChange = useCallback((section) => {
+    if (section === 'logout') {
+      setShowLogoutModal(true);
+      return;
+    }
+    router.push(`/admin-dashboard?section=${section}`);
     setSidebarOpen(false);
-  };
+  }, [router]);
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
-  const sectionDisplayMap = {
-    overview: 'Overview',
-    userManagement: 'User Management',
-    recSalesManagement: 'REC Sales Management',
-    resiGroupManagement: 'Resi. Group Management',
-    commissionStructure: 'Commission Structure',
-    payoutProcessing: 'Payout Processing',
-    reporting: 'Reporting',
-    myAccount: 'My Account',
-    agreementManagement: 'Agreement Management',
-    userSupport: 'User Support',
-    notifications: 'Notification',
-    helpCenter: 'Help Centre (FAQs)',
-    contactSupport: 'Contact Support',
-    faq: 'FAQs',
-    feedback: 'Feedback',
-    logout: 'Log Out',
-  };
-
-  let SectionComponent;
-  switch (activeSection) {
-    case 'overview': SectionComponent = DashboardOverview; break;
-    case 'userManagement': SectionComponent = UserManagement; break;
-    case 'recSalesManagement': SectionComponent = RECManagement; break;
-    case 'resiGroupManagement': SectionComponent = ResiGroupManagement; break;
-    case 'commissionStructure': SectionComponent = CommissionStructure; break;
-    case 'payoutProcessing': SectionComponent = PayoutProcessing; break;
-    case 'reporting': SectionComponent = Reporting; break;
-    case 'myAccount': SectionComponent = MyAccount; break;
-    case 'agreementManagement': SectionComponent = AgreementManagement; break;
-    case 'userSupport': SectionComponent = UserSupport; break;
-    case 'notifications': SectionComponent = DashboardNotifications; break;
-    case 'helpCenter': SectionComponent = DashboardHelpCentre; break;
-    case 'contactSupport': SectionComponent = DashboardContactSupport; break;
-    case 'faq': SectionComponent = Faq; break;
-    case 'feedback': SectionComponent = FeedbackPage; break;
-    case 'logout': SectionComponent = DashboardLogout; break;
-    default: SectionComponent = DashboardOverview;
-  }
+  const SectionComponent = SECTION_COMPONENTS[activeSection] || DashboardOverview;
 
   if (isLoading) {
     return (
@@ -127,13 +140,28 @@ export default function UserDashboard() {
 
         <main className="flex-1">
           <div className="max-w-7xl mx-auto p-6">
-            {activeSection === 'logout'
-              ? <DashboardLogout />
-              : <SectionComponent />
-            }
+            <SectionComponent />
           </div>
         </main>
       </div>
+
+      {showLogoutModal && (
+        <LogoutModal onClose={() => setShowLogoutModal(false)} />
+      )}
     </div>
+  );
+}
+
+export default function UserDashboard() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gray-100">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#039994]"></div>
+        </div>
+      }
+    >
+      <DashboardContent />
+    </Suspense>
   );
 }

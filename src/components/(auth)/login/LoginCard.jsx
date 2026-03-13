@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import Loader from '../../../components/loader/Loader';
 import toast from 'react-hot-toast';
@@ -8,6 +9,7 @@ import toast from 'react-hot-toast';
 import CONFIG from '../../../../lib/config';
 
 export default function AdminLoginCard() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -82,7 +84,7 @@ export default function AdminLoginCard() {
       }
       
       toast.success('Admin login successful');
-      window.location.href = '/admin-dashboard';
+      router.push('/admin-dashboard');
       
     } catch (err) {
       console.error('Login error:', err);

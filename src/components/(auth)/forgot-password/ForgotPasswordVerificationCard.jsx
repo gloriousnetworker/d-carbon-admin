@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import Loader from '../../../components/loader/Loader';
 import toast, { Toaster } from 'react-hot-toast';
@@ -21,6 +22,7 @@ const styles = {
 };
 
 export default function ForgotPasswordCard() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
 
@@ -39,7 +41,7 @@ export default function ForgotPasswordCard() {
       toast.success('An OTP verification code has been sent to your email');
       localStorage.setItem('forgotEmail', email);
       setTimeout(() => {
-        window.location.href = '/reset-password';
+        router.push('/reset-password');
       }, 1500);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Something went wrong');

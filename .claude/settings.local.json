@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find . -type f -name *.env*)",
+      "Bash(cat src/components/\\\\\\(auth\\\\\\)/login/LoginCard.jsx)",
+      "Bash(xargs grep:*)",
+      "Bash(ls -la \"C:\\\\Users\\\\Udofot.tsx\\\\Desktop\\\\EDUMARCO SERVICES\\\\dcarbon-web-app-vercel\\\\DCarbonAdminDashboard\\\\dcarbon-admin\\\\src\\\\app\\\\\\(auth\\)\")",
+      "Bash(find \"C:\\\\Users\\\\Udofot.tsx\\\\Desktop\\\\EDUMARCO SERVICES\\\\dcarbon-web-app-vercel\\\\DCarbonAdminDashboard\\\\dcarbon-admin\\\\src\\\\components\\\\\\(auth\\)\" -maxdepth 2 -type f -name \"*.jsx\")",
+      "Bash(cat src/components/\\\\\\(auth\\\\\\)/register/RegisterCard.jsx)",
+      "Bash(cat src/components/\\\\\\(auth\\\\\\)/two-factor-authentication/TwoFactorAuthentication.jsx)",
+      "Bash(cat src/components/\\\\\\(auth\\\\\\)/reset-password/OtpVerificationCard.jsx)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(npm install:*)",
+      "Bash(npx next:*)",
+      "Bash(node -e \":*)",
+      "Bash(rm -rf src/components/signin)",
+      "Bash(rm -f src/components/modals/OperatorSignatureModal.jsx)",
+      "Bash(rm -f src/components/modals/EmailModal.jsx)",
+      "Bash(rm -rf src/components/email-verification)",
+      "Bash(rm -rf \"src/app/\\(auth\\)/register/email-verification\")"
+    ]
+  }
+}

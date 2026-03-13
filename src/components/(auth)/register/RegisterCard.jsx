@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, Suspense } from 'react';
+import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import Loader from '../../../components/loader/Loader';
 import { toast } from 'react-hot-toast';
@@ -19,6 +20,7 @@ import {
 
 // Main component that will be wrapped in Suspense
 function AdminRegisterCardContent() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [error, setError] = useState('');
@@ -72,7 +74,7 @@ function AdminRegisterCardContent() {
       toast.success('Admin registration successful');
       
       // Redirect to login page directly - no email verification needed
-      window.location.href = '/login';
+      router.push('/login');
     } catch (err) {
       console.error('Registration error:', err);
       toast.error(err.response?.data?.message || 'Admin registration failed');

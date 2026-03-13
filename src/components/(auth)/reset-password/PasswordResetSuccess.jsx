@@ -1,14 +1,16 @@
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Loader from '../../../components/loader/Loader';
 
 export default function PasswordResetSuccess() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   const handleLogin = () => {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      window.location.href = '/dashboard'; // Example redirect
+      router.push('/admin-dashboard');
     }, 3000);
   };
 
