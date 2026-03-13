@@ -57,7 +57,7 @@ export const ProfileProvider = ({ children }) => {
         localStorage.setItem('userProfilePicture', newProfile.picture || '');
         localStorage.setItem('userFirstName', newProfile.firstName);
       }
-    } catch (err) {
+    } catch {
       loadFromStorage();
     } finally {
       setLoading(false);
