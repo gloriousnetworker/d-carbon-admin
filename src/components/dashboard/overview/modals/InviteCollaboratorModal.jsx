@@ -1,3 +1,4 @@
+import CONFIG from '@/lib/config';
 import React, { useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -70,7 +71,7 @@ export default function InviteCollaboratorModal({ isOpen, onClose }) {
 
     try {
       const response = await axios.post(
-        `https://api.dev.dcarbon.solutions/api/user/invite-user/${userId}`,
+        `${CONFIG.API_BASE_URL}/api/user/invite-user/${userId}`,
         payload,
         {
           headers: {
@@ -102,7 +103,7 @@ export default function InviteCollaboratorModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-20 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 overflow-y-auto p-4">
       <div className="relative bg-white p-5 rounded-lg w-full max-w-md text-sm max-h-[90vh] overflow-y-auto">
         {/* Close Button */}
         <button

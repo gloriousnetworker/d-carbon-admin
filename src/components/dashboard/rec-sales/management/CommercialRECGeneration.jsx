@@ -1,14 +1,16 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ChevronLeft, ChevronRight, Filter } from "lucide-react"
+import { ChevronLeft, ChevronRight, Filter, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import CONFIG from "@/lib/config"
 
 export default function CommercialRECGeneration() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [data, setData] = useState([])
+  const [exporting, setExporting] = useState(false)
   const [metadata, setMetadata] = useState({
     total: 0,
     page: 1,
@@ -29,7 +31,7 @@ export default function CommercialRECGeneration() {
         throw new Error("Authentication token not found")
       }
 
-      const response = await fetch(`https://api.dev.dcarbon.solutions/api/admin/meter-records/commercial?page=${page}`, {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/admin/meter-records/commercial?page=${page}`, {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${authToken}`,
@@ -65,6 +67,67 @@ export default function CommercialRECGeneration() {
     setCurrentPage(newPage)
   }
 
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      const authToken = localStorage.getItem("authToken")
+      let allRecords = []
+      let page = 1
+      let hasMore = true
+      while (hasMore) {
+        const res = await fetch(`${CONFIG.API_BASE_URL}/api/admin/meter-records/commercial?page=${page}&limit=100`, {
+          headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" }
+        })
+        if (!res.ok) break
+        const result = await res.json()
+        if (result.status === "success") {
+          allRecords = [...allRecords, ...result.data.records]
+          hasMore = result.data.metadata.hasNextPage
+          page++
+        } else {
+          hasMore = false
+        }
+      }
+      const rows = allRecords.map(r => ({
+        ID: r.id,
+        "Meter UID": r.meterUid,
+        "Facility Name": r.commercialFacility?.facilityName || "",
+        Address: r.utilityServiceAddress || "",
+        User: r.commercialFacility?.commercialUser?.user
+          ? `${r.commercialFacility.commercialUser.user.firstName} ${r.commercialFacility.commercialUser.user.lastName}`
+          : "",
+        Utility: r.utility || "",
+        "Start Date": r.intervalStart ? new Date(r.intervalStart).toLocaleDateString() : "",
+        "End Date": r.intervalEnd ? new Date(r.intervalEnd).toLocaleDateString() : "",
+        "Interval kWh": r.intervalKWh != null ? Number(r.intervalKWh).toFixed(3) : "",
+        "Forward kWh": r.fwdKWh != null ? Number(r.fwdKWh).toFixed(3) : "",
+        "Net kWh": r.netKWh != null ? Number(r.netKWh).toFixed(3) : "",
+        "Reverse kWh": r.revKWh != null ? Number(r.revKWh).toFixed(3) : "",
+        Points: r.points != null ? Number(r.points).toFixed(4) : "",
+        RECs: r.recs != null ? Number(r.recs).toFixed(8) : "",
+      }))
+      const headers = Object.keys(rows[0] || {})
+      const csv = [
+        headers.join(","),
+        ...rows.map(row => headers.map(h => `"${(row[h] ?? "").toString().replace(/"/g, '""')}"`).join(","))
+      ].join("\n")
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `commercial_rec_generation_${new Date().toISOString().slice(0, 10)}.csv`
+      link.style.visibility = "hidden"
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error("Export error:", err)
+    } finally {
+      setExporting(false)
+    }
+  }
+
   // Format date string to a more readable format
   const formatDate = (dateString) => {
     if (!dateString) return "-"
@@ -89,10 +152,16 @@ export default function CommercialRECGeneration() {
       <CardContent className="p-0">
         <div className="p-4 flex items-center justify-between">
           <h2 className="text-xl font-medium text-[#039994]">Commercial REC Generation</h2>
-          <Button variant="outline" className="gap-2">
-            <span>Filter by</span>
-            <Filter className="h-4 w-4" />
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" className="gap-2">
+              <span>Filter by</span>
+              <Filter className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" className="gap-2" onClick={handleExport} disabled={exporting || loading}>
+              <span>{exporting ? "Exporting..." : "Export CSV"}</span>
+              <Download className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         {/* Error state */}

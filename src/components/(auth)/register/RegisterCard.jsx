@@ -1,4 +1,5 @@
 'use client';
+import CONFIG from '@/lib/config';
 
 import { useState, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
@@ -44,8 +45,24 @@ function AdminRegisterCardContent() {
       return false;
     }
     
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters long.');
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters long.');
+      return false;
+    }
+    if (!/[A-Z]/.test(password)) {
+      setError('Password must contain at least one uppercase letter.');
+      return false;
+    }
+    if (!/[a-z]/.test(password)) {
+      setError('Password must contain at least one lowercase letter.');
+      return false;
+    }
+    if (!/[0-9]/.test(password)) {
+      setError('Password must contain at least one number.');
+      return false;
+    }
+    if (!/[^A-Za-z0-9]/.test(password)) {
+      setError('Password must contain at least one special character (e.g. !@#$%).');
       return false;
     }
     
@@ -66,7 +83,7 @@ function AdminRegisterCardContent() {
   
     try {
       const response = await axios.post(
-        'https://api.dev.dcarbon.solutions/api/admin/create',
+        `${CONFIG.API_BASE_URL}/api/admin/create`,
         payload,
         { headers: { 'Content-Type': 'application/json' } }
       );
@@ -253,7 +270,7 @@ function AdminRegisterCardContent() {
                 </button>
               </div>
               <p className="mt-2 font-sfpro text-[12px] font-[400] leading-[100%] tracking-[-0.05em] text-[#626060]">
-                * Must be at least 6 characters
+                * Min 8 chars · uppercase · lowercase · number · special character
               </p>
             </div>
 

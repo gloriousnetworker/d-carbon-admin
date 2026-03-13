@@ -56,6 +56,46 @@ export const spinner =
 export const termsTextContainer =
   'mt-6 text-center font-sfpro text-[10px] font-[800] leading-[100%] tracking-[-0.05em] underline text-[#1E1E1E]';
 
+// ─── Shared Table Styles ───────────────────────────────────────────────────
+export const tableWrapper =
+  'overflow-x-auto bg-white rounded-xl shadow-sm border border-gray-200';
+
+export const tableBase = 'min-w-full divide-y divide-gray-200';
+
+export const tableHeadRow = 'border-y text-sm';
+
+export const tableHeadCell =
+  'py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]';
+
+export const tableBodyRow =
+  'hover:bg-gray-50 cursor-pointer transition-colors duration-100';
+
+export const tableBodyRowStatic =
+  'hover:bg-gray-50 transition-colors duration-100';
+
+export const tableBodyCell =
+  'py-3 px-4 text-sm font-sfpro text-[#1E1E1E]';
+
+export const actionIconBtn =
+  'p-1.5 rounded-md transition-colors duration-150';
+
+// ─── Shared Section Styles ─────────────────────────────────────────────────
+export const sectionTitle =
+  'text-base font-semibold text-[#039994] font-sfpro';
+
+// ─── Shared Modal Styles ───────────────────────────────────────────────────
+export const modalOverlay =
+  'fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4';
+
+export const modalPanel =
+  'relative w-full max-w-md bg-white rounded-xl shadow-xl p-6 space-y-4';
+
+export const modalTitle =
+  'text-[18px] font-[600] font-sfpro text-[#1E1E1E] leading-tight';
+
+export const modalCloseBtn =
+  'absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors';
+
 // New style exports for the file upload section
 export const uploadHeading =
   'block mb-2 font-sfpro text-[14px] leading-[100%] tracking-[-0.05em] font-[400] text-[#1E1E1E]';

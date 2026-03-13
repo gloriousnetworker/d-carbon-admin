@@ -28,7 +28,7 @@ export default function ResidentGroupDetails({
         const authToken = localStorage.getItem('authToken')
         
         const response = await fetch(
-          `https://api.dev.dcarbon.solutions/api/residential-facility/groups/${initialGroup.id}`, 
+          `${CONFIG.API_BASE_URL}/api/residential-facility/groups/${initialGroup.id}`, 
           {
             method: 'GET',
             headers: {
@@ -69,7 +69,7 @@ export default function ResidentGroupDetails({
       const authToken = localStorage.getItem('authToken')
       
       const response = await fetch(
-        `https://api.dev.dcarbon.solutions/api/residential-facility/groups/${group.id}/remove-facilities`, 
+        `${CONFIG.API_BASE_URL}/api/residential-facility/groups/${group.id}/remove-facilities`, 
         {
           method: 'POST',
           headers: {
@@ -109,7 +109,7 @@ export default function ResidentGroupDetails({
       const authToken = localStorage.getItem('authToken')
       
       const response = await fetch(
-        `https://api.dev.dcarbon.solutions/api/admin/ddg/${group.id}/wregis`, 
+        `${CONFIG.API_BASE_URL}/api/admin/ddg/${group.id}/wregis`, 
         {
           method: 'PUT',
           headers: {
@@ -274,7 +274,7 @@ export default function ResidentGroupDetails({
       {/* Residents Section */}
       <div className="bg-white rounded-lg border border-gray-200">
         <div className="flex justify-between items-center p-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Residents</h3>
+          <h3 className="text-sm font-semibold text-[#039994] font-sfpro flex items-center gap-2">Residents</h3>
           <button 
             className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded bg-white text-sm hover:bg-gray-50"
             onClick={() => setIsFilterOpen(true)}
@@ -286,28 +286,28 @@ export default function ResidentGroupDetails({
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <input 
-                    type="checkbox" 
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-y">
+                <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">
+                  <input
+                    type="checkbox"
                     className="h-4 w-4 rounded border-gray-300 text-teal-500 focus:ring-teal-500"
                   />
                 </th>
-                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Resident ID</th>
-                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Finance Comp.</th>
-                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Installer</th>
-                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Utility Prov.</th>
-                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
-                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">kW system size</th>
-                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date of Reg.</th>
+                <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Name</th>
+                <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Resident ID</th>
+                <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Finance Comp.</th>
+                <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Installer</th>
+                <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Utility Prov.</th>
+                <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Address</th>
+                <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">kW System Size</th>
+                <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Date of Reg.</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody>
               {filteredFacilities.map((facility) => (
-                <tr key={facility.id} className="hover:bg-gray-50">
+                <tr key={facility.id} className="border-t border-gray-100 hover:bg-gray-50 transition-colors duration-100">
                   <td className="py-3 px-4">
                     <input 
                       type="checkbox" 

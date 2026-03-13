@@ -49,10 +49,10 @@ export default function FilterByModal({ isOpen, onClose, onApplyFilters, current
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className={`${styles.formWrapper} bg-white rounded-lg p-6 max-w-md w-full`}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-xl shadow-xl p-6 max-w-md w-full">
         <div className="flex justify-between items-center mb-4">
-          <h2 className={styles.pageTitle}>Filter By</h2>
+          <h2 className={styles.modalTitle}>Filter By</h2>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="h-4 w-4" />
           </Button>

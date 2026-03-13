@@ -1,3 +1,4 @@
+import CONFIG from '@/lib/config';
 import React, { useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -37,7 +38,7 @@ export default function AddCommercialFacilityModal({ isOpen, onClose }) {
 
     try {
       const response = await axios.post(
-        `https://api.dev.dcarbon.solutions/api/facility/create-new-facility/${userId}`,
+        `${CONFIG.API_BASE_URL}/api/facility/create-new-facility/${userId}`,
         formData,
         {
           headers: {

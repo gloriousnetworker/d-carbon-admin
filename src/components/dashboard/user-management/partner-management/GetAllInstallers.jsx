@@ -1,10 +1,9 @@
 "use client";
+import CONFIG from '@/lib/config';
 
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import {
-  ArrowLeft,
-  Loader,
   ChevronLeft,
   ChevronRight,
   Users,
@@ -13,7 +12,8 @@ import {
   MapPin,
   Calendar,
   User,
-  RefreshCw
+  RefreshCw,
+  Loader2,
 } from "lucide-react";
 
 export default function GetAllInstallers({ onBack }) {
@@ -42,7 +42,7 @@ export default function GetAllInstallers({ onBack }) {
       }
 
       const response = await axios.get(
-        `https://api.dev.dcarbon.solutions/api/user/partner/get-all-installer?page=${currentPage}&limit=${installersPerPage}`,
+        `${CONFIG.API_BASE_URL}/api/user/partner/get-all-installer?page=${currentPage}&limit=${installersPerPage}`,
         {
           headers: {
             Authorization: `Bearer ${authToken}`,
@@ -104,92 +104,78 @@ export default function GetAllInstallers({ onBack }) {
     return { status: 'Inactive', color: 'bg-red-100 text-red-700' };
   };
 
-  if (loading) {
-    return (
-      <div className="fixed inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading installers...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
+    <div className="min-h-screen w-full flex flex-col py-6 px-0 bg-white">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center">
-          <ArrowLeft 
-            className="h-6 w-6 text-gray-600 cursor-pointer hover:text-gray-800 mr-4" 
-            onClick={onBack}
-          />
-          <h1 className="text-2xl font-bold text-gray-900">Partner Installers</h1>
-        </div>
+      <div className="flex items-center justify-between mb-6 px-1">
+        <button
+          className="flex items-center text-[#039994] hover:text-[#02857f] text-sm font-sfpro"
+          onClick={onBack}
+        >
+          <ChevronLeft className="h-4 w-4 mr-1" />
+          Back to Partners
+        </button>
         <button
           onClick={fetchInstallers}
           disabled={loading}
-          className="flex items-center gap-2 px-3 py-2 text-sm bg-teal-600 text-white rounded-md hover:bg-teal-700 disabled:opacity-50"
+          className="flex items-center gap-2 px-3 py-2 text-sm border border-[#039994] text-[#039994] rounded-md hover:bg-[#039994] hover:text-white font-sfpro transition-colors disabled:opacity-50"
         >
           <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           Refresh
         </button>
       </div>
 
-      <div className="max-w-7xl mx-auto">
-        {error ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="text-center p-6 bg-white rounded-lg shadow-sm border border-red-200">
-              <div className="text-red-500 mb-4">
-                <Mail className="h-12 w-12 mx-auto mb-2" />
-                <p className="font-medium text-lg">Error Loading Installers</p>
-                <p className="text-sm mt-2">{error}</p>
-              </div>
-              <button 
-                className="px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors"
-                onClick={fetchInstallers}
-              >
-                Try Again
-              </button>
-            </div>
+      <div>
+        {loading && (
+          <div className="flex flex-col items-center justify-center py-16 border border-gray-200 rounded-xl">
+            <Loader2 className="h-8 w-8 animate-spin text-[#039994]" />
+            <span className="text-sm text-gray-500 font-sfpro mt-3">Loading installers...</span>
           </div>
-        ) : installers.length === 0 ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="text-center p-6 bg-white rounded-lg shadow-sm border border-gray-200">
-              <Users className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-              <p className="font-medium text-gray-700">No installers found</p>
-              <p className="text-sm text-gray-500 mt-2">There are currently no partner installers to display.</p>
-              <button 
-                className="mt-4 px-4 py-2 bg-teal-100 text-teal-700 rounded-md hover:bg-teal-200 transition-colors"
-                onClick={fetchInstallers}
-              >
-                Refresh
-              </button>
-            </div>
+        )}
+        {!loading && error && (
+          <div className="py-8 px-6 bg-red-50 border border-red-200 rounded-xl text-center">
+            <p className="text-red-600 font-sfpro text-sm mb-4">{error}</p>
+            <button
+              className="px-4 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 font-sfpro transition-colors"
+              onClick={fetchInstallers}
+            >
+              Try Again
+            </button>
           </div>
-        ) : (
+        )}
+
+        {!loading && !error && installers.length === 0 && (
+          <div className="py-16 text-center border border-gray-200 rounded-xl">
+            <Users className="h-10 w-10 mx-auto mb-3 text-gray-300" />
+            <p className="text-sm text-gray-500 font-sfpro mb-4">No partner installers found.</p>
+            <button
+              className="px-4 py-2 border border-[#039994] text-[#039994] text-sm rounded-md hover:bg-[#039994] hover:text-white font-sfpro transition-colors"
+              onClick={fetchInstallers}
+            >
+              Refresh
+            </button>
+          </div>
+        )}
+
+        {!loading && !error && installers.length > 0 && (
           <>
             {/* Summary Card */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+            <div className="border border-gray-200 rounded-xl p-5 mb-6 bg-gradient-to-r from-[#069B960D] to-white">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Users className="h-6 w-6 text-teal-600" />
+                  <div className="w-10 h-10 rounded-full bg-[#039994] flex items-center justify-center">
+                    <Users className="h-5 w-5 text-white" />
+                  </div>
                   <div>
-                    <h2 className="text-lg font-semibold text-gray-900">
-                      Total Partner Installers
-                    </h2>
-                    <p className="text-sm text-gray-600">
+                    <h2 className="text-sm font-semibold text-[#1E1E1E] font-sfpro">Partner Installers</h2>
+                    <p className="text-xs text-gray-500 font-sfpro mt-0.5">
                       Showing {installers.length} of {metadata?.total || 0} installers
                     </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-2xl font-bold text-teal-600">
-                    {metadata?.total || 0}
-                  </div>
-                  <div className="text-sm text-gray-500">
-                    Total Installers
-                  </div>
+                  <div className="text-2xl font-bold text-[#039994] font-sfpro">{metadata?.total || 0}</div>
+                  <div className="text-xs text-gray-500 font-sfpro">Total</div>
                 </div>
               </div>
             </div>
@@ -199,9 +185,9 @@ export default function GetAllInstallers({ onBack }) {
               {installers.map((installer, index) => {
                 const userStatus = getUserStatus(installer);
                 return (
-                  <div 
-                    key={installer.id} 
-                    className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow duration-200 h-fit"
+                  <div
+                    key={installer.id}
+                    className="border border-gray-200 rounded-xl p-4 hover:bg-gray-50 transition-colors duration-100 h-fit"
                   >
                     {/* Header with S/N and Status */}
                     <div className="flex justify-between items-start mb-3">
@@ -215,7 +201,7 @@ export default function GetAllInstallers({ onBack }) {
 
                     {/* Name and Code */}
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="w-10 h-10 bg-teal-600 rounded-full flex items-center justify-center flex-shrink-0">
+                      <div className="w-10 h-10 bg-[#039994] rounded-full flex items-center justify-center flex-shrink-0">
                         <User className="h-5 w-5 text-white" />
                       </div>
                       <div className="min-w-0 flex-1">
@@ -252,7 +238,7 @@ export default function GetAllInstallers({ onBack }) {
 
                     {/* Partner Type and Date */}
                     <div className="flex justify-between items-center pt-3 border-t border-gray-100">
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-sfpro font-medium bg-[#03999415] text-[#039994]">
                         {formatPartnerType(installer.partnerType)}
                       </span>
                       <div className="flex items-center gap-1">
@@ -269,27 +255,26 @@ export default function GetAllInstallers({ onBack }) {
 
             {/* Pagination */}
             {metadata && metadata.totalPages > 1 && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 px-4 py-3">
+              <div className="border border-gray-200 rounded-xl px-5 py-3 mt-2">
                 <div className="flex items-center justify-between">
-                  <div className="text-sm text-gray-700">
-                    Showing {((currentPage - 1) * installersPerPage) + 1} to{' '}
-                    {Math.min(currentPage * installersPerPage, metadata.total)} of{' '}
-                    {metadata.total} results
+                  <div className="text-xs text-gray-500 font-sfpro">
+                    Showing {((currentPage - 1) * installersPerPage) + 1}–
+                    {Math.min(currentPage * installersPerPage, metadata.total)} of {metadata.total}
                   </div>
                   <div className="flex items-center gap-2">
                     <button
-                      className="flex items-center px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="flex items-center px-3 py-1 text-sm border border-[#039994] text-[#039994] rounded-md hover:bg-[#039994] hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-sfpro"
                       disabled={!metadata.hasPrevPage || loading}
                       onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                     >
                       <ChevronLeft className="h-4 w-4 mr-1" />
                       Previous
                     </button>
-                    <span className="text-sm text-gray-700 px-2">
-                      Page {currentPage} of {metadata.totalPages}
+                    <span className="text-sm text-gray-600 font-sfpro px-1">
+                      {currentPage} of {metadata.totalPages}
                     </span>
                     <button
-                      className="flex items-center px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="flex items-center px-3 py-1 text-sm border border-[#039994] text-[#039994] rounded-md hover:bg-[#039994] hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-sfpro"
                       disabled={!metadata.hasNextPage || loading}
                       onClick={() => setCurrentPage(prev => Math.min(prev + 1, metadata.totalPages))}
                     >

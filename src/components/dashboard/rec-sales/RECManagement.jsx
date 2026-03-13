@@ -10,7 +10,7 @@ import RecEntries from "./entries/RecEntries"
 
 export default function RECManagement() {
   return (
-    <div className="bg-gray-50 min-h-screen p-6">
+    <div className="min-h-screen w-full bg-white p-6">
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="mb-6 bg-transparent border-b w-full justify-start rounded-none h-auto p-0">
           <TabsTrigger

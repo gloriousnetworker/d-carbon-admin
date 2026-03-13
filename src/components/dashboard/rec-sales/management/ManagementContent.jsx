@@ -32,7 +32,7 @@ export default function ManagementContent() {
             <DropdownMenuTrigger asChild>
               <Button 
                 variant="ghost" 
-                className="text-xl font-medium text-[#039994] hover:bg-transparent hover:text-[#039994] px-0"
+                className="text-sm font-semibold text-[#039994] font-sfpro hover:bg-transparent hover:text-[#039994] px-0"
               >
                 {views.find(view => view.id === activeView)?.label}
                 <ChevronDown className="h-5 w-5 ml-2" />

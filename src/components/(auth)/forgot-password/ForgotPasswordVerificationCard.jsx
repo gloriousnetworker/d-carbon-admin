@@ -1,4 +1,5 @@
 'use client';
+import CONFIG from '@/lib/config';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -34,7 +35,7 @@ export default function ForgotPasswordCard() {
     setLoading(true);
     try {
       await axios.post(
-        'https://api.dev.dcarbon.solutions/api/auth/forgot-password',
+        `${CONFIG.API_BASE_URL}/api/auth/forgot-password`,
         { email },
         { headers: { 'Content-Type': 'application/json' } }
       );

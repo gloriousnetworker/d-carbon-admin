@@ -20,12 +20,13 @@ import UserSupport from '@/components/dashboard/user-support/UserSupport';
 import UserManagement from '@/components/dashboard/user-management/UserManagement';
 import Faq from '@/components/dashboard/faq/Faq';
 import FeedbackPage from '@/components/dashboard/FeedbackPage';
+import RegistrationPipeline from '@/components/dashboard/registration-pipeline/RegistrationPipeline';
 
 const VALID_SECTIONS = [
   'overview', 'userManagement', 'recSalesManagement', 'resiGroupManagement',
   'commissionStructure', 'payoutProcessing', 'reporting', 'myAccount',
   'agreementManagement', 'userSupport', 'notifications', 'helpCenter',
-  'contactSupport', 'faq', 'feedback',
+  'contactSupport', 'faq', 'feedback', 'registrationPipeline',
 ];
 
 const SECTION_COMPONENTS = {
@@ -44,6 +45,7 @@ const SECTION_COMPONENTS = {
   contactSupport: DashboardContactSupport,
   faq: Faq,
   feedback: FeedbackPage,
+  registrationPipeline: RegistrationPipeline,
 };
 
 const sectionDisplayMap = {
@@ -62,6 +64,7 @@ const sectionDisplayMap = {
   contactSupport: 'Contact Support',
   faq: 'FAQs',
   feedback: 'Feedback',
+  registrationPipeline: 'Registration Pipeline',
 };
 
 function DashboardContent() {
@@ -77,11 +80,27 @@ function DashboardContent() {
   useEffect(() => {
     const checkAuth = () => {
       const authToken = localStorage.getItem('authToken');
+      const userRole = localStorage.getItem('userRole');
+
       if (!authToken) {
         router.push('/login');
-      } else {
-        setIsLoading(false);
+        return;
       }
+
+      if (userRole && userRole !== 'ADMIN') {
+        // Token present but not an admin — clear session and redirect
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('userId');
+        localStorage.removeItem('userFirstName');
+        localStorage.removeItem('userLastName');
+        localStorage.removeItem('userEmail');
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('userProfilePicture');
+        router.push('/login');
+        return;
+      }
+
+      setIsLoading(false);
     };
 
     checkAuth();

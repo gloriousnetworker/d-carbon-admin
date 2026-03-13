@@ -16,7 +16,7 @@ export default function RegistrationSuccessfulModal({ closeModal }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       {/* Modal Content */}
       <div className="relative bg-white rounded-lg w-96 p-6 space-y-4 animate__animated animate__fadeIn">
 

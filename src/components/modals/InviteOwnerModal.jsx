@@ -1,3 +1,4 @@
+import CONFIG from '@/lib/config';
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toastr from 'toastr';
@@ -35,7 +36,7 @@ export default function EmailVerificationModal({ closeModal }) {
 
     try {
       const response = await fetch(
-        `https://api.dev.dcarbon.solutions/api/user/invite-user/${userId}`,
+        `${CONFIG.API_BASE_URL}/api/user/invite-user/${userId}`,
         {
           method: 'POST',
           headers: {
@@ -67,7 +68,7 @@ export default function EmailVerificationModal({ closeModal }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-lg w-full max-w-4xl sm:w-96 md:w-1/2 lg:w-1/3 xl:w-1/4 p-6 space-y-6">
         <h2 className="text-xl font-semibold text-center text-[#039994]">Invite Owner</h2>
         

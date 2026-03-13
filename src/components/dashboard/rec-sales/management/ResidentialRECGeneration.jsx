@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ChevronDown, ChevronLeft, ChevronRight, Filter, Calendar, Search } from "lucide-react"
+import { ChevronDown, ChevronLeft, ChevronRight, Filter, Calendar, Search, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -10,6 +10,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar"
 import { format } from "date-fns"
 import { toast } from "@/components/ui/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import CONFIG from "@/lib/config"
 
 export default function ResidentialMeterRecords() {
   // State for pagination
@@ -24,6 +25,7 @@ export default function ResidentialMeterRecords() {
   const [facilityId, setFacilityId] = useState("")
   const [utilityProvider, setUtilityProvider] = useState("")
   const [isFilterOpen, setIsFilterOpen] = useState(false)
+  const [exporting, setExporting] = useState(false)
   
   // Format date for API
   const formatDateForApi = (date) => {
@@ -59,7 +61,7 @@ export default function ResidentialMeterRecords() {
       
       // Make the API call
       const response = await fetch(
-        `https://api.dev.dcarbon.solutions/api/admin/meter-records/residential?${params.toString()}`,
+        `${CONFIG.API_BASE_URL}/api/admin/meter-records/residential?${params.toString()}`,
         {
           headers: {
             Authorization: `Bearer ${authToken}`,
@@ -132,6 +134,70 @@ export default function ResidentialMeterRecords() {
     fetchData()
   }
   
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      const authToken = localStorage.getItem("authToken")
+      let allRecords = []
+      let page = 1
+      let hasMore = true
+      while (hasMore) {
+        const params = new URLSearchParams({ page, limit: 100 })
+        if (startDate) params.append("startDate", format(startDate, "yyyy-MM-dd"))
+        if (endDate) params.append("endDate", format(endDate, "yyyy-MM-dd"))
+        if (facilityId) params.append("facilityId", facilityId)
+        if (utilityProvider) params.append("utilityProvider", utilityProvider)
+        const res = await fetch(
+          `${CONFIG.API_BASE_URL}/api/admin/meter-records/residential?${params.toString()}`,
+          { headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" } }
+        )
+        if (!res.ok) break
+        const data = await res.json()
+        if (data.status === "success") {
+          allRecords = [...allRecords, ...data.data.records]
+          hasMore = data.data.metadata.hasNextPage || page < data.data.metadata.totalPages
+          page++
+        } else {
+          hasMore = false
+        }
+      }
+      const rows = allRecords.map(r => ({
+        ID: r.id,
+        "Meter UID": r.meterUid,
+        Utility: r.utility || "",
+        Address: r.residentialFacility?.address || r.utilityServiceAddress || "",
+        User: r.residentialFacility?.user
+          ? `${r.residentialFacility.user.firstName} ${r.residentialFacility.user.lastName}`
+          : "",
+        "Start Date": r.intervalStart ? format(new Date(r.intervalStart), "dd-MM-yyyy") : "",
+        "End Date": r.intervalEnd ? format(new Date(r.intervalEnd), "dd-MM-yyyy") : "",
+        "Interval kWh": r.intervalKWh != null ? Number(r.intervalKWh).toFixed(2) : "",
+        Points: r.points != null ? Number(r.points).toFixed(2) : "",
+        RECs: r.recs != null ? Number(r.recs).toFixed(8) : "",
+        "Points Value": r.points != null ? `$${(r.points * 0.1).toFixed(2)}` : "",
+      }))
+      const headers = Object.keys(rows[0] || {})
+      const csv = [
+        headers.join(","),
+        ...rows.map(row => headers.map(h => `"${(row[h] ?? "").toString().replace(/"/g, '""')}"`).join(","))
+      ].join("\n")
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `residential_rec_generation_${new Date().toISOString().slice(0, 10)}.csv`
+      link.style.visibility = "hidden"
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error("Export error:", err)
+    } finally {
+      setExporting(false)
+    }
+  }
+
   // Reset filters
   const resetFilters = () => {
     setStartDate(null)
@@ -150,6 +216,11 @@ export default function ResidentialMeterRecords() {
             <ChevronDown className="h-5 w-5 ml-2 text-[#039994]" />
           </h2>
           
+          <div className="flex gap-2">
+          <Button variant="outline" className="gap-2" onClick={handleExport} disabled={exporting || isLoading}>
+            <span>{exporting ? "Exporting..." : "Export CSV"}</span>
+            <Download className="h-4 w-4" />
+          </Button>
           <Popover open={isFilterOpen} onOpenChange={setIsFilterOpen}>
             <PopoverTrigger asChild>
               <Button variant="outline" className="gap-2">
@@ -242,6 +313,7 @@ export default function ResidentialMeterRecords() {
               </div>
             </PopoverContent>
           </Popover>
+          </div>
         </div>
 
         {/* Table */}

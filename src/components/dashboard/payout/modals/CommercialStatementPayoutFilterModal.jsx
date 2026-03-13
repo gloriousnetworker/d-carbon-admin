@@ -40,8 +40,8 @@ export default function CommercialStatementPayoutFilterModal({ onClose, onApplyF
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
         <div className="p-4 border-b flex items-center justify-between">
           <h3 className="font-medium text-lg text-teal-500">Filter Commercial Payouts</h3>
           <button 
@@ -144,7 +144,7 @@ export default function CommercialStatementPayoutFilterModal({ onClose, onApplyF
             </Button>
             <Button 
               type="submit" 
-              className="flex-1 bg-teal-500 hover:bg-teal-600 text-white"
+              className="flex-1 bg-[#039994] hover:bg-[#02857f] text-white"
             >
               Apply Filters
             </Button>

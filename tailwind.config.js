@@ -16,7 +16,8 @@ module.exports = {
         foreground: '#111827',
       },
       fontFamily: {
-        'sf-pro-text': ['SF Pro Text', 'sans-serif'],
+        'sf-pro-text': ['SF Pro Text', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        'sfpro': ['SF Pro Text', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
       },
       keyframes: {
         rotate: {

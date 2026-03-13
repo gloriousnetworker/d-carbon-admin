@@ -22,7 +22,7 @@ const Logout = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={handleCancel}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={handleCancel}>
       <div
         className="bg-white rounded-xl shadow-lg p-8 flex flex-col items-center max-w-sm w-full mx-4"
         onClick={(e) => e.stopPropagation()}

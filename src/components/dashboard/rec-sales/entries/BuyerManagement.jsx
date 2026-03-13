@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
-import { Filter, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react"
+import { Filter, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -232,8 +232,9 @@ export default function BuyerManagement({ onBack }) {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#039994]"></div>
+      <div className="flex flex-col items-center justify-center py-16 border border-gray-200 rounded-xl">
+        <Loader2 className="h-8 w-8 animate-spin text-[#039994]" />
+        <span className="text-sm text-gray-500 font-sfpro mt-3">Loading buyers...</span>
       </div>
     )
   }
@@ -241,18 +242,18 @@ export default function BuyerManagement({ onBack }) {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-medium text-[#039994] flex items-center">
-          <button onClick={onBack} className="mr-2">
-            <ChevronDown className="h-5 w-5 transform rotate-90" />
+        <h2 className="text-sm font-semibold text-[#039994] font-sfpro flex items-center">
+          <button onClick={onBack} className="mr-2 text-[#039994] hover:text-[#02857f]">
+            <ChevronLeft className="h-4 w-4" />
           </button>
           Buyer Management
         </h2>
         <div className="flex space-x-2">
-          <Button variant="outline" className="flex items-center bg-white">
-            <Filter className="h-4 w-4 mr-2" /> Filter by
-          </Button>
-          <Button 
-            className="bg-[#039994] hover:bg-[#028a85] text-white"
+          <button className="flex items-center gap-2 px-3 py-2 text-sm border border-[#039994] text-[#039994] rounded-md hover:bg-[#039994] hover:text-white font-sfpro transition-colors">
+            <Filter className="h-4 w-4" /> Filter by
+          </button>
+          <button
+            className="px-4 py-2 bg-[#039994] hover:bg-[#02857f] text-white text-sm rounded-md font-sfpro transition-colors"
             onClick={() => {
               setNewBuyerData({
                 companyName: '',
@@ -265,11 +266,11 @@ export default function BuyerManagement({ onBack }) {
             }}
           >
             New Buyer
-          </Button>
+          </button>
         </div>
       </div>
       
-      <div className="bg-white rounded-md shadow">
+      <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
         <div className="p-4 border-b">
           <div className="grid grid-cols-3 gap-4">
             <div>
@@ -302,32 +303,31 @@ export default function BuyerManagement({ onBack }) {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b">
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">S/N</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Company Name</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Address</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Contact Name</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Contact Email</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Actions</th>
+              <tr className="border-y bg-gray-50/60">
+                <th className="px-4 py-3 text-left text-xs font-medium font-sfpro text-[#1E1E1E]">S/N</th>
+                <th className="px-4 py-3 text-left text-xs font-medium font-sfpro text-[#1E1E1E]">Company Name</th>
+                <th className="px-4 py-3 text-left text-xs font-medium font-sfpro text-[#1E1E1E]">Address</th>
+                <th className="px-4 py-3 text-left text-xs font-medium font-sfpro text-[#1E1E1E]">Contact Name</th>
+                <th className="px-4 py-3 text-left text-xs font-medium font-sfpro text-[#1E1E1E]">Contact Email</th>
+                <th className="px-4 py-3 text-left text-xs font-medium font-sfpro text-[#1E1E1E]">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredBuyers.length > 0 ? (
                 filteredBuyers.map((buyer, index) => (
-                  <tr key={buyer.id} className="border-b hover:bg-gray-50">
+                  <tr key={buyer.id} className="border-t border-gray-100 hover:bg-gray-50 transition-colors duration-100">
                     <td className="px-4 py-3 text-sm">{index + 1}</td>
                     <td className="px-4 py-3 text-sm">{buyer.companyName}</td>
                     <td className="px-4 py-3 text-sm">{buyer.address}</td>
                     <td className="px-4 py-3 text-sm">{buyer.contactName}</td>
                     <td className="px-4 py-3 text-sm">{buyer.email}</td>
                     <td className="px-4 py-3 text-sm">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
+                      <button
+                        className="px-3 py-1 text-xs border border-[#039994] text-[#039994] rounded-md hover:bg-[#039994] hover:text-white font-sfpro transition-colors"
                         onClick={() => handleEditBuyer(buyer)}
                       >
                         Edit
-                      </Button>
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -345,26 +345,24 @@ export default function BuyerManagement({ onBack }) {
         {filteredBuyers.length > 0 && (
           <div className="flex items-center justify-center p-4">
             <div className="flex items-center space-x-2">
-              <button 
-                className="p-2 rounded-md hover:bg-gray-100 text-gray-500 flex items-center"
+              <button
+                className="flex items-center px-3 py-1 text-sm border border-[#039994] text-[#039994] rounded-md hover:bg-[#039994] hover:text-white font-sfpro disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
               >
-                <ChevronLeft className="h-4 w-4" />
-                <span className="ml-1">Previous</span>
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Previous
               </button>
-              <div className="flex items-center">
-                <span className="px-3 py-1">{currentPage}</span>
-                <span className="text-gray-500">of</span>
-                <span className="px-3 py-1">{totalPages}</span>
-              </div>
-              <button 
-                className="p-2 rounded-md hover:bg-gray-100 text-gray-500 flex items-center"
+              <span className="text-sm text-gray-600 font-sfpro px-1">
+                {currentPage} of {totalPages}
+              </span>
+              <button
+                className="flex items-center px-3 py-1 text-sm border border-[#039994] text-[#039994] rounded-md hover:bg-[#039994] hover:text-white font-sfpro disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                 disabled={currentPage === totalPages}
               >
-                <span className="mr-1">Next</span>
-                <ChevronRight className="h-4 w-4" />
+                Next
+                <ChevronRight className="h-4 w-4 ml-1" />
               </button>
             </div>
           </div>

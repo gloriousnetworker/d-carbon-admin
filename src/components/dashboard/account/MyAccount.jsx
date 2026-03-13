@@ -5,7 +5,6 @@ import TwoFactorAuth from "./TwoFactorAuth";
 import ChangePasswordModal from "./ChangePasswordModal";
 import ProfileImage from "./ProfileImage";
 import ContactInformation from "./ContactInformation";
-import { toast } from "react-hot-toast";
 import Loader from "@/components/loader/Loader";
 
 const MyAccount = () => {
@@ -18,18 +17,16 @@ const MyAccount = () => {
   useEffect(() => {
     const getAdminData = () => {
       if (typeof window !== "undefined") {
-        const loginResponse = localStorage.getItem("loginResponse");
-        
-        if (loginResponse) {
-          try {
-            const parsedResponse = JSON.parse(loginResponse);
-            if (parsedResponse.data && parsedResponse.data.admin) {
-              setAdminData(parsedResponse.data.admin);
-            }
-          } catch (error) {
-            console.error("Error parsing login response:", error);
-            toast.error("Failed to load user data");
-          }
+        const userId = localStorage.getItem("userId");
+        if (userId) {
+          setAdminData({
+            id: userId,
+            firstName: localStorage.getItem("userFirstName") || "",
+            lastName: localStorage.getItem("userLastName") || "",
+            email: localStorage.getItem("userEmail") || "",
+            role: localStorage.getItem("userRole") || "",
+            profilePicture: localStorage.getItem("userProfilePicture") || "",
+          });
         }
         setLoading(false);
       }

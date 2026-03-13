@@ -37,7 +37,7 @@ export default function AdminLoginCard() {
     setError('');
     
     try {
-      // REPLACED: const baseUrl = 'https://api.dev.dcarbon.solutions';
+      // REPLACED: const baseUrl = `${CONFIG.API_BASE_URL}`;
       // REPLACED: const url = `${baseUrl}/api/auth/admin/login`;
       // NEW - Using config
       const url = `${CONFIG.API_BASE_URL}/api/auth/admin/login`;
@@ -62,8 +62,6 @@ export default function AdminLoginCard() {
         }
       );
 
-      localStorage.setItem('loginResponse', JSON.stringify(response.data));
-
       const { status, message, data } = response.data;
       
       if (status !== 'success') {
@@ -79,6 +77,9 @@ export default function AdminLoginCard() {
       localStorage.setItem('authToken', token);
       localStorage.setItem('userId', admin.id);
       localStorage.setItem('userFirstName', admin.firstName);
+      localStorage.setItem('userLastName', admin.lastName || '');
+      localStorage.setItem('userEmail', admin.email || '');
+      localStorage.setItem('userRole', admin.role || '');
       if (admin.profilePicture) {
         localStorage.setItem('userProfilePicture', admin.profilePicture);
       }

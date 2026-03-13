@@ -1,4 +1,5 @@
 'use client';
+import CONFIG from '@/lib/config';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -16,13 +17,10 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess, redirectPa
     setLoading(true);
     try {
       const response = await axios.post(
-        'https://api.dev.dcarbon.solutions/api/auth/login',
+        `${CONFIG.API_BASE_URL}/api/auth/login`,
         { email, password },
         { headers: { 'Content-Type': 'application/json' } }
       );
-
-      // Store the full response for debugging
-      localStorage.setItem('loginResponse', JSON.stringify(response.data));
 
       const { user, token, requiresTwoFactor, tempToken } = response.data.data;
 

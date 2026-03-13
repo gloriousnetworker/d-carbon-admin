@@ -12,7 +12,8 @@ import {
   FiHeadphones,
   FiUser,
   FiLogOut,
-  FiMessageSquare
+  FiMessageSquare,
+  FiGitBranch,
 } from 'react-icons/fi';
 import Image from 'next/image';
 import { useProfile } from '@/components/contexts/ProfileContext';
@@ -119,6 +120,13 @@ const DashboardSidebar = ({
         >
           <FiUsers className={iconBase} color={isActive('userManagement') ? '#FFFFFF' : '#039994'} />
           <span>User Management</span>
+        </button>
+        <button
+          onClick={() => onSectionChange('registrationPipeline')}
+          className={`${menuItemBase} ${isActive('registrationPipeline') ? menuItemActive : menuItemInactive}`}
+        >
+          <FiGitBranch className={iconBase} color={isActive('registrationPipeline') ? '#FFFFFF' : '#039994'} />
+          <span>Registration Pipeline</span>
         </button>
         <button
           onClick={() => onSectionChange('recSalesManagement')}

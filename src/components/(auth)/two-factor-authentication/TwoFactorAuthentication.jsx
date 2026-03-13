@@ -1,4 +1,5 @@
 "use client";
+import CONFIG from '@/lib/config';
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
@@ -56,39 +57,18 @@ export default function TwoFactorAuthentication() {
     }
   };
 
-  // Common routing function (similar logic as your login card)
-  const routeUser = (user, token) => {
+  // Route admin user after successful 2FA verification
+  const routeUser = (admin, token) => {
     if (token) {
       localStorage.setItem("authToken", token);
     }
-    localStorage.setItem("userFirstName", user.firstName);
-    localStorage.setItem("userProfilePicture", user.profilePicture || "");
-    localStorage.setItem("userId", user.id);
-
-    const financeDetailsIncomplete =
-      user.financialInfo === null || user.agreements === null;
-
-    if (user.userType === "COMMERCIAL") {
-      if (financeDetailsIncomplete) {
-        router.push("/register/commercial-user-registration");
-      } else {
-        router.push("/commercial-dashboard");
-      }
-    } else if (user.userType === "RESIDENTIAL") {
-      if (financeDetailsIncomplete) {
-        router.push("/register/residence-user-registration/step-one");
-      } else {
-        router.push("/residence-dashboard");
-      }
-    } else if (user.userType === "PARTNER") {
-      if (financeDetailsIncomplete) {
-        router.push("/register/partner-user-registration/step-one");
-      } else {
-        router.push("/partner-dashboard");
-      }
-    } else {
-      router.push("/dashboard");
-    }
+    localStorage.setItem("userFirstName", admin.firstName || "");
+    localStorage.setItem("userLastName", admin.lastName || "");
+    localStorage.setItem("userEmail", admin.email || "");
+    localStorage.setItem("userRole", admin.role || "");
+    localStorage.setItem("userProfilePicture", admin.profilePicture || "");
+    localStorage.setItem("userId", admin.id);
+    router.push("/admin-dashboard");
   };
 
   // Send the OTP verification request to your backend.
@@ -111,7 +91,7 @@ export default function TwoFactorAuthentication() {
 
     try {
       const response = await axios.post(
-        "https://api.dev.dcarbon.solutions/api/auth/verify-2fa-login",
+        `${CONFIG.API_BASE_URL}/api/auth/verify-2fa-login`,
         {
           userId,
           token: enteredOtp,
@@ -151,7 +131,7 @@ export default function TwoFactorAuthentication() {
 
       {/* Header with Back Arrow and Title */}
       <div className={headingContainer}>
-        <button onClick={() => window.history.back()} className={backArrow}>
+        <button onClick={() => router.back()} className={backArrow}>
           &#8592;
         </button>
         <h2 className={pageTitle}>Two Factor Authentication</h2>

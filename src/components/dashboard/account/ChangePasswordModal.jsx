@@ -1,4 +1,5 @@
 "use client";
+import CONFIG from '@/lib/config';
 import React, { useState } from "react";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
@@ -13,27 +14,11 @@ const ChangePasswordCard = ({ onClose }) => {
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
 
-    const loginResponse = localStorage.getItem("loginResponse");
+    const userId = localStorage.getItem("userId");
     const authToken = localStorage.getItem("authToken");
 
-    if (!loginResponse || !authToken) {
+    if (!userId || !authToken) {
       toast.error("User not authenticated");
-      return;
-    }
-
-    let userId = null;
-    try {
-      const parsedResponse = JSON.parse(loginResponse);
-      if (parsedResponse.data && parsedResponse.data.admin) {
-        userId = parsedResponse.data.admin.id;
-      }
-    } catch (error) {
-      toast.error("Failed to parse user data");
-      return;
-    }
-
-    if (!userId) {
-      toast.error("User ID not found");
       return;
     }
 
@@ -44,7 +29,7 @@ const ChangePasswordCard = ({ onClose }) => {
 
     try {
       const response = await axios.post(
-        `https://api.dev.dcarbon.solutions/api/auth/change-password/${userId}`,
+        `${CONFIG.API_BASE_URL}/api/auth/change-password/${userId}`,
         payload,
         {
           headers: {
@@ -66,8 +51,8 @@ const ChangePasswordCard = ({ onClose }) => {
 
   const styles = {
     mainContainer: "min-h-screen w-full flex flex-col items-center justify-center py-8 px-4 bg-white",
-    modalOverlay: "fixed inset-0 z-50 bg-black bg-opacity-40 flex justify-center items-center",
-    modalContent: "relative bg-white rounded-md shadow-md w-full max-w-md p-6",
+    modalOverlay: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4",
+    modalContent: "relative bg-white rounded-xl shadow-xl w-full max-w-md p-6",
     pageTitle: "mb-4 font-[600] text-[24px] leading-normal tracking-[-0.05em] text-[#039994] font-sfpro text-center",
     formWrapper: "w-full max-w-md space-y-6",
     labelClass: "block mb-2 font-sfpro text-[14px] leading-[100%] tracking-[-0.05em] font-[400] text-[#1E1E1E]",

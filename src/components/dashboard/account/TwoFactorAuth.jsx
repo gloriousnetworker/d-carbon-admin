@@ -1,4 +1,5 @@
 "use client";
+import CONFIG from '@/lib/config';
 import React, { useState, useRef, useEffect } from "react";
 import { FaArrowLeft } from "react-icons/fa";
 import { toast } from "react-hot-toast";
@@ -15,19 +16,11 @@ const TwoFactorAuth = ({ onBack }) => {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const loginResponse = localStorage.getItem("loginResponse");
+      const id = localStorage.getItem("userId");
       const token = localStorage.getItem("authToken");
-      
-      if (loginResponse && token) {
-        try {
-          const parsedResponse = JSON.parse(loginResponse);
-          if (parsedResponse.data && parsedResponse.data.admin) {
-            setUserId(parsedResponse.data.admin.id);
-            setAuthToken(token);
-          }
-        } catch (error) {
-          console.error("Error parsing login response:", error);
-        }
+      if (id && token) {
+        setUserId(id);
+        setAuthToken(token);
       }
     }
   }, []);
@@ -38,7 +31,7 @@ const TwoFactorAuth = ({ onBack }) => {
     const getQRCode = async () => {
       try {
         const response = await fetch(
-          `https://api.dev.dcarbon.solutions/api/auth/2fa/generate/${userId}`,
+          `${CONFIG.API_BASE_URL}/api/auth/2fa/generate/${userId}`,
           {
             method: "GET",
             headers: {
@@ -103,7 +96,7 @@ const TwoFactorAuth = ({ onBack }) => {
 
     try {
       const response = await fetch(
-        `https://api.dev.dcarbon.solutions/api/auth/2fa/verify/${userId}`,
+        `${CONFIG.API_BASE_URL}/api/auth/2fa/verify/${userId}`,
         {
           method: "POST",
           headers: {

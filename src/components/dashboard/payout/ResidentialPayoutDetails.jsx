@@ -1,4 +1,5 @@
 "use client"
+import CONFIG from '@/lib/config'
 
 import { useState, useEffect } from 'react'
 import { ChevronLeft } from 'lucide-react'
@@ -21,7 +22,7 @@ export default function ResidentialPayoutDetails({ payoutDetails, onBack, onPayo
   const fetchUserPayouts = async () => {
     setLoading(true)
     try {
-      const response = await fetch(`https://api.dev.dcarbon.solutions/api/payout-request?userId=${payoutDetails.id}&userType=RESIDENTIAL`, {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/payout-request?userId=${payoutDetails.id}&userType=RESIDENTIAL`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${getAuthToken()}`
@@ -45,7 +46,7 @@ export default function ResidentialPayoutDetails({ payoutDetails, onBack, onPayo
   const approvePayout = async (payoutId) => {
     setProcessingAction(payoutId)
     try {
-      const response = await fetch(`https://api.dev.dcarbon.solutions/api/payout-request/approve`, {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/payout-request/approve`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -77,7 +78,7 @@ export default function ResidentialPayoutDetails({ payoutDetails, onBack, onPayo
   const rejectPayout = async (payoutId) => {
     setProcessingAction(payoutId)
     try {
-      const response = await fetch(`https://api.dev.dcarbon.solutions/api/payout-request/reject`, {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/payout-request/reject`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

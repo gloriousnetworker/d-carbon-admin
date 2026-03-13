@@ -1,4 +1,5 @@
 'use client';
+import CONFIG from '@/lib/config';
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -57,7 +58,7 @@ export default function ResetPasswordCard() {
     setLoading(true);
     try {
       await axios.post(
-        'https://api.dev.dcarbon.solutions/api/auth/reset-password',
+        `${CONFIG.API_BASE_URL}/api/auth/reset-password`,
         { email, otp: Number(enteredOtp), password: newPassword },
         { headers: { 'Content-Type': 'application/json' } }
       );

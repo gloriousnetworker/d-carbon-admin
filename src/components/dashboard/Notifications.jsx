@@ -1,4 +1,5 @@
 "use client";
+import CONFIG from '@/lib/config';
 
 import React, { useState, useEffect } from 'react';
 import { mainContainer, labelClass, buttonPrimary } from './styles';
@@ -35,7 +36,7 @@ const DashboardNotifications = () => {
         }
 
         const response = await fetch(
-          `https://api.dev.dcarbon.solutions/api/user/notifications/${userId}`,
+          `${CONFIG.API_BASE_URL}/api/user/notifications/${userId}`,
           {
             headers: {
               'Authorization': `Bearer ${authToken}`
@@ -66,7 +67,7 @@ const DashboardNotifications = () => {
       const authToken = localStorage.getItem('authToken');
       
       const response = await fetch(
-        `https://api.dev.dcarbon.solutions/api/user/notifications/${notificationId}/mark-read`,
+        `${CONFIG.API_BASE_URL}/api/user/notifications/${notificationId}/mark-read`,
         {
           method: 'PUT',
           headers: {

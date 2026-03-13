@@ -1,4 +1,5 @@
 "use client";
+import CONFIG from '@/lib/config';
 import React, { useEffect, useState } from "react";
 import { FaChevronDown, FaChevronUp } from "react-icons/fa";
 import axios from "axios";
@@ -20,42 +21,23 @@ const ContactInformation = () => {
   const [userId, setUserId] = useState("");
   const [loading, setLoading] = useState(true);
 
-  const baseUrl = "https://api.dev.dcarbon.solutions";
+  const baseUrl = `${CONFIG.API_BASE_URL}`;
 
   useEffect(() => {
-    const getUserFromStorage = () => {
-      if (typeof window !== "undefined") {
-        const loginResponse = localStorage.getItem("loginResponse");
-        const authToken = localStorage.getItem("authToken");
-
-        if (!loginResponse || !authToken) {
-          toast.error("Authentication required");
-          setLoading(false);
-          return;
-        }
-
-        try {
-          const parsedResponse = JSON.parse(loginResponse);
-          
-          if (parsedResponse.data && parsedResponse.data.admin) {
-            const adminData = parsedResponse.data.admin;
-            
-            setUserId(adminData.id || "");
-            setFirstName(adminData.firstName || "");
-            setLastName(adminData.lastName || "");
-            setEmail(adminData.email || "");
-            setRole(adminData.role || "");
-          }
-        } catch (error) {
-          toast.error("Failed to parse user data");
-          console.error("Error parsing user data:", error);
-        } finally {
-          setLoading(false);
-        }
+    if (typeof window !== "undefined") {
+      const authToken = localStorage.getItem("authToken");
+      if (!authToken) {
+        toast.error("Authentication required");
+        setLoading(false);
+        return;
       }
-    };
-
-    getUserFromStorage();
+      setUserId(localStorage.getItem("userId") || "");
+      setFirstName(localStorage.getItem("userFirstName") || "");
+      setLastName(localStorage.getItem("userLastName") || "");
+      setEmail(localStorage.getItem("userEmail") || "");
+      setRole(localStorage.getItem("userRole") || "");
+      setLoading(false);
+    }
   }, []);
 
   const handleUpdate = async () => {

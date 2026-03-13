@@ -1,4 +1,5 @@
 'use client';
+import CONFIG from '@/lib/config';
 
 import React, { useRef, useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
@@ -14,19 +15,11 @@ const ProfileImage = () => {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const loginResponse = localStorage.getItem("loginResponse");
+      const id = localStorage.getItem("userId");
       const token = localStorage.getItem("authToken");
-      
-      if (loginResponse && token) {
-        try {
-          const parsedResponse = JSON.parse(loginResponse);
-          if (parsedResponse.data && parsedResponse.data.admin) {
-            setUserId(parsedResponse.data.admin.id);
-            setAuthToken(token);
-          }
-        } catch (error) {
-          console.error("Error parsing login response:", error);
-        }
+      if (id && token) {
+        setUserId(id);
+        setAuthToken(token);
       }
     }
   }, []);
@@ -60,7 +53,7 @@ const ProfileImage = () => {
     try {
       setIsLoading(true);
       const response = await fetch(
-        `https://api.dev.dcarbon.solutions/api/admin/upload-profile-picture/${userId}`,
+        `${CONFIG.API_BASE_URL}/api/admin/upload-profile-picture/${userId}`,
         {
           method: "POST",
           headers: {

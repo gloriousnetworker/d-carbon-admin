@@ -1,4 +1,5 @@
 "use client"
+import CONFIG from '@/lib/config'
 
 import { useState, useEffect } from "react"
 import { ChevronLeft, ChevronRight, Filter } from 'lucide-react'
@@ -25,7 +26,7 @@ export default function PartnerCommissionPayout() {
     try {
       const authToken = localStorage.getItem('authToken')
       const userResponse = await fetch(
-        `https://api.dev.dcarbon.solutions/api/user/${email}`,
+        `${CONFIG.API_BASE_URL}/api/user/${email}`,
         {
           method: 'GET',
           headers: {
@@ -43,7 +44,7 @@ export default function PartnerCommissionPayout() {
       const userId = userResult.data.id
       
       const payoutResponse = await fetch(
-        `https://api.dev.dcarbon.solutions/api/payout-request?userId=${userId}&userType=PARTNER`,
+        `${CONFIG.API_BASE_URL}/api/payout-request?userId=${userId}&userType=PARTNER`,
         {
           method: 'GET',
           headers: {
@@ -90,7 +91,7 @@ export default function PartnerCommissionPayout() {
 
       while (hasMore) {
         const response = await fetch(
-          `https://api.dev.dcarbon.solutions/api/user/get-all-users?page=${currentPage}&limit=50`,
+          `${CONFIG.API_BASE_URL}/api/user/get-all-users?page=${currentPage}&limit=50`,
           {
             method: 'GET',
             headers: {
@@ -251,7 +252,7 @@ export default function PartnerCommissionPayout() {
     try {
       const authToken = localStorage.getItem('authToken')
       const response = await fetch(
-        `https://api.dev.dcarbon.solutions/api/user/${item.email}`,
+        `${CONFIG.API_BASE_URL}/api/user/${item.email}`,
         {
           method: 'GET',
           headers: {

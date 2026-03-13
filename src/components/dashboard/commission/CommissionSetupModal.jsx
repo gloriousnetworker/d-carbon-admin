@@ -1,4 +1,5 @@
 "use client";
+import CONFIG from '@/lib/config';
 import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 
@@ -75,7 +76,7 @@ const CommissionSetupModal = ({
     try {
       const authToken = localStorage.getItem("authToken");
       const response = await fetch(
-        `https://api.dev.dcarbon.solutions/api/commission-structure`,
+        `${CONFIG.API_BASE_URL}/api/commission-structure`,
         {
           headers: { Authorization: `Bearer ${authToken}` },
         }
@@ -225,7 +226,7 @@ const CommissionSetupModal = ({
   const createCommissionStructure = async (payload) => {
     const authToken = localStorage.getItem("authToken");
     
-    const response = await fetch("https://api.dev.dcarbon.solutions/api/commission-structure", {
+    const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-structure`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -240,7 +241,7 @@ const CommissionSetupModal = ({
   const updateCommissionStructure = async (id, payload) => {
     const authToken = localStorage.getItem("authToken");
     
-    const response = await fetch(`https://api.dev.dcarbon.solutions/api/commission-structure/${id}`, {
+    const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-structure/${id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -476,7 +477,7 @@ const CommissionSetupModal = ({
 
   const deleteCommissionStructure = async (id) => {
     const authToken = localStorage.getItem("authToken");
-    const response = await fetch(`https://api.dev.dcarbon.solutions/api/commission-structure/${id}`, {
+    const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-structure/${id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${authToken}` },
     });
@@ -857,7 +858,7 @@ const CommissionSetupModal = ({
   );
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">

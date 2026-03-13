@@ -2,6 +2,8 @@
 
 import { useState } from "react"
 import { X } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import * as styles from "./styles"
 
 export default function ResidentGroupDetailsFilterByModal({ onClose, onApplyFilter }) {
   const [filters, setFilters] = useState({
@@ -34,73 +36,73 @@ export default function ResidentGroupDetailsFilterByModal({ onClose, onApplyFilt
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-2xl">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold">Filter Facilities</h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+          <h3 className={styles.modalTitle}>Filter Facilities</h3>
+          <button onClick={onClose} className={styles.modalCloseBtn}>
             <X className="h-5 w-5" />
           </button>
         </div>
-        
+
         <div className="grid grid-cols-2 gap-4 py-4">
-          <div className="space-y-2">
-            <label className="block text-sm font-medium">Facility Name</label>
-            <input 
+          <div>
+            <label className={styles.labelClass}>Facility Name</label>
+            <input
               type="text"
-              name="facilityName" 
-              value={filters.facilityName} 
+              name="facilityName"
+              value={filters.facilityName}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+              className={styles.inputClass}
             />
           </div>
-          <div className="space-y-2">
-            <label className="block text-sm font-medium">Installer</label>
-            <input 
+          <div>
+            <label className={styles.labelClass}>Installer</label>
+            <input
               type="text"
-              name="installer" 
-              value={filters.installer} 
+              name="installer"
+              value={filters.installer}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+              className={styles.inputClass}
             />
           </div>
-          <div className="space-y-2">
-            <label className="block text-sm font-medium">Utility Provider</label>
-            <input 
+          <div>
+            <label className={styles.labelClass}>Utility Provider</label>
+            <input
               type="text"
-              name="utilityProvider" 
-              value={filters.utilityProvider} 
+              name="utilityProvider"
+              value={filters.utilityProvider}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+              className={styles.inputClass}
             />
           </div>
-          <div className="space-y-2">
-            <label className="block text-sm font-medium">Finance Company</label>
-            <input 
+          <div>
+            <label className={styles.labelClass}>Finance Company</label>
+            <input
               type="text"
-              name="financeCompany" 
-              value={filters.financeCompany} 
+              name="financeCompany"
+              value={filters.financeCompany}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+              className={styles.inputClass}
             />
           </div>
-          <div className="space-y-2">
-            <label className="block text-sm font-medium">Address</label>
-            <input 
+          <div>
+            <label className={styles.labelClass}>Address</label>
+            <input
               type="text"
-              name="address" 
-              value={filters.address} 
+              name="address"
+              value={filters.address}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+              className={styles.inputClass}
             />
           </div>
-          <div className="space-y-2">
-            <label className="block text-sm font-medium">Status</label>
-            <select 
-              name="status" 
-              value={filters.status} 
+          <div>
+            <label className={styles.labelClass}>Status</label>
+            <select
+              name="status"
+              value={filters.status}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+              className={styles.selectClass}
             >
               <option value="">All Status</option>
               <option value="VERIFIED">Verified</option>
@@ -108,28 +110,17 @@ export default function ResidentGroupDetailsFilterByModal({ onClose, onApplyFilt
             </select>
           </div>
         </div>
-        
-        <div className="flex justify-between mt-6">
-          <button 
-            onClick={handleReset}
-            className="px-4 py-2 text-gray-700 rounded hover:bg-gray-50"
-          >
+
+        <div className="flex justify-end gap-3 mt-6">
+          <Button variant="outline" onClick={handleReset} className="font-sfpro">
             Reset Filters
-          </button>
-          <div className="flex gap-3">
-            <button 
-              onClick={onClose}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-            <button 
-              onClick={handleApply}
-              className="px-4 py-2 bg-[#039994] text-white rounded hover:bg-[#028984]"
-            >
-              Apply Filters
-            </button>
-          </div>
+          </Button>
+          <Button variant="outline" onClick={onClose} className="font-sfpro">
+            Cancel
+          </Button>
+          <Button onClick={handleApply} className="bg-[#039994] hover:bg-[#02857f] text-white font-sfpro">
+            Apply Filters
+          </Button>
         </div>
       </div>
     </div>

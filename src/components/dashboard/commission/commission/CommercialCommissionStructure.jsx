@@ -12,7 +12,7 @@ const CommercialCommissionStructure = ({ onSetupStructure, refreshData }) => {
   const fetchTiers = async () => {
     try {
       const authToken = localStorage.getItem('authToken');
-      const response = await fetch('https://api.dev.dcarbon.solutions/api/commission-tier', {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-tier`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

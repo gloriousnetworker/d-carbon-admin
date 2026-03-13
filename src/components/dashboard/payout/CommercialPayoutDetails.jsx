@@ -1,4 +1,5 @@
 "use client"
+import CONFIG from '@/lib/config'
 
 import { useState, useEffect } from 'react'
 import { ChevronLeft, Eye, Download, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react'
@@ -25,7 +26,7 @@ export default function CommercialPayoutDetails({ payoutDetails, onBack, onPayou
   const fetchUserPayouts = async () => {
     setLoading(true)
     try {
-      const response = await fetch(`https://api.dev.dcarbon.solutions/api/payout-request?userId=${payoutDetails.id}&userType=COMMERCIAL`, {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/payout-request?userId=${payoutDetails.id}&userType=COMMERCIAL`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${getAuthToken()}`
@@ -49,7 +50,7 @@ export default function CommercialPayoutDetails({ payoutDetails, onBack, onPayou
   const approvePayout = async (payoutId) => {
     setProcessingAction(payoutId)
     try {
-      const response = await fetch(`https://api.dev.dcarbon.solutions/api/payout-request/approve`, {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/payout-request/approve`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -81,7 +82,7 @@ export default function CommercialPayoutDetails({ payoutDetails, onBack, onPayou
   const rejectPayout = async (payoutId) => {
     setProcessingAction(payoutId)
     try {
-      const response = await fetch(`https://api.dev.dcarbon.solutions/api/payout-request/reject`, {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/payout-request/reject`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -189,7 +190,7 @@ export default function CommercialPayoutDetails({ payoutDetails, onBack, onPayou
   return (
     <div className="p-4">
       {showModal && selectedInvoice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-lg w-11/12 h-5/6 max-w-6xl max-h-[90vh] flex flex-col">
             <div className="flex justify-between items-center p-4 border-b">
               <h3 className="font-sfpro text-[18px] font-[600]">Invoice Document</h3>
