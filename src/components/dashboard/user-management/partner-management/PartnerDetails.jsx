@@ -6,45 +6,21 @@ import { Button } from "@/components/ui/button";
 import {
   ChevronLeft, Pencil, Trash2, Eye, Loader2, Mail, Phone,
   MapPin, Calendar, User, Hash, Users, FileText, CheckCircle2,
-  XCircle, Clock, AlertCircle, ExternalLink, Copy, Check,
+  XCircle, Clock, ExternalLink, Copy, Check,
   Building2, ShieldCheck
 } from "lucide-react";
 import EditPartnerModal from "./partnerManagementModal/EditPartnerModal";
 import { useToast } from "@/components/ui/use-toast";
 import * as styles from "../styles";
 
-const DOC_TYPES = [
-  { key: "interconnectionAgreement", statusKey: "interconnectionStatus", label: "Interconnection Agreement" },
-  { key: "meterIdPhoto", statusKey: "meterIdStatus", label: "Meter ID Photo" },
-  { key: "installerAgreement", statusKey: "installerAgreementStatus", label: "Installer Agreement" },
-  { key: "singleLineDiagram", statusKey: "singleLineDiagramStatus", label: "Single-Line Diagram" },
-  { key: "utilityPTOLetter", statusKey: "utilityPTOLetterStatus", label: "Utility PTO Letter" },
+
+const PARTNER_PROGRESS = [
+  { key: "invited", label: "Invited" },
+  { key: "registered", label: "Registered" },
+  { key: "agreement", label: "Agreement Signed" },
+  { key: "customers", label: "Customers Referred" },
+  { key: "active", label: "Active" },
 ];
-
-const DOC_STATUS = {
-  REQUIRED: { label: "Required", icon: AlertCircle, bg: "bg-gray-100", text: "text-gray-500", iconColor: "text-gray-400" },
-  SUBMITTED: { label: "Submitted", icon: Clock, bg: "bg-amber-50", text: "text-amber-700", iconColor: "text-amber-500" },
-  APPROVED: { label: "Approved", icon: CheckCircle2, bg: "bg-green-100", text: "text-green-700", iconColor: "text-green-600" },
-  REJECTED: { label: "Rejected", icon: XCircle, bg: "bg-red-50", text: "text-red-600", iconColor: "text-red-500" },
-};
-
-const PROGRESS_STAGES = [
-  { key: "Invited", label: "Invited" },
-  { key: "Registered", label: "Registered" },
-  { key: "Active", label: "Active" },
-  { key: "Terminated", label: "Terminated" },
-];
-
-function StatusBadge({ status }) {
-  const cfg = DOC_STATUS[status] || DOC_STATUS.REQUIRED;
-  const Icon = cfg.icon;
-  return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-sfpro font-medium ${cfg.bg} ${cfg.text}`}>
-      <Icon className="h-3 w-3" />
-      {cfg.label}
-    </span>
-  );
-}
 
 function InfoField({ label, value, icon: Icon, fullWidth = false }) {
   return (
@@ -205,19 +181,11 @@ export default function PartnerDetails({ partner, onBack, onCustomerSelect }) {
   const partnerName = partnerDetails.name || `${partnerDetails.firstName || ""} ${partnerDetails.lastName || ""}`.trim() || "Partner";
   const partnerEmail = partnerDetails.email || partnerDetails.displayEmail || "";
 
-  const docApprovedCount = DOC_TYPES.filter(({ statusKey }) => {
-    const st = docs?.[statusKey];
-    return st === "APPROVED";
-  }).length;
-  const docSubmittedCount = DOC_TYPES.filter(({ statusKey }) => {
-    const st = docs?.[statusKey];
-    return st === "SUBMITTED" || st === "APPROVED";
-  }).length;
 
   const TABS = [
     { id: "profile", label: "Profile", icon: User },
     { id: "customers", label: "Customers", icon: Users },
-    { id: "documents", label: `Documents ${docs ? `(${docApprovedCount}/${DOC_TYPES.length})` : ""}`, icon: FileText },
+    { id: "agreement", label: "Partner Agreement", icon: FileText },
   ];
 
   return (
@@ -276,37 +244,63 @@ export default function PartnerDetails({ partner, onBack, onCustomerSelect }) {
         <div className="text-right flex-shrink-0">
           <div className="text-xs text-gray-400 font-sfpro">Registered</div>
           <div className="text-sm font-medium font-sfpro text-[#1E1E1E]">{formatDate(partnerDetails.createdAt)}</div>
-          {docs && (
-            <div className="mt-1 text-xs text-gray-400 font-sfpro">
-              Docs: <span className={docApprovedCount === DOC_TYPES.length ? "text-green-600 font-medium" : "text-amber-600 font-medium"}>{docApprovedCount}/{DOC_TYPES.length} approved</span>
-            </div>
-          )}
+          <div className="mt-1 text-xs text-gray-400 font-sfpro">
+            Agreement: <span className={agreements?.termsAccepted ? "text-green-600 font-medium" : "text-amber-600 font-medium"}>
+              {agreements?.termsAccepted ? "Signed" : "Pending"}
+            </span>
+          </div>
         </div>
       </div>
 
       {/* ─── Registration progress ───────────────────────────── */}
-      <div className="mb-5 px-5 py-4 border border-gray-200 rounded-xl bg-white">
-        <div className="text-xs font-medium font-sfpro text-gray-500 uppercase tracking-wide mb-3">Registration Progress</div>
-        <div className="flex items-center">
-          {["Invited", "Registered", "Docs Submitted", "Docs Approved", "Active"].map((stage, i, arr) => {
-            const statusToStage = { Invited: 0, Registered: 1, Active: 4, Terminated: -1 };
-            const docsStage = docs ? (docApprovedCount === DOC_TYPES.length ? 3 : docSubmittedCount > 0 ? 2 : 1) : 0;
-            const currentStage = partnerDetails.status === "Active" ? 4 : docsStage;
-            const isDone = i <= currentStage && partnerDetails.status !== "Terminated";
-            return (
-              <React.Fragment key={stage}>
-                <div className="flex flex-col items-center flex-shrink-0">
-                  <div className={`h-3.5 w-3.5 rounded-full border-2 transition-colors ${isDone ? "bg-[#039994] border-[#039994]" : "bg-white border-gray-300"}`} />
-                  <span className={`text-xs mt-1 font-sfpro whitespace-nowrap ${isDone ? "text-[#039994] font-medium" : "text-gray-400"}`}>{stage}</span>
-                </div>
-                {i < arr.length - 1 && (
-                  <div className={`flex-1 h-0.5 mx-1 mb-4 transition-colors ${isDone && i < currentStage ? "bg-[#039994]" : "bg-gray-200"}`} />
-                )}
-              </React.Fragment>
-            );
-          })}
-        </div>
-      </div>
+      {(() => {
+        const status = (partnerDetails.status || "").toLowerCase();
+        const hasAgreement = !!(agreements?.termsAccepted || agreements?.signature);
+        const hasCustomers = referrals.length > 0;
+        const isTerminated = status === "terminated" || status === "inactive";
+        const isActive = status === "active";
+
+        // Derive current stage from real data
+        let currentStage = 0; // invited
+        if (status === "registered" || status === "active" || hasAgreement || hasCustomers) currentStage = 1; // registered
+        if (hasAgreement && currentStage >= 1) currentStage = 2; // agreement signed
+        if (hasCustomers && currentStage >= 2) currentStage = 3; // customers referred
+        if (isActive) currentStage = 4; // active
+
+        return (
+          <div className="mb-5 px-5 py-4 border border-gray-200 rounded-xl bg-white">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-xs font-medium font-sfpro text-gray-500 uppercase tracking-wide">Registration Progress</div>
+              {isTerminated && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-sfpro font-medium bg-red-100 text-red-600">
+                  <XCircle className="h-3 w-3" /> Terminated
+                </span>
+              )}
+            </div>
+            <div className="flex items-center">
+              {PARTNER_PROGRESS.map((stage, i, arr) => {
+                const isDone = !isTerminated && i <= currentStage;
+                const isCurrent = !isTerminated && i === currentStage;
+                return (
+                  <React.Fragment key={stage.key}>
+                    <div className="flex flex-col items-center flex-shrink-0">
+                      <div className={`h-3.5 w-3.5 rounded-full border-2 transition-colors ${
+                        isDone ? "bg-[#039994] border-[#039994]" : "bg-white border-gray-300"
+                      } ${isCurrent ? "ring-2 ring-[#039994]/30" : ""}`} />
+                      <span className={`text-xs mt-1 font-sfpro whitespace-nowrap ${
+                        isDone ? "text-[#039994] font-medium" : "text-gray-400"
+                      }`}>{stage.label}</span>
+                    </div>
+                    {i < arr.length - 1 && (
+                      <div className={`flex-1 h-0.5 mx-1 mb-4 transition-colors ${isDone && i < currentStage ? "bg-[#039994]" : "bg-gray-200"}`} />
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ─── Tabs ───────────────────────────────────────────── */}
       <div className="border-b border-gray-200 mb-6">
@@ -484,69 +478,81 @@ export default function PartnerDetails({ partner, onBack, onCustomerSelect }) {
         </div>
       )}
 
-      {/* ─── Tab: Documents ──────────────────────────────────── */}
-      {activeTab === "documents" && (
-        <div className="space-y-3">
-          {docs ? (
-            <>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-[#039994] rounded-full transition-all duration-500"
-                    style={{ width: `${(docApprovedCount / DOC_TYPES.length) * 100}%` }}
-                  />
-                </div>
-                <span className="text-sm font-sfpro text-gray-600 flex-shrink-0">
-                  {docApprovedCount} of {DOC_TYPES.length} approved
-                </span>
-              </div>
-
-              {DOC_TYPES.map(({ key, statusKey, label }) => {
-                const url = docs[key];
-                const status = docs[statusKey] || "REQUIRED";
-                const cfg = DOC_STATUS[status] || DOC_STATUS.REQUIRED;
-                const Icon = cfg.icon;
-                return (
-                  <div
-                    key={key}
-                    className="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors duration-100"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0 ${cfg.bg}`}>
-                        <FileText className={`h-4 w-4 ${cfg.iconColor}`} />
-                      </div>
-                      <div>
-                        <div className="text-sm font-sfpro font-medium text-[#1E1E1E]">{label}</div>
-                        <div className="text-xs text-gray-400 font-sfpro mt-0.5">
-                          {url ? "Document on file" : "Not yet uploaded by partner"}
-                        </div>
-                      </div>
+      {/* ─── Tab: Partner Agreement ────────────────────────────── */}
+      {activeTab === "agreement" && (
+        <div className="space-y-4">
+          <div className="border border-gray-200 rounded-xl p-5">
+            <h3 className="text-sm font-semibold text-[#039994] font-sfpro mb-4">Partner Agreement</h3>
+            {agreements ? (
+              <div className="space-y-4">
+                {/* Agreement status card */}
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <div className={`h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                      agreements.termsAccepted ? "bg-green-100" : "bg-amber-50"
+                    }`}>
+                      {agreements.termsAccepted
+                        ? <CheckCircle2 className="h-4 w-4 text-green-600" />
+                        : <Clock className="h-4 w-4 text-amber-500" />
+                      }
                     </div>
-                    <div className="flex items-center gap-3">
-                      <StatusBadge status={status} />
-                      {url && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="gap-1 text-xs font-sfpro text-[#039994] hover:text-[#02857f]"
-                          onClick={() => window.open(url, "_blank")}
-                        >
-                          <ExternalLink className="h-3.5 w-3.5" />
-                          View
-                        </Button>
-                      )}
+                    <div>
+                      <div className="text-sm font-sfpro font-medium text-[#1E1E1E]">Terms & Conditions</div>
+                      <div className="text-xs text-gray-500 font-sfpro mt-0.5">
+                        {agreements.termsAccepted ? "Accepted and signed" : "Pending acceptance"}
+                      </div>
                     </div>
                   </div>
-                );
-              })}
-            </>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <FileText className="h-12 w-12 text-gray-200 mb-3" />
-              <p className="text-sm font-sfpro text-gray-500">No documentation record found for this partner</p>
-              <p className="text-xs font-sfpro text-gray-400 mt-1">Documents are uploaded during the user registration flow</p>
-            </div>
-          )}
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-sfpro font-medium ${
+                    agreements.termsAccepted ? "bg-green-100 text-green-700" : "bg-amber-50 text-amber-700"
+                  }`}>
+                    {agreements.termsAccepted ? "Signed" : "Pending"}
+                  </span>
+                </div>
+
+                {/* E-Signature */}
+                {agreements.signature && (
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0 bg-[#03999415]">
+                        <FileText className="h-4 w-4 text-[#039994]" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-sfpro font-medium text-[#1E1E1E]">E-Signature</div>
+                        <div className="text-xs text-gray-500 font-sfpro mt-0.5">Signed agreement on file</div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => window.open(agreements.signature, "_blank")}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-[#039994] text-[#039994] hover:bg-[#039994] hover:text-white rounded-lg text-xs font-sfpro font-medium transition-colors"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      View Signature
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <FileText className="h-10 w-10 text-gray-200 mb-3" />
+                <p className="text-sm font-sfpro text-gray-500">No partner agreement on file</p>
+                <p className="text-xs font-sfpro text-gray-400 mt-1">The partner has not yet signed their agreement</p>
+              </div>
+            )}
+          </div>
+
+          {/* Note about customer documents */}
+          <div className="border border-gray-200 rounded-xl p-5">
+            <h3 className="text-sm font-semibold text-[#039994] font-sfpro mb-2">Customer Documents</h3>
+            <p className="text-xs text-gray-500 font-sfpro">
+              Partners do not upload documents themselves. Facility documents (interconnection agreements, meter photos, etc.)
+              are uploaded by their customers during registration. To view customer documents, go to the
+              <button onClick={() => setActiveTab("customers")} className="text-[#039994] font-medium hover:underline mx-1">
+                Customers tab
+              </button>
+              and select a customer.
+            </p>
+          </div>
         </div>
       )}
 

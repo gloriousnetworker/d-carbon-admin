@@ -22,7 +22,7 @@ const STAGES = [
   {
     key: "registered",
     label: "Registered",
-    description: "No facility yet",
+    description: "Account created, no facility yet",
     icon: UserCheck,
     bg: "bg-sky-50",
     border: "border-sky-200",
@@ -44,7 +44,7 @@ const STAGES = [
   {
     key: "docs_approved",
     label: "Docs Approved",
-    description: "Awaiting authority approval",
+    description: "Awaiting facility verification",
     icon: CheckCircle2,
     bg: "bg-blue-50",
     border: "border-blue-200",
@@ -53,9 +53,20 @@ const STAGES = [
     actionNeeded: false,
   },
   {
+    key: "verified",
+    label: "Verified",
+    description: "Facility verified, awaiting authority",
+    icon: CheckCircle2,
+    bg: "bg-teal-50",
+    border: "border-teal-200",
+    text: "text-teal-700",
+    dot: "bg-teal-500",
+    actionNeeded: false,
+  },
+  {
     key: "active",
     label: "Active",
-    description: "Generator running",
+    description: "Generator running, producing RECs",
     icon: Zap,
     bg: "bg-green-50",
     border: "border-green-200",
@@ -77,18 +88,30 @@ const STAGES = [
 ];
 
 function getStage(customer) {
-  const status = customer.status || "";
-  const facilityStatus = customer.facilityStatus || null;
+  const status = (customer.status || "").toLowerCase();
+  const facilityStatus = (customer.facilityStatus || "").toUpperCase();
 
-  if (status === "Terminated" || status === "terminated") return "terminated";
-  if (status === "Active" || status === "active" || status === "ACTIVE") return "active";
-  if (status === "Registered" || status === "registered") {
+  if (status === "terminated") return "terminated";
+  if (status === "inactive") return "terminated";
+
+  // "Active" on the user list means registration is complete.
+  // Only mark as truly "active" (generator running) if facility is VERIFIED.
+  if (status === "active") {
+    if (facilityStatus === "VERIFIED") return "active";
+    if (facilityStatus === "APPROVED") return "verified";
+    if (facilityStatus === "PENDING") return "docs_pending";
+    // Active status but no facility info — show as "registered" (registration complete)
+    return "registered";
+  }
+
+  if (status === "registered") {
+    if (facilityStatus === "VERIFIED") return "verified";
     if (facilityStatus === "APPROVED") return "docs_approved";
     if (facilityStatus === "PENDING") return "docs_pending";
     return "registered";
   }
-  if (status === "Invited" || status === "invited") return "invited";
-  if (status === "Inactive" || status === "inactive") return "terminated";
+
+  if (status === "invited") return "invited";
   return "invited";
 }
 
@@ -195,7 +218,7 @@ export default function RegistrationPipeline() {
       </div>
 
       {/* Stage summary cards */}
-      <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-6">
+      <div className="grid grid-cols-4 md:grid-cols-7 gap-3 mb-6">
         {STAGES.map((stage) => {
           const Icon = stage.icon;
           const count = stageCounts[stage.key] || 0;

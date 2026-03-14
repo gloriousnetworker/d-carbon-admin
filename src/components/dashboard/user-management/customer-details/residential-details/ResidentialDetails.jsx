@@ -544,6 +544,59 @@ export default function ResidentialDetails({ customer, onBack }) {
         </button>
       </div>
 
+      {/* ─── Registration Progress ───────────────────────────── */}
+      {(() => {
+        const status = (customer?.status || "Invited").toLowerCase();
+        const hasAgreement = !!(customer?.agreementSigned || customer?.agreements?.termsAccepted);
+        const hasUtilityAuth = !!(customer?.utilityAuthorization || customer?.utilityAuthStatus === "AUTHORIZED" || customer?.utility);
+        const hasFacility = facilities.length > 0;
+        const facilityVerified = hasFacility && facilities.some(f => f.verificationStatus === "VERIFIED" || f.verificationStatus === "APPROVED");
+        const isActive = status === "active";
+        const isTerminated = status === "terminated" || status === "inactive";
+
+        const steps = [
+          { label: "Registered", done: status !== "invited" || isActive },
+          { label: "Agreement Signed", done: hasAgreement || isActive },
+          { label: "Utility Authorized", done: hasUtilityAuth || isActive },
+          { label: "Facility Added", done: hasFacility || isActive },
+          { label: "Facility Verified", done: facilityVerified || isActive },
+          { label: "Active", done: isActive },
+        ];
+
+        return (
+          <div className="mb-6 px-5 py-4 border border-gray-200 rounded-xl bg-white">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-xs font-medium font-sfpro text-gray-500 uppercase tracking-wide">Registration Progress</div>
+              {isTerminated && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-sfpro font-medium bg-red-100 text-red-600">
+                  Terminated
+                </span>
+              )}
+            </div>
+            <div className="flex items-center">
+              {steps.map((step, i, arr) => {
+                const isDone = !isTerminated && step.done;
+                return (
+                  <React.Fragment key={step.label}>
+                    <div className="flex flex-col items-center flex-shrink-0">
+                      <div className={`h-3.5 w-3.5 rounded-full border-2 transition-colors ${
+                        isDone ? "bg-[#039994] border-[#039994]" : "bg-white border-gray-300"
+                      }`} />
+                      <span className={`text-[10px] mt-1 font-sfpro whitespace-nowrap ${
+                        isDone ? "text-[#039994] font-medium" : "text-gray-400"
+                      }`}>{step.label}</span>
+                    </div>
+                    {i < arr.length - 1 && (
+                      <div className={`flex-1 h-0.5 mx-1 mb-4 transition-colors ${isDone ? "bg-[#039994]" : "bg-gray-200"}`} />
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div className="border border-gray-200 rounded-lg bg-[#069B960D] p-6">
           <h3 className="text-lg font-semibold text-[#039994] mb-4">Residential Information</h3>

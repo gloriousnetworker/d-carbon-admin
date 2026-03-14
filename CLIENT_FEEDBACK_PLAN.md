@@ -259,9 +259,40 @@ See `CROSS_REPO_IMPACT.md` for the full server gap analysis.
 
 ---
 
+## Additional Requirements from Client Meeting (2026-03-13)
+
+The following were raised by Phillip Kopp in the Mar 13 meeting and supplement the issues above:
+
+### EXPORT-1: Full User/Personal Details Export (Admin)
+- Admin must export all collected user data (not just summary view)
+- **Status:** NOT DONE — was promised for weekend of 2026-03-15
+
+### EXPORT-2: REC Data Export in Regulator Format
+- Aggregated file: one line per generator (ID, REC count, date range, etc.)
+- Excel template was previously exchanged (Himanshu + team)
+- Monthly export for authority submission
+- **Status:** NOT DONE — needs backend endpoint + admin UI
+
+### EXPORT-3: Batch Partner Commission Statement Export
+- Partners get statements monthly/quarterly; admin must verify invoices against statements
+- Can't review hundreds of partners one-by-one every month — need batch export
+- **Status:** NOT DONE — needs backend `/api/admin/statements` endpoint
+
+### EXPORT-4: Residential Points Redemption Export (Low Priority)
+- Generate payout info for individual points redemptions
+- Phillip: "months away" — not blocking go-live
+
+### Client-stated targets
+- Admin panel fixes + income/invoice statement: **Monday 2026-03-17**
+- Go-live: **week of 2026-03-17**
+- New commercial website deploy: **weekend of 2026-03-15** (for LinkedIn UTM marketing)
+
+---
+
 ## Next Steps
 
-1. Review and approve this plan with the client
-2. Confirm which server endpoints already exist vs need to be built
-3. Start with P0 items: document review UI and facility details in partner view
-4. Track progress against each issue number above
+1. ~~Review and approve this plan with the client~~ — Done (Mar 13 meeting)
+2. Build missing backend endpoints (see `CROSS_REPO_IMPACT.md` for full spec)
+3. Build export functionality (EXPORT-1 through EXPORT-3) once backend endpoints exist
+4. Fix webapp issues (hardcoded URLs, axios interceptor) — see `CROSS_REPO_IMPACT.md`
+5. End-to-end testing with test registrations once all endpoints are wired

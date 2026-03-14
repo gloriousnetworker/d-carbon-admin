@@ -89,18 +89,31 @@ export default function CommercialDetails({ customer, onBack }) {
     });
   };
 
-  const getProgressStatus = () => {
-    const currentStatus = customer?.status || "Invited";
-    switch (currentStatus) {
-      case "Active": return 4;
-      case "Registered": return 3;
-      case "Invited": return 0;
-      case "Terminated": return 5;
-      default: return 1;
-    }
+  // Derive registration progress from real data points
+  const getRegistrationSteps = () => {
+    const status = (customer?.status || "Invited").toLowerCase();
+    const hasAgreement = !!(customer?.agreementSigned || customer?.agreements?.termsAccepted);
+    const hasUtilityAuth = !!(customer?.utilityAuthorization || customer?.utilityAuthStatus === "AUTHORIZED" || customer?.utility);
+    const hasFacility = facilities.length > 0;
+    const allDocsApproved = hasFacility && facilities.some(f => f.verificationStatus === "VERIFIED" || f.verificationStatus === "APPROVED");
+    const facilityVerified = hasFacility && facilities.some(f => f.verificationStatus === "VERIFIED");
+    const isActive = status === "active";
+    const isTerminated = status === "terminated" || status === "inactive";
+
+    const steps = [
+      { label: "Registered", done: status !== "invited", current: status === "registered" && !hasAgreement },
+      { label: "Agreement Signed", done: hasAgreement || isActive, current: !hasAgreement && status === "registered" },
+      { label: "Utility Authorized", done: hasUtilityAuth || isActive, current: hasAgreement && !hasUtilityAuth && !isActive },
+      { label: "Docs Uploaded", done: hasFacility || isActive, current: hasUtilityAuth && !hasFacility && !isActive },
+      { label: "Docs Approved", done: allDocsApproved || isActive, current: hasFacility && !allDocsApproved && !isActive },
+      { label: "Facility Verified", done: facilityVerified || isActive, current: allDocsApproved && !facilityVerified && !isActive },
+      { label: "Active", done: isActive, current: isActive },
+    ];
+
+    return { steps, isTerminated };
   };
 
-  const progressStatus = getProgressStatus();
+  const { steps: registrationSteps, isTerminated } = getRegistrationSteps();
 
   const StatusBadge = ({ status }) => {
     let classes = "";
@@ -496,36 +509,35 @@ export default function CommercialDetails({ customer, onBack }) {
         </button>
       </div>
 
-      <div className="mb-6 w-full max-w-7xl">
-        <p className={labelClass}>Program Progress</p>
-        <div className="h-1 w-full bg-gray-200 mb-3 rounded-full">
-          <div className="h-full bg-black rounded-full" style={{ width: `${(progressStatus / 5) * 100}%` }} />
+      <div className="mb-6 w-full max-w-7xl px-5 py-4 border border-gray-200 rounded-xl bg-white">
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-xs font-medium font-sfpro text-gray-500 uppercase tracking-wide">Registration Progress</div>
+          {isTerminated && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-sfpro font-medium bg-red-100 text-red-600">
+              Terminated
+            </span>
+          )}
         </div>
-        <div className="flex justify-between text-xs">
-          <div className="flex items-center">
-            <div className="w-2 h-2 rounded-full bg-black mr-1.5"></div>
-            <span className="text-black">Invitation sent</span>
-          </div>
-          <div className="flex items-center">
-            <div className="w-2 h-2 rounded-full bg-[#FFB200] mr-1.5"></div>
-            <span className="text-[#FFB200]">Documents Pending</span>
-          </div>
-          <div className="flex items-center">
-            <div className="w-2 h-2 rounded-full bg-[#7CABDE] mr-1.5"></div>
-            <span className="text-[#7CABDE]">Documents Rejected</span>
-          </div>
-          <div className="flex items-center">
-            <div className="w-2 h-2 rounded-full bg-[#056C69] mr-1.5"></div>
-            <span className="text-[#056C69]">Registration Complete</span>
-          </div>
-          <div className="flex items-center">
-            <div className="w-2 h-2 rounded-full bg-[#00B4AE] mr-1.5"></div>
-            <span className="text-[#00B4AE]">Active</span>
-          </div>
-          <div className="flex items-center">
-            <div className="w-2 h-2 rounded-full bg-[#FF0000] mr-1.5"></div>
-            <span className="text-[#FF0000]">Terminated</span>
-          </div>
+        <div className="flex items-center">
+          {registrationSteps.map((step, i, arr) => {
+            const isDone = !isTerminated && step.done;
+            const isCurrent = !isTerminated && step.current;
+            return (
+              <React.Fragment key={step.label}>
+                <div className="flex flex-col items-center flex-shrink-0">
+                  <div className={`h-3.5 w-3.5 rounded-full border-2 transition-colors ${
+                    isDone ? "bg-[#039994] border-[#039994]" : "bg-white border-gray-300"
+                  } ${isCurrent ? "ring-2 ring-[#039994]/30" : ""}`} />
+                  <span className={`text-[10px] mt-1 font-sfpro whitespace-nowrap ${
+                    isDone ? "text-[#039994] font-medium" : isCurrent ? "text-[#039994] font-medium" : "text-gray-400"
+                  }`}>{step.label}</span>
+                </div>
+                {i < arr.length - 1 && (
+                  <div className={`flex-1 h-0.5 mx-1 mb-4 transition-colors ${isDone ? "bg-[#039994]" : "bg-gray-200"}`} />
+                )}
+              </React.Fragment>
+            );
+          })}
         </div>
       </div>
 
