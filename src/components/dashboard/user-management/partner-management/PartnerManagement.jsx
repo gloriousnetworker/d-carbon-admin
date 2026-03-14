@@ -13,7 +13,10 @@ import {
   Users,
   ChevronDown,
   Check,
+  Download,
+  Loader2,
 } from "lucide-react";
+import { exportToExcel, PARTNER_COLUMNS } from "@/lib/exportUtils";
 import PartnerDetails from "./PartnerDetails";
 import FilterByModal from "./partnerManagementModal/FilterBy";
 import AddPartnerModal from "./partnerManagementModal/AddPartner";
@@ -40,6 +43,7 @@ export default function PartnerManagement({ onViewChange, onCustomerSelect }) {
   const [authsCount, setAuthsCount] = useState(0);
   const [previousAuthsCount, setPreviousAuthsCount] = useState(0);
   const [showAuthsNotification, setShowAuthsNotification] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     if (currentView === "management") {
@@ -211,6 +215,30 @@ export default function PartnerManagement({ onViewChange, onCustomerSelect }) {
     setShowAddPartnerModal(false);
   };
 
+  const handleExportPartners = async () => {
+    try {
+      setExporting(true);
+      const exportData = partners.map((p) => ({
+        name: p.name || "",
+        email: p.displayEmail || p.email || "",
+        phoneNumber: p.phoneNumber || "",
+        partnerType: formatPartnerType(p.partnerType),
+        status: p.status || "Active",
+        address: p.address || "",
+        dateRegistered: p.createdAt
+          ? new Date(p.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
+          : "",
+      }));
+
+      const filename = `DCarbon_Partners_${new Date().toISOString().slice(0, 10)}`;
+      exportToExcel(exportData, PARTNER_COLUMNS, filename, "Partners");
+    } catch (err) {
+      alert(`Export failed: ${err.message}`);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     const date = new Date(dateString);
@@ -306,6 +334,16 @@ export default function PartnerManagement({ onViewChange, onCustomerSelect }) {
               </Button>
 
               <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="gap-2 text-sm font-sfpro"
+                  onClick={handleExportPartners}
+                  disabled={exporting || partners.length === 0}
+                >
+                  {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  {exporting ? "Exporting..." : "Export"}
+                </Button>
+
                 <Button
                   variant="outline"
                   className="gap-2 text-sm font-sfpro border-teal-500 text-teal-600 hover:bg-teal-50"

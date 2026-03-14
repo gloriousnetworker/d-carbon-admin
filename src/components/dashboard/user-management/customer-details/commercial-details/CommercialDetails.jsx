@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ChevronLeft, Upload, Loader2, CheckCircle } from "lucide-react";
+import { ChevronLeft, Upload, Loader2, CheckCircle, Download, Package } from "lucide-react";
+import { exportDocumentPackage } from "@/lib/documentExport";
 import { Button } from "@/components/ui/button";
 import { toast } from "react-hot-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -25,6 +26,7 @@ export default function CommercialDetails({ customer, onBack }) {
   });
   const [updatingWregis, setUpdatingWregis] = useState(false);
   const [uploadingAck, setUploadingAck] = useState(null);
+  const [downloadingDocs, setDownloadingDocs] = useState(null);
   const [currentFacility, setCurrentFacility] = useState(null);
   const [ackModalOpen, setAckModalOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -322,9 +324,52 @@ export default function CommercialDetails({ customer, onBack }) {
     }
   };
 
+  const handleDownloadDocPackage = async (facility) => {
+    setDownloadingDocs(facility.id);
+    try {
+      const documents = [
+        { name: "WREGIS Assignment", url: facility.wregisAssignmentUrl, status: facility.wregisAssignmentStatus },
+        { name: "Finance Agreement", url: facility.financeAgreementUrl, status: facility.financeAgreementStatus },
+        { name: "Solar Installation Contract", url: facility.solarInstallationContractUrl, status: facility.solarInstallationContractStatus },
+        { name: "Utility Interconnection Agreement", url: facility.interconnectionAgreementUrl, status: facility.interconnectionAgreementStatus },
+        { name: "Utility PTO Letter", url: facility.ptoLetterUrl, status: facility.ptoLetterStatus },
+        { name: "Single Line Diagram", url: facility.singleLineDiagramUrl, status: facility.singleLineDiagramStatus },
+        { name: "Installation Site Plan", url: facility.sitePlanUrl, status: facility.sitePlanStatus },
+        { name: "Panel Inverter Datasheet", url: facility.panelInverterDatasheetUrl, status: facility.panelInverterDatasheetStatus },
+        { name: "Revenue Meter Datasheet", url: facility.revenueMeterDataUrl, status: facility.revenueMeterDataStatus },
+        { name: "Utility Meter Photo", url: facility.utilityMeterPhotoUrl, status: facility.utilityMeterPhotoStatus },
+        { name: "Assignment of Registration Right", url: facility.assignmentOfRegistrationRightUrl, status: facility.assignmentOfRegistrationRightStatus },
+        { name: "Acknowledgement of Station Service", url: facility.acknowledgementOfStationServiceUrl, status: facility.acknowledgementOfStationServiceStatus },
+      ];
+
+      const result = await exportDocumentPackage(documents, {
+        facilityName: facility.facilityName,
+        address: facility.address,
+        id: facility.id,
+        ownerName: customer?.name,
+      });
+
+      if (result.failed > 0) {
+        toast.error(`Package downloaded. ${result.failed} document(s) failed — see placeholder files in ZIP.`);
+      } else {
+        toast.success(`Document package downloaded (${result.success} files)`);
+      }
+    } catch (err) {
+      toast.error(`Download failed: ${err.message}`);
+    } finally {
+      setDownloadingDocs(null);
+    }
+  };
+
   const FacilityCard = ({ facility }) => {
     const hasAckDocument = facility.acknowledgementOfStationServiceUrl;
-    
+    const docCount = [
+      facility.wregisAssignmentUrl, facility.financeAgreementUrl, facility.solarInstallationContractUrl,
+      facility.interconnectionAgreementUrl, facility.ptoLetterUrl, facility.singleLineDiagramUrl,
+      facility.sitePlanUrl, facility.panelInverterDatasheetUrl, facility.revenueMeterDataUrl,
+      facility.utilityMeterPhotoUrl, facility.assignmentOfRegistrationRightUrl, facility.acknowledgementOfStationServiceUrl,
+    ].filter(Boolean).length;
+
     return (
       <div
         className="border border-gray-200 rounded-lg p-6 mb-4 bg-white hover:bg-gray-50 cursor-pointer transition-colors"
@@ -350,10 +395,10 @@ export default function CommercialDetails({ customer, onBack }) {
           </div>
         </div>
 
-        <div className="mt-4 flex gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="sm"
             onClick={(e) => {
               e.stopPropagation();
               openWregisModal(facility);
@@ -362,10 +407,10 @@ export default function CommercialDetails({ customer, onBack }) {
           >
             Update WREGIS Information
           </Button>
-          
-          <Button 
-            variant="outline" 
-            size="sm" 
+
+          <Button
+            variant="outline"
+            size="sm"
             onClick={(e) => {
               e.stopPropagation();
               openAckModal(facility);
@@ -384,6 +429,31 @@ export default function CommercialDetails({ customer, onBack }) {
               </>
             )}
           </Button>
+
+          {docCount > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDownloadDocPackage(facility);
+              }}
+              disabled={downloadingDocs === facility.id}
+              className="text-[#039994] border-[#039994] hover:bg-[#03999410]"
+            >
+              {downloadingDocs === facility.id ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  Downloading...
+                </>
+              ) : (
+                <>
+                  <Package className="h-4 w-4 mr-1" />
+                  Download Docs ({docCount}/12)
+                </>
+              )}
+            </Button>
+          )}
         </div>
       </div>
     );

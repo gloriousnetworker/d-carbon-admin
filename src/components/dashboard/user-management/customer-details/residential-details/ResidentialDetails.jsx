@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ChevronLeft, Upload, Loader2, CheckCircle } from "lucide-react";
+import { ChevronLeft, Upload, Loader2, CheckCircle, Package } from "lucide-react";
+import { exportDocumentPackage } from "@/lib/documentExport";
 import { Button } from "@/components/ui/button";
 import { toast } from "react-hot-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -22,6 +23,7 @@ export default function ResidentialDetails({ customer, onBack }) {
   });
   const [updatingWregis, setUpdatingWregis] = useState(false);
   const [uploadingAck, setUploadingAck] = useState(null);
+  const [downloadingDocs, setDownloadingDocs] = useState(null);
   const [currentFacility, setCurrentFacility] = useState(null);
   const [verifyModalOpen, setVerifyModalOpen] = useState(false);
   const [ackModalOpen, setAckModalOpen] = useState(false);
@@ -331,6 +333,57 @@ export default function ResidentialDetails({ customer, onBack }) {
     }
   };
 
+  const handleDownloadDocPackage = async (facility) => {
+    setDownloadingDocs(facility.id);
+    try {
+      // Ensure docs are loaded
+      let docs = facilityDocuments[facility.id];
+      if (!docs) {
+        await fetchFacilityDocuments(facility.id);
+        // Wait briefly for state update
+        await new Promise((r) => setTimeout(r, 300));
+        docs = facilityDocuments[facility.id] || {};
+      }
+
+      const DOCUMENT_TYPES = [
+        { name: "WREGIS Assignment", urlField: "wregisAssignmentUrl", statusField: "wregisAssignmentStatus" },
+        { name: "Finance Agreement", urlField: "financeAgreementUrl", statusField: "financeAgreementStatus" },
+        { name: "Solar Installation Contract", urlField: "solarInstallationContractUrl", statusField: "solarInstallationStatus" },
+        { name: "Utility PTO Letter", urlField: "ptoLetterUrl", statusField: "ptoLetterStatus" },
+        { name: "Installation Site Plan", urlField: "sitePlanUrl", statusField: "sitePlanStatus" },
+        { name: "Panel Inverter Datasheet", urlField: "panelInverterDatasheetUrl", statusField: "panelInverterDatasheetStatus" },
+        { name: "Revenue Meter Datasheet", urlField: "revenueMeterDataUrl", statusField: "revenueMeterDataStatus" },
+        { name: "Utility Meter Photo", urlField: "utilityMeterPhotoUrl", statusField: "utilityMeterPhotoStatus" },
+        { name: "Single Line Diagram", urlField: "singleLineDiagramUrl", statusField: "singleLineDiagramStatus" },
+        { name: "Assignment of Registration Right", urlField: "assignmentOfRegistrationRightUrl", statusField: "assignmentOfRegistrationRightStatus" },
+        { name: "Acknowledgement of Station Service", urlField: "acknowledgementOfStationServiceUrl", statusField: "acknowledgementOfStationServiceStatus" },
+      ];
+
+      const documents = DOCUMENT_TYPES.map((dt) => ({
+        name: dt.name,
+        url: docs[dt.urlField],
+        status: docs[dt.statusField] || (docs[dt.urlField] ? "SUBMITTED" : "REQUIRED"),
+      }));
+
+      const result = await exportDocumentPackage(documents, {
+        facilityName: facility.facilityName,
+        address: facility.address,
+        id: facility.id,
+        ownerName: customer?.name,
+      });
+
+      if (result.failed > 0) {
+        toast.error(`Package downloaded. ${result.failed} document(s) failed — see placeholder files in ZIP.`);
+      } else {
+        toast.success(`Document package downloaded (${result.success} files)`);
+      }
+    } catch (err) {
+      toast.error(`Download failed: ${err.message}`);
+    } finally {
+      setDownloadingDocs(null);
+    }
+  };
+
   const FacilityCard = ({ facility }) => {
     const hasAckDocument = facilityDocuments[facility.id]?.acknowledgementOfStationServiceUrl;
     
@@ -359,10 +412,10 @@ export default function ResidentialDetails({ customer, onBack }) {
           </div>
         </div>
 
-        <div className="mt-4 flex gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="sm"
             onClick={(e) => {
               e.stopPropagation();
               openWregisModal(facility);
@@ -371,10 +424,10 @@ export default function ResidentialDetails({ customer, onBack }) {
           >
             Update WREGIS Information
           </Button>
-          
-          <Button 
-            variant="outline" 
-            size="sm" 
+
+          <Button
+            variant="outline"
+            size="sm"
             onClick={(e) => {
               e.stopPropagation();
               openAckModal(facility);
@@ -390,6 +443,29 @@ export default function ResidentialDetails({ customer, onBack }) {
               <>
                 <Upload className="h-4 w-4 mr-1" />
                 Upload Ack of Station Service
+              </>
+            )}
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDownloadDocPackage(facility);
+            }}
+            disabled={downloadingDocs === facility.id}
+            className="text-[#039994] border-[#039994] hover:bg-[#03999410]"
+          >
+            {downloadingDocs === facility.id ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                Downloading...
+              </>
+            ) : (
+              <>
+                <Package className="h-4 w-4 mr-1" />
+                Download Docs
               </>
             )}
           </Button>

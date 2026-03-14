@@ -14,7 +14,10 @@ import {
   Info,
   Mail,
   Check,
+  Download,
+  Loader2,
 } from "lucide-react";
+import { exportToExcel, exportToCSV, CUSTOMER_COLUMNS } from "@/lib/exportUtils";
 import CommercialDetails from "./customer-details/commercial-details/CommercialDetails";
 import ResidentialDetails from "./customer-details/residential-details/ResidentialDetails";
 import SendReminderModal from "./modals/customerManagement/SendReminderModal";
@@ -58,6 +61,7 @@ export default function CustomerManagement() {
   const [authsCount, setAuthsCount] = useState(0);
   const [previousAuthsCount, setPreviousAuthsCount] = useState(0);
   const [showAuthsNotification, setShowAuthsNotification] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const fetchCustomers = async (page = 1, limit = 50) => {
     try {
@@ -187,6 +191,44 @@ export default function CustomerManagement() {
       alert(`Error: ${err.message}`);
     } finally {
       setResending(false);
+    }
+  };
+
+  const handleExportCustomers = async (format = "excel") => {
+    try {
+      setExporting(true);
+      const authToken = localStorage.getItem("authToken");
+      if (!authToken) throw new Error("Authentication token not found");
+
+      // Fetch all customers (up to 1000) for export
+      const res = await fetch(
+        `${CONFIG.API_BASE_URL}/api/admin/get-all-users?page=1&limit=1000`,
+        { headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" } }
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const allUsers = data.data?.users || [];
+
+      const PARTNER_TYPES = new Set(["PARTNER", "SALES_AGENT", "INSTALLER", "FINANCE_COMPANY"]);
+      const exportData = allUsers
+        .filter((u) => !PARTNER_TYPES.has(u.userType))
+        .map((c) => ({
+          ...c,
+          dateRegistered: c.date || c.createdAt
+            ? new Date(c.date || c.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
+            : "",
+        }));
+
+      const filename = `DCarbon_Customers_${new Date().toISOString().slice(0, 10)}`;
+      if (format === "csv") {
+        exportToCSV(exportData, CUSTOMER_COLUMNS, filename);
+      } else {
+        exportToExcel(exportData, CUSTOMER_COLUMNS, filename, "Customers");
+      }
+    } catch (err) {
+      alert(`Export failed: ${err.message}`);
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -478,6 +520,16 @@ export default function CustomerManagement() {
               </Button>
 
               <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="gap-2 text-sm font-sfpro"
+                  onClick={() => handleExportCustomers("excel")}
+                  disabled={exporting}
+                >
+                  {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  {exporting ? "Exporting..." : "Export"}
+                </Button>
+
                 <Button
                   variant="outline"
                   className="gap-2 text-sm border-[#039994] text-[#039994] hover:bg-[#039994] hover:text-white font-sfpro transition-colors"
