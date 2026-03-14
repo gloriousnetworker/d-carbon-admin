@@ -185,6 +185,13 @@ const DashboardSidebar = ({
           <FiFileText className={iconBase} color={isActive('agreementManagement') ? '#FFFFFF' : '#039994'} />
           <span>Agreement Management</span>
         </button>
+        <button
+          onClick={() => onSectionChange('systemJobs')}
+          className={`${menuItemBase} ${isActive('systemJobs') ? menuItemActive : menuItemInactive}`}
+        >
+          <FiLayers className={iconBase} color={isActive('systemJobs') ? '#FFFFFF' : '#039994'} />
+          <span>System Jobs</span>
+        </button>
       </nav>
 
       <hr className={sidebarDivider} />

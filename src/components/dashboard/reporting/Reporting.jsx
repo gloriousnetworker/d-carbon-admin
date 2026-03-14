@@ -222,12 +222,39 @@ export default function ReportsDashboard() {
             partnerType: p.partnerType || p.type || "—",
             email: p.user?.email || p.email || "—",
             phone: p.user?.phoneNumber || p.phoneNumber || "—",
-            totalReferrals: p.totalReferrals ?? p._count?.referrals ?? "—",
+            totalReferrals: p.totalReferrals ?? p._count?.referrals ?? (Array.isArray(p.referrals) ? p.referrals.length : null),
             status: p.status || p.user?.status || "Active",
             dateJoined: formatDate(p.createdAt || p.user?.createdAt),
           }))
           setAllData(mapped)
           setFilteredData(mapped)
+
+          // Fetch referral counts for partners that don't have them
+          const needsReferrals = mapped.filter(p => p.totalReferrals == null && p.email && p.email !== "—")
+          if (needsReferrals.length > 0) {
+            const referralResults = await Promise.allSettled(
+              needsReferrals.map(p =>
+                fetch(`${CONFIG.API_BASE_URL}/api/admin/customer/${encodeURIComponent(p.email.trim())}`, {
+                  headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+                }).then(r => r.ok ? r.json() : null)
+              )
+            )
+            const referralMap = {}
+            needsReferrals.forEach((p, i) => {
+              const result = referralResults[i]
+              if (result.status === "fulfilled" && result.value?.data?.referrals) {
+                referralMap[p.email] = result.value.data.referrals.length
+              }
+            })
+            if (Object.keys(referralMap).length > 0) {
+              const updated = mapped.map(p => ({
+                ...p,
+                totalReferrals: p.totalReferrals ?? referralMap[p.email] ?? 0,
+              }))
+              setAllData(updated)
+              setFilteredData(updated)
+            }
+          }
         } else {
           setAllData([])
           setFilteredData([])

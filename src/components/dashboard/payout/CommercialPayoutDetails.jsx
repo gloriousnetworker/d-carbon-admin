@@ -2,7 +2,7 @@
 import CONFIG from '@/lib/config'
 
 import { useState, useEffect } from 'react'
-import { ChevronLeft, Eye, Download, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react'
+import { ChevronLeft, Eye, Download, ZoomIn, ZoomOut, RotateCcw, Loader2, Wallet } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import toast from 'react-hot-toast'
 
@@ -14,6 +14,8 @@ export default function CommercialPayoutDetails({ payoutDetails, onBack, onPayou
   const [showModal, setShowModal] = useState(false)
   const [scale, setScale] = useState(1)
   const [rotation, setRotation] = useState(0)
+  const [walletData, setWalletData] = useState(null)
+  const [walletLoading, setWalletLoading] = useState(false)
 
   const getAuthToken = () => {
     return localStorage.getItem('authToken')
@@ -177,13 +179,34 @@ export default function CommercialPayoutDetails({ payoutDetails, onBack, onPayou
     }
   }
 
+  const fetchWalletData = async () => {
+    setWalletLoading(true)
+    try {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/revenue/${payoutDetails.id}`, {
+        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
+      })
+      const result = await response.json()
+      if (result.status === "success") setWalletData(result.data)
+    } catch {
+      // Wallet data is supplementary, fail silently
+    } finally {
+      setWalletLoading(false)
+    }
+  }
+
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-GB')
+  }
+
+  const formatCurrency = (amount) => {
+    if (amount == null) return '$0.00'
+    return `$${Number(amount).toFixed(2)}`
   }
 
   useEffect(() => {
     if (payoutDetails.id) {
       fetchUserPayouts()
+      fetchWalletData()
     }
   }, [payoutDetails.id])
 
@@ -352,12 +375,44 @@ export default function CommercialPayoutDetails({ payoutDetails, onBack, onPayou
         </div>
       </div>
 
+      {/* Revenue Wallet */}
+      {walletLoading ? (
+        <div className="flex justify-center py-4 mb-6">
+          <Loader2 className="h-5 w-5 animate-spin text-[#039994]" />
+        </div>
+      ) : walletData && (
+        <div className="border border-gray-200 rounded-xl p-4 mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Wallet className="h-4 w-4 text-[#039994]" />
+            <h4 className="font-sfpro text-[14px] font-semibold text-[#1E1E1E]">Revenue Wallet</h4>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <span className="font-sfpro text-xs text-[#626060] block">Total Earnings</span>
+              <span className="font-sfpro text-sm font-semibold text-[#1E1E1E]">{formatCurrency(walletData.totalEarnings)}</span>
+            </div>
+            <div>
+              <span className="font-sfpro text-xs text-[#626060] block">Available Balance</span>
+              <span className="font-sfpro text-sm font-semibold text-[#039994]">{formatCurrency(walletData.availableBalance)}</span>
+            </div>
+            <div>
+              <span className="font-sfpro text-xs text-[#626060] block">Held Amount</span>
+              <span className="font-sfpro text-sm font-semibold text-[#FFB200]">{formatCurrency(walletData.heldAmount)}</span>
+            </div>
+            <div>
+              <span className="font-sfpro text-xs text-[#626060] block">Total Commission</span>
+              <span className="font-sfpro text-sm font-semibold text-[#1E1E1E]">{formatCurrency(walletData.totalCommission)}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-lg p-6 border">
         <h3 className="font-sfpro text-[18px] font-[600] mb-4">Payout Requests</h3>
-        
+
         {loading ? (
           <div className="flex justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-2 border-[#039994] border-t-transparent"></div>
+            <Loader2 className="h-8 w-8 animate-spin text-[#039994]" />
           </div>
         ) : userPayouts.length > 0 ? (
           <div className="overflow-x-auto">

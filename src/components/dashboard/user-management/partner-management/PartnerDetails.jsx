@@ -7,10 +7,11 @@ import {
   ChevronLeft, Pencil, Trash2, Eye, Loader2, Mail, Phone,
   MapPin, Calendar, User, Hash, Users, FileText, CheckCircle2,
   XCircle, Clock, ExternalLink, Copy, Check,
-  Building2, ShieldCheck
+  Building2, ShieldCheck, Download
 } from "lucide-react";
 import EditPartnerModal from "./partnerManagementModal/EditPartnerModal";
 import { useToast } from "@/components/ui/use-toast";
+import { exportToExcel, exportToCSV } from "@/lib/exportUtils";
 import * as styles from "../styles";
 
 
@@ -40,6 +41,7 @@ export default function PartnerDetails({ partner, onBack, onCustomerSelect }) {
   const [loading, setLoading] = useState(true);
   const [referralsLoading, setReferralsLoading] = useState(false);
   const [partnerDetails, setPartnerDetails] = useState(null);
+  const [agreementData, setAgreementData] = useState(null);
   const [referrals, setReferrals] = useState([]);
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
@@ -78,6 +80,25 @@ export default function PartnerDetails({ partner, onBack, onCustomerSelect }) {
     }
   }, [partner]);
 
+  const fetchAgreement = useCallback(async () => {
+    const userId = partnerDetails?.id || partnerDetails?.userId || partner?.id || partner?.userId;
+    if (!userId) return;
+    try {
+      const authToken = localStorage.getItem("authToken");
+      const res = await fetch(`${CONFIG.API_BASE_URL}/api/user/agreement/${userId}`, {
+        headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.status === "success" && json.data) {
+          setAgreementData(json.data);
+        }
+      }
+    } catch {
+      // Non-critical — fall back to embedded agreements
+    }
+  }, [partnerDetails, partner]);
+
   const fetchReferrals = useCallback(async () => {
     const email = partnerDetails?.email || partner?.email;
     if (!email) return;
@@ -112,10 +133,11 @@ export default function PartnerDetails({ partner, onBack, onCustomerSelect }) {
   }, [fetchPartnerDetails]);
 
   useEffect(() => {
-    if (activeTab === "customers" && partnerDetails) {
+    if (partnerDetails) {
       fetchReferrals();
+      fetchAgreement();
     }
-  }, [activeTab, partnerDetails]);
+  }, [partnerDetails]);
 
   const copyToClipboard = (text) => {
     if (!text) return;
@@ -176,7 +198,7 @@ export default function PartnerDetails({ partner, onBack, onCustomerSelect }) {
   }
 
   const docs = partnerDetails.documentation || partnerDetails.user?.documentation;
-  const agreements = partnerDetails.agreements || partnerDetails.user?.agreements;
+  const agreements = agreementData || partnerDetails.agreements || partnerDetails.user?.agreements;
   const referralCode = partnerDetails.referralCode || partnerDetails.user?.referralCode || partnerDetails.userDetails?.referralCode;
   const partnerName = partnerDetails.name || `${partnerDetails.firstName || ""} ${partnerDetails.lastName || ""}`.trim() || "Partner";
   const partnerEmail = partnerDetails.email || partnerDetails.displayEmail || "";
@@ -254,18 +276,19 @@ export default function PartnerDetails({ partner, onBack, onCustomerSelect }) {
 
       {/* ─── Registration progress ───────────────────────────── */}
       {(() => {
-        const status = (partnerDetails.status || "").toLowerCase();
-        const hasAgreement = !!(agreements?.termsAccepted || agreements?.signature);
+        const status = (partnerDetails.status || partnerDetails.user?.status || "").toLowerCase();
+        const hasAgreement = !!(agreements?.termsAccepted || agreements?.signature || partnerDetails.agreementSigned);
         const hasCustomers = referrals.length > 0;
         const isTerminated = status === "terminated" || status === "inactive";
-        const isActive = status === "active";
+        const isActive = status === "active" || status === "approved" || partnerDetails.isActive === true;
 
-        // Derive current stage from real data
-        let currentStage = 0; // invited
-        if (status === "registered" || status === "active" || hasAgreement || hasCustomers) currentStage = 1; // registered
-        if (hasAgreement && currentStage >= 1) currentStage = 2; // agreement signed
-        if (hasCustomers && currentStage >= 2) currentStage = 3; // customers referred
-        if (isActive) currentStage = 4; // active
+        // Derive current stage from real data — each step is independently checked
+        let currentStage = 0; // invited (always true if we have the partner)
+        if (status !== "invited" && status !== "pending" && status !== "") currentStage = 1; // registered
+        if (hasAgreement) currentStage = Math.max(currentStage, 2); // agreement signed
+        if (hasCustomers) currentStage = Math.max(currentStage, 3); // customers referred
+        // Active: partner has completed all steps (agreement + customers) and is active in system
+        if (isActive && hasAgreement) currentStage = 4; // active
 
         return (
           <div className="mb-5 px-5 py-4 border border-gray-200 rounded-xl bg-white">
@@ -425,7 +448,37 @@ export default function PartnerDetails({ partner, onBack, onCustomerSelect }) {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <div className="mb-3 text-sm font-sfpro text-gray-500">{referrals.length} customer{referrals.length !== 1 ? "s" : ""}</div>
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-sm font-sfpro text-gray-500">{referrals.length} customer{referrals.length !== 1 ? "s" : ""}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 text-sm font-sfpro"
+                  onClick={() => {
+                    const rows = referrals.map(ref => ({
+                      name: ref.firstName ? `${ref.firstName} ${ref.lastName || ""}`.trim() : ref.name || "N/A",
+                      email: ref.email || ref.inviteeEmail || "N/A",
+                      userType: ref.userType || ref.customerType || ref.role || "N/A",
+                      phoneNumber: ref.phoneNumber || "N/A",
+                      status: ref.status || "N/A",
+                      dateRegistered: ref.createdAt ? new Date(ref.createdAt).toLocaleDateString() : "N/A",
+                    }))
+                    const columns = [
+                      { header: "Name", key: "name", width: 24 },
+                      { header: "Email", key: "email", width: 28 },
+                      { header: "Type", key: "userType", width: 14 },
+                      { header: "Phone", key: "phoneNumber", width: 16 },
+                      { header: "Status", key: "status", width: 12 },
+                      { header: "Date Registered", key: "dateRegistered", width: 16 },
+                    ]
+                    const partnerName = (partnerDetails?.user?.firstName || partnerDetails?.name || "partner").replace(/[^a-zA-Z0-9]/g, "_")
+                    exportToExcel(rows, columns, `${partnerName}_customers_${new Date().toISOString().slice(0, 10)}`, "Customers")
+                  }}
+                >
+                  <Download className="h-4 w-4" />
+                  Export Customers
+                </Button>
+              </div>
               <table className="w-full">
                 <thead>
                   <tr className="border-y text-sm">

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Loader2, ChevronRight, AlertTriangle, CheckCircle2, Clock, Users, Zap, XCircle, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CONFIG from "@/lib/config";
@@ -94,24 +95,15 @@ function getStage(customer) {
   if (status === "terminated") return "terminated";
   if (status === "inactive") return "terminated";
 
-  // "Active" on the user list means registration is complete.
-  // Only mark as truly "active" (generator running) if facility is VERIFIED.
-  if (status === "active") {
-    if (facilityStatus === "VERIFIED") return "active";
-    if (facilityStatus === "APPROVED") return "verified";
-    if (facilityStatus === "PENDING") return "docs_pending";
-    // Active status but no facility info — show as "registered" (registration complete)
-    return "registered";
-  }
+  // Derive stage from facility progress rather than user status alone.
+  // A user can be "active" in the DB but not yet have a verified facility.
+  if (facilityStatus === "VERIFIED") return "active";
+  if (facilityStatus === "APPROVED") return "docs_approved";
+  if (facilityStatus === "PENDING") return "docs_pending";
 
-  if (status === "registered") {
-    if (facilityStatus === "VERIFIED") return "verified";
-    if (facilityStatus === "APPROVED") return "docs_approved";
-    if (facilityStatus === "PENDING") return "docs_pending";
-    return "registered";
-  }
-
-  if (status === "invited") return "invited";
+  // No facility status — check user registration status
+  if (status === "active" || status === "registered") return "registered";
+  if (status === "invited" || status === "pending") return "invited";
   return "invited";
 }
 
@@ -146,11 +138,18 @@ function formatDate(d) {
 }
 
 export default function RegistrationPipeline() {
+  const router = useRouter();
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeFilter, setActiveFilter] = useState("all");
   const [search, setSearch] = useState("");
+
+  const handleCustomerClick = (customer) => {
+    // Store selected customer for UserManagement to pick up
+    sessionStorage.setItem("pipelineSelectedCustomer", JSON.stringify(customer));
+    router.push("/admin-dashboard?section=userManagement");
+  };
 
   useEffect(() => {
     fetchCustomers();
@@ -311,7 +310,8 @@ export default function RegistrationPipeline() {
                 return (
                   <tr
                     key={customer.id}
-                    className={`border-t border-gray-100 hover:bg-gray-50 transition-colors duration-100 ${
+                    onClick={() => handleCustomerClick(customer)}
+                    className={`border-t border-gray-100 hover:bg-gray-50 transition-colors duration-100 cursor-pointer ${
                       stage === "docs_pending" ? "bg-orange-50/30" : ""
                     }`}
                   >

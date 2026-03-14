@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ChevronLeft, Upload, Loader2, CheckCircle, Package } from "lucide-react";
+import { ChevronLeft, Upload, Loader2, CheckCircle, Package, FileSpreadsheet } from "lucide-react";
 import { exportDocumentPackage } from "@/lib/documentExport";
+import { exportWregisCoverSheet, exportPreApprovalWorksheet } from "@/lib/exportUtils";
 import { Button } from "@/components/ui/button";
 import { toast } from "react-hot-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -9,6 +10,7 @@ import DocumentsModal from "./DocumentsModal";
 import CONFIG from "../../../../../../lib/config";
 
 export default function ResidentialDetails({ customer, onBack }) {
+  const [customerDetails, setCustomerDetails] = useState(customer);
   const [facilities, setFacilities] = useState([]);
   const [facilitiesLoading, setFacilitiesLoading] = useState(false);
   const [facilitiesError, setFacilitiesError] = useState(null);
@@ -33,8 +35,29 @@ export default function ResidentialDetails({ customer, onBack }) {
   useEffect(() => {
     if (customer?.id) {
       fetchFacilities();
+      fetchCustomerDetails();
     }
   }, [customer?.id]);
+
+  const fetchCustomerDetails = async () => {
+    try {
+      const authToken = localStorage.getItem("authToken");
+      const email = customer?.email;
+      if (!authToken || !email) return;
+      const res = await fetch(
+        `${CONFIG.API_BASE_URL}/api/admin/customer/${encodeURIComponent(email.trim())}`,
+        { headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" } }
+      );
+      if (res.ok) {
+        const json = await res.json();
+        if (json.status === "success" && json.data) {
+          setCustomerDetails(prev => ({ ...prev, ...json.data }));
+        }
+      }
+    } catch {
+      // Non-critical — fall back to the passed customer prop
+    }
+  };
 
   const fetchFacilities = async () => {
     setFacilitiesLoading(true);
@@ -469,6 +492,19 @@ export default function ResidentialDetails({ customer, onBack }) {
               </>
             )}
           </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              exportWregisCoverSheet(facility, customer, facility.documentation || facility.residentialDocumentation, "residential");
+            }}
+            className="text-[#039994] border-[#039994] hover:bg-[#03999410]"
+          >
+            <FileSpreadsheet className="h-4 w-4 mr-1" />
+            WREGIS Cover Sheet
+          </Button>
         </div>
       </div>
     );
@@ -618,25 +654,36 @@ export default function ResidentialDetails({ customer, onBack }) {
           <ChevronLeft className="h-5 w-5 mr-1" />
           <span>Customer Details</span>
         </button>
+        {facilities.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => exportPreApprovalWorksheet(facilities)}
+            className="text-[#039994] border-[#039994] hover:bg-[#03999410]"
+          >
+            <FileSpreadsheet className="h-4 w-4 mr-1" />
+            Export Pre-Approval Worksheet
+          </Button>
+        )}
       </div>
 
       {/* ─── Registration Progress ───────────────────────────── */}
       {(() => {
-        const status = (customer?.status || "Invited").toLowerCase();
-        const hasAgreement = !!(customer?.agreementSigned || customer?.agreements?.termsAccepted);
-        const hasUtilityAuth = !!(customer?.utilityAuthorization || customer?.utilityAuthStatus === "AUTHORIZED" || customer?.utility);
+        const status = (customerDetails?.status || customer?.status || "Invited").toLowerCase();
+        const hasAgreement = !!(customerDetails?.agreementSigned || customerDetails?.agreements?.termsAccepted || customerDetails?.agreement);
+        const hasUtilityAuth = !!(customerDetails?.utilityAuthorization || customerDetails?.utilityAuthStatus === "AUTHORIZED" || customerDetails?.utility);
         const hasFacility = facilities.length > 0;
         const facilityVerified = hasFacility && facilities.some(f => f.verificationStatus === "VERIFIED" || f.verificationStatus === "APPROVED");
         const isActive = status === "active";
         const isTerminated = status === "terminated" || status === "inactive";
 
         const steps = [
-          { label: "Registered", done: status !== "invited" || isActive },
-          { label: "Agreement Signed", done: hasAgreement || isActive },
-          { label: "Utility Authorized", done: hasUtilityAuth || isActive },
-          { label: "Facility Added", done: hasFacility || isActive },
-          { label: "Facility Verified", done: facilityVerified || isActive },
-          { label: "Active", done: isActive },
+          { label: "Registered", done: status !== "invited" },
+          { label: "Agreement Signed", done: hasAgreement },
+          { label: "Utility Authorized", done: hasUtilityAuth },
+          { label: "Facility Added", done: hasFacility },
+          { label: "Facility Verified", done: facilityVerified },
+          { label: "Active", done: isActive && facilityVerified },
         ];
 
         return (

@@ -233,6 +233,19 @@ export default function CustomerManagement() {
   };
 
   useEffect(() => {
+    // Check if navigated from Registration Pipeline with a selected customer
+    const stored = sessionStorage.getItem("pipelineSelectedCustomer");
+    if (stored) {
+      sessionStorage.removeItem("pipelineSelectedCustomer");
+      try {
+        const customer = JSON.parse(stored);
+        setSelectedCustomer(customer);
+        setCurrentView("details");
+      } catch { /* ignore parse errors */ }
+    }
+  }, []);
+
+  useEffect(() => {
     if (currentView === "management") {
       fetchCustomers(currentPage, 50);
       fetchUtilityProviders();

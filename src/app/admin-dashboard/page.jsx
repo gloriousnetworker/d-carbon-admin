@@ -21,12 +21,13 @@ import UserManagement from '@/components/dashboard/user-management/UserManagemen
 import Faq from '@/components/dashboard/faq/Faq';
 import FeedbackPage from '@/components/dashboard/FeedbackPage';
 import RegistrationPipeline from '@/components/dashboard/registration-pipeline/RegistrationPipeline';
+import SystemJobs from '@/components/dashboard/system/SystemJobs';
 
 const VALID_SECTIONS = [
   'overview', 'userManagement', 'recSalesManagement', 'resiGroupManagement',
   'commissionStructure', 'payoutProcessing', 'reporting', 'myAccount',
   'agreementManagement', 'userSupport', 'notifications', 'helpCenter',
-  'contactSupport', 'faq', 'feedback', 'registrationPipeline',
+  'contactSupport', 'faq', 'feedback', 'registrationPipeline', 'systemJobs',
 ];
 
 const SECTION_COMPONENTS = {
@@ -46,6 +47,7 @@ const SECTION_COMPONENTS = {
   faq: Faq,
   feedback: FeedbackPage,
   registrationPipeline: RegistrationPipeline,
+  systemJobs: SystemJobs,
 };
 
 const sectionDisplayMap = {
@@ -65,6 +67,7 @@ const sectionDisplayMap = {
   faq: 'FAQs',
   feedback: 'Feedback',
   registrationPipeline: 'Registration Pipeline',
+  systemJobs: 'System Jobs',
 };
 
 function DashboardContent() {

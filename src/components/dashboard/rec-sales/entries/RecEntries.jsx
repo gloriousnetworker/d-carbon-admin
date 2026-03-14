@@ -44,8 +44,8 @@ function Modal({ isOpen, onClose, children }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}></div>
-      <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="fixed inset-0 bg-black/50" onClick={onClose}></div>
+      <div className="relative z-10 bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         {children}
       </div>
     </div>
@@ -198,6 +198,7 @@ export default function RecEntries() {
     party: '',
     vintageDate: ''
   })
+  const [showFilters, setShowFilters] = useState(false)
   const [loading, setLoading] = useState(true)
   const [buyersLoading, setBuyersLoading] = useState(true)
   const [buyerNames, setBuyerNames] = useState({})
@@ -463,7 +464,10 @@ export default function RecEntries() {
               </div>
             </CustomDropdownMenu>
             <div className="flex space-x-2">
-              <button className="flex items-center gap-2 px-3 py-2 text-sm border border-[#039994] text-[#039994] rounded-md hover:bg-[#039994] hover:text-white font-sfpro transition-colors">
+              <button
+                className={`flex items-center gap-2 px-3 py-2 text-sm border border-[#039994] rounded-md font-sfpro transition-colors ${showFilters ? "bg-[#039994] text-white" : "text-[#039994] hover:bg-[#039994] hover:text-white"}`}
+                onClick={() => setShowFilters(!showFilters)}
+              >
                 <Filter className="h-4 w-4" /> Filter by
               </button>
               <button
@@ -476,43 +480,45 @@ export default function RecEntries() {
           </div>
           
           <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
-            <div className="p-4 border-b">
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className={styles.labelClass}>Type</label>
-                  <Input 
-                    placeholder="Filter by status" 
-                    value={filters.type}
-                    onChange={(e) => {
-                      setFilters({...filters, type: e.target.value})
-                    }}
-                    className={styles.inputClass}
-                  />
-                </div>
-                <div>
-                  <label className={styles.labelClass}>Party</label>
-                  <Input 
-                    placeholder="Filter by buyer" 
-                    value={filters.party}
-                    onChange={(e) => {
-                      setFilters({...filters, party: e.target.value})
-                    }}
-                    className={styles.inputClass}
-                  />
-                </div>
-                <div>
-                  <label className={styles.labelClass}>Vintage Date</label>
-                  <Input 
-                    placeholder="Filter by vintage date (YYYY-MM-DD)" 
-                    value={filters.vintageDate}
-                    onChange={(e) => {
-                      setFilters({...filters, vintageDate: e.target.value})
-                    }}
-                    className={styles.inputClass}
-                  />
+            {showFilters && (
+              <div className="p-4 border-b">
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className={styles.labelClass}>Type</label>
+                    <Input
+                      placeholder="Filter by status"
+                      value={filters.type}
+                      onChange={(e) => {
+                        setFilters({...filters, type: e.target.value})
+                      }}
+                      className={styles.inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className={styles.labelClass}>Party</label>
+                    <Input
+                      placeholder="Filter by buyer"
+                      value={filters.party}
+                      onChange={(e) => {
+                        setFilters({...filters, party: e.target.value})
+                      }}
+                      className={styles.inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className={styles.labelClass}>Vintage Date</label>
+                    <Input
+                      placeholder="Filter by vintage date (YYYY-MM-DD)"
+                      value={filters.vintageDate}
+                      onChange={(e) => {
+                        setFilters({...filters, vintageDate: e.target.value})
+                      }}
+                      className={styles.inputClass}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
             
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

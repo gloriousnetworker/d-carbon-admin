@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ChevronLeft, Upload, Loader2, CheckCircle, Download, Package } from "lucide-react";
+import { ChevronLeft, Upload, Loader2, CheckCircle, Download, Package, FileSpreadsheet } from "lucide-react";
 import { exportDocumentPackage } from "@/lib/documentExport";
+import { exportWregisCoverSheet } from "@/lib/exportUtils";
 import { Button } from "@/components/ui/button";
 import { toast } from "react-hot-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -13,6 +14,7 @@ export const labelClass = 'block mb-2 font-sfpro text-[14px] leading-[100%] trac
 export const inputClass = 'w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro text-[14px] leading-[100%] tracking-[-0.05em] font-[400] text-[#1E1E1E]';
 
 export default function CommercialDetails({ customer, onBack }) {
+  const [customerDetails, setCustomerDetails] = useState(customer);
   const [facilities, setFacilities] = useState([]);
   const [facilitiesLoading, setFacilitiesLoading] = useState(false);
   const [facilitiesError, setFacilitiesError] = useState(null);
@@ -32,8 +34,31 @@ export default function CommercialDetails({ customer, onBack }) {
   const [selectedFile, setSelectedFile] = useState(null);
 
   useEffect(() => {
-    if (customer?.id) fetchFacilities();
+    if (customer?.id) {
+      fetchFacilities();
+      fetchCustomerDetails();
+    }
   }, [customer?.id]);
+
+  const fetchCustomerDetails = async () => {
+    try {
+      const authToken = localStorage.getItem("authToken");
+      const email = customer?.email;
+      if (!authToken || !email) return;
+      const res = await fetch(
+        `${CONFIG.API_BASE_URL}/api/admin/customer/${encodeURIComponent(email.trim())}`,
+        { headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" } }
+      );
+      if (res.ok) {
+        const json = await res.json();
+        if (json.status === "success" && json.data) {
+          setCustomerDetails(prev => ({ ...prev, ...json.data }));
+        }
+      }
+    } catch {
+      // Non-critical
+    }
+  };
 
   const fetchFacilities = async () => {
     setFacilitiesLoading(true);
@@ -93,9 +118,9 @@ export default function CommercialDetails({ customer, onBack }) {
 
   // Derive registration progress from real data points
   const getRegistrationSteps = () => {
-    const status = (customer?.status || "Invited").toLowerCase();
-    const hasAgreement = !!(customer?.agreementSigned || customer?.agreements?.termsAccepted);
-    const hasUtilityAuth = !!(customer?.utilityAuthorization || customer?.utilityAuthStatus === "AUTHORIZED" || customer?.utility);
+    const status = (customerDetails?.status || customer?.status || "Invited").toLowerCase();
+    const hasAgreement = !!(customerDetails?.agreementSigned || customerDetails?.agreements?.termsAccepted || customerDetails?.agreement);
+    const hasUtilityAuth = !!(customerDetails?.utilityAuthorization || customerDetails?.utilityAuthStatus === "AUTHORIZED" || customerDetails?.utility);
     const hasFacility = facilities.length > 0;
     const allDocsApproved = hasFacility && facilities.some(f => f.verificationStatus === "VERIFIED" || f.verificationStatus === "APPROVED");
     const facilityVerified = hasFacility && facilities.some(f => f.verificationStatus === "VERIFIED");
@@ -104,12 +129,12 @@ export default function CommercialDetails({ customer, onBack }) {
 
     const steps = [
       { label: "Registered", done: status !== "invited", current: status === "registered" && !hasAgreement },
-      { label: "Agreement Signed", done: hasAgreement || isActive, current: !hasAgreement && status === "registered" },
-      { label: "Utility Authorized", done: hasUtilityAuth || isActive, current: hasAgreement && !hasUtilityAuth && !isActive },
-      { label: "Docs Uploaded", done: hasFacility || isActive, current: hasUtilityAuth && !hasFacility && !isActive },
-      { label: "Docs Approved", done: allDocsApproved || isActive, current: hasFacility && !allDocsApproved && !isActive },
-      { label: "Facility Verified", done: facilityVerified || isActive, current: allDocsApproved && !facilityVerified && !isActive },
-      { label: "Active", done: isActive, current: isActive },
+      { label: "Agreement Signed", done: hasAgreement, current: !hasAgreement && status === "registered" },
+      { label: "Utility Authorized", done: hasUtilityAuth, current: hasAgreement && !hasUtilityAuth },
+      { label: "Docs Uploaded", done: hasFacility, current: hasUtilityAuth && !hasFacility },
+      { label: "Docs Approved", done: allDocsApproved, current: hasFacility && !allDocsApproved },
+      { label: "Facility Verified", done: facilityVerified, current: allDocsApproved && !facilityVerified },
+      { label: "Active", done: isActive && facilityVerified, current: isActive },
     ];
 
     return { steps, isTerminated };
@@ -454,6 +479,19 @@ export default function CommercialDetails({ customer, onBack }) {
               )}
             </Button>
           )}
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              exportWregisCoverSheet(facility, customer, facility.documentation, "commercial");
+            }}
+            className="text-[#039994] border-[#039994] hover:bg-[#03999410]"
+          >
+            <FileSpreadsheet className="h-4 w-4 mr-1" />
+            WREGIS Cover Sheet
+          </Button>
         </div>
       </div>
     );

@@ -513,11 +513,11 @@ export default function ResiGroupManagement() {
   )
 }
 
-function CreateNewResidentGroup({ 
-  onBack, 
-  onFilterOpen, 
-  onCreate, 
-  totalKWSelected, 
+function CreateNewResidentGroup({
+  onBack,
+  onFilterOpen,
+  onCreate,
+  totalKWSelected,
   totalKWCapacity,
   facilities,
   loading,
@@ -528,6 +528,11 @@ function CreateNewResidentGroup({
   creatingGroup,
   error
 }) {
+  const [facPage, setFacPage] = useState(1)
+  const facPerPage = 10
+  const facTotalPages = Math.ceil(facilities.length / facPerPage)
+  const paginatedFacilities = facilities.slice((facPage - 1) * facPerPage, facPage * facPerPage)
+
   return (
     <div className="bg-white border border-gray-200 rounded-lg">
       <div className="p-4 flex justify-between items-center">
@@ -625,7 +630,7 @@ function CreateNewResidentGroup({
                 </td>
               </tr>
             ) : (
-              facilities.map((facility) => (
+              paginatedFacilities.map((facility) => (
                 <tr key={facility.id} className="border-b hover:bg-gray-50 transition-colors duration-100">
                   <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E]">
                     <input
@@ -654,11 +659,19 @@ function CreateNewResidentGroup({
 
       <div className="p-4 flex justify-between items-center">
         <div className="flex items-center gap-4">
-          <button className="p-1 text-gray-300" disabled>
+          <button
+            className="p-1 text-gray-500 hover:text-gray-700 disabled:text-gray-300"
+            disabled={facPage === 1}
+            onClick={() => setFacPage(p => Math.max(1, p - 1))}
+          >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <span className="text-sm">1 of 1</span>
-          <button className="p-1 text-gray-300" disabled>
+          <span className="text-sm">{facPage} of {facTotalPages || 1}</span>
+          <button
+            className="p-1 text-gray-500 hover:text-gray-700 disabled:text-gray-300"
+            disabled={facPage >= facTotalPages}
+            onClick={() => setFacPage(p => Math.min(facTotalPages, p + 1))}
+          >
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>

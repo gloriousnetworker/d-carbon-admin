@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ChevronDown, ChevronLeft, ChevronRight, Filter, Calendar, Search, Download } from "lucide-react"
+import { ChevronDown, ChevronLeft, ChevronRight, Filter, Calendar, Search, Download, X, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -19,6 +19,10 @@ export default function ResidentialMeterRecords() {
   const [isLoading, setIsLoading] = useState(false)
   const [records, setRecords] = useState([])
   
+  const [selectedRecord, setSelectedRecord] = useState(null)
+  const [facilityBalance, setFacilityBalance] = useState(null)
+  const [balanceLoading, setBalanceLoading] = useState(false)
+
   // State for filters
   const [startDate, setStartDate] = useState(null)
   const [endDate, setEndDate] = useState(null)
@@ -176,7 +180,7 @@ export default function ResidentialMeterRecords() {
         RECs: r.recs != null ? Number(r.recs).toFixed(8) : "",
         "Points Value": r.points != null ? `$${(r.points * 0.1).toFixed(2)}` : "",
       }))
-      const headers = Object.keys(rows[0] || {})
+      const headers = ["ID", "Meter UID", "Utility", "Address", "User", "Start Date", "End Date", "Interval kWh", "Points", "RECs", "Points Value"]
       const csv = [
         headers.join(","),
         ...rows.map(row => headers.map(h => `"${(row[h] ?? "").toString().replace(/"/g, '""')}"`).join(","))
@@ -195,6 +199,28 @@ export default function ResidentialMeterRecords() {
       console.error("Export error:", err)
     } finally {
       setExporting(false)
+    }
+  }
+
+  const handleRowClick = async (record) => {
+    const facilityId = record.residentialFacility?.id || record.facilityId
+    if (!facilityId) return
+    setSelectedRecord(record)
+    setFacilityBalance(null)
+    setBalanceLoading(true)
+    try {
+      const authToken = localStorage.getItem("authToken")
+      const res = await fetch(`${CONFIG.API_BASE_URL}/api/rec/facility/rec-balance/${facilityId}`, {
+        headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" }
+      })
+      if (res.ok) {
+        const json = await res.json()
+        if (json.status === "success") setFacilityBalance(json.data)
+      }
+    } catch {
+      // Balance fetch is supplementary
+    } finally {
+      setBalanceLoading(false)
     }
   }
 
@@ -221,80 +247,63 @@ export default function ResidentialMeterRecords() {
             <span>{exporting ? "Exporting..." : "Export CSV"}</span>
             <Download className="h-4 w-4" />
           </Button>
-          <Popover open={isFilterOpen} onOpenChange={setIsFilterOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <span>Filter by</span>
-                <Filter className="h-4 w-4" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80">
-              <div className="space-y-4">
-                <h3 className="font-medium">Filter Options</h3>
-                
+          <Button variant="outline" className={`gap-2 ${(startDate || endDate || facilityId || utilityProvider) ? "border-[#039994] text-[#039994]" : ""}`} onClick={() => setIsFilterOpen(true)}>
+            <span>Filter by</span>
+            <Filter className="h-4 w-4" />
+          </Button>
+          {isFilterOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setIsFilterOpen(false)}>
+              <div className="bg-white rounded-xl shadow-xl w-80 p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between">
+                  <h3 className="font-medium text-sm font-sfpro">Filter Options</h3>
+                  <button onClick={() => setIsFilterOpen(false)} className="text-gray-400 hover:text-gray-600">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
                 <div className="space-y-2">
-                  <label className="text-sm">Start Date</label>
+                  <label className="text-sm font-sfpro">Start Date</label>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start text-left font-normal"
-                      >
+                      <Button variant="outline" className="w-full justify-start text-left font-normal">
                         <Calendar className="mr-2 h-4 w-4" />
                         {startDate ? format(startDate, "PPP") : "Select date"}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <CalendarComponent
-                        mode="single"
-                        selected={startDate}
-                        onSelect={setStartDate}
-                        initialFocus
-                      />
+                    <PopoverContent className="w-auto p-0 z-[60]">
+                      <CalendarComponent mode="single" selected={startDate} onSelect={setStartDate} initialFocus />
                     </PopoverContent>
                   </Popover>
                 </div>
-                
+
                 <div className="space-y-2">
-                  <label className="text-sm">End Date</label>
+                  <label className="text-sm font-sfpro">End Date</label>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start text-left font-normal"
-                      >
+                      <Button variant="outline" className="w-full justify-start text-left font-normal">
                         <Calendar className="mr-2 h-4 w-4" />
                         {endDate ? format(endDate, "PPP") : "Select date"}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <CalendarComponent
-                        mode="single"
-                        selected={endDate}
-                        onSelect={setEndDate}
-                        initialFocus
-                      />
+                    <PopoverContent className="w-auto p-0 z-[60]">
+                      <CalendarComponent mode="single" selected={endDate} onSelect={setEndDate} initialFocus />
                     </PopoverContent>
                   </Popover>
                 </div>
-                
+
                 <div className="space-y-2">
-                  <label className="text-sm">Facility ID</label>
-                  <Input 
-                    placeholder="Enter facility ID" 
-                    value={facilityId}
-                    onChange={(e) => setFacilityId(e.target.value)}
-                  />
+                  <label className="text-sm font-sfpro">Facility ID</label>
+                  <Input placeholder="Enter facility ID" value={facilityId} onChange={(e) => setFacilityId(e.target.value)} />
                 </div>
-                
+
                 <div className="space-y-2">
-                  <label className="text-sm">Utility Provider</label>
-                  <Select value={utilityProvider} onValueChange={setUtilityProvider}>
+                  <label className="text-sm font-sfpro">Utility Provider</label>
+                  <Select value={utilityProvider || "all"} onValueChange={(v) => setUtilityProvider(v === "all" ? "" : v)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select provider" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">All Providers</SelectItem>
+                    <SelectContent className="z-[60]">
+                      <SelectItem value="all">All Providers</SelectItem>
                       <SelectItem value="Pacific Gas & Electric">Pacific Gas & Electric</SelectItem>
                       <SelectItem value="Southern California Edison">Southern California Edison</SelectItem>
                       <SelectItem value="San Diego Gas & Electric">San Diego Gas & Electric</SelectItem>
@@ -305,14 +314,14 @@ export default function ResidentialMeterRecords() {
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div className="flex justify-between">
                   <Button variant="outline" onClick={resetFilters}>Reset</Button>
-                  <Button onClick={applyFilters}>Apply Filters</Button>
+                  <Button className="bg-[#039994] hover:bg-[#02857f] text-white" onClick={applyFilters}>Apply Filters</Button>
                 </div>
               </div>
-            </PopoverContent>
-          </Popover>
+            </div>
+          )}
           </div>
         </div>
 
@@ -345,7 +354,7 @@ export default function ResidentialMeterRecords() {
                 </tr>
               ) : (
                 records.map((record) => (
-                  <tr key={record.id} className="border-b text-sm hover:bg-gray-50">
+                  <tr key={record.id} className="border-b text-sm hover:bg-gray-50 cursor-pointer" onClick={() => handleRowClick(record)}>
                     <td className="py-3 px-2">{record.id.substring(0, 8)}...</td>
                     <td className="py-3 px-2">{record.meterUid}</td>
                     <td className="py-3 px-2">{record.utility}</td>
@@ -395,6 +404,67 @@ export default function ResidentialMeterRecords() {
             </Button>
           </div>
         </div>
+        {/* Facility REC Balance Detail Panel */}
+        {selectedRecord && (
+          <div className="border-t bg-[#E8F5F4] p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-sfpro text-sm font-semibold text-[#039994]">
+                Facility Detail: {selectedRecord.residentialFacility?.address || selectedRecord.meterUid}
+              </h3>
+              <Button variant="ghost" size="icon" onClick={() => setSelectedRecord(null)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div>
+                <span className="font-sfpro text-xs text-[#626060] block">Meter UID</span>
+                <span className="font-sfpro text-xs font-semibold">{selectedRecord.meterUid}</span>
+              </div>
+              <div>
+                <span className="font-sfpro text-xs text-[#626060] block">User</span>
+                <span className="font-sfpro text-xs font-semibold">
+                  {selectedRecord.residentialFacility?.user
+                    ? `${selectedRecord.residentialFacility.user.firstName} ${selectedRecord.residentialFacility.user.lastName}`
+                    : '-'}
+                </span>
+              </div>
+              <div>
+                <span className="font-sfpro text-xs text-[#626060] block">Address</span>
+                <span className="font-sfpro text-xs font-semibold">{selectedRecord.residentialFacility?.address || selectedRecord.utilityServiceAddress || '-'}</span>
+              </div>
+              <div>
+                <span className="font-sfpro text-xs text-[#626060] block">Utility</span>
+                <span className="font-sfpro text-xs font-semibold">{selectedRecord.utility || '-'}</span>
+              </div>
+            </div>
+            {balanceLoading ? (
+              <div className="flex items-center gap-2 mt-3 text-xs text-[#626060]">
+                <Loader2 className="h-3 w-3 animate-spin" /> Loading facility REC balance...
+              </div>
+            ) : facilityBalance ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3 text-sm">
+                <div>
+                  <span className="font-sfpro text-xs text-[#626060] block">Total RECs</span>
+                  <span className="font-sfpro text-xs font-semibold">{facilityBalance.totalRecs ?? facilityBalance.total ?? '-'}</span>
+                </div>
+                <div>
+                  <span className="font-sfpro text-xs text-[#626060] block">Available RECs</span>
+                  <span className="font-sfpro text-xs font-semibold text-[#039994]">{facilityBalance.availableRecs ?? facilityBalance.available ?? '-'}</span>
+                </div>
+                <div>
+                  <span className="font-sfpro text-xs text-[#626060] block">Sold RECs</span>
+                  <span className="font-sfpro text-xs font-semibold">{facilityBalance.soldRecs ?? facilityBalance.sold ?? '-'}</span>
+                </div>
+                <div>
+                  <span className="font-sfpro text-xs text-[#626060] block">Retired RECs</span>
+                  <span className="font-sfpro text-xs font-semibold">{facilityBalance.retiredRecs ?? facilityBalance.retired ?? '-'}</span>
+                </div>
+              </div>
+            ) : (
+              <p className="mt-3 font-sfpro text-xs text-[#626060]">No facility REC balance data available</p>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   )
