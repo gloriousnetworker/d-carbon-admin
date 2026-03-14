@@ -28,6 +28,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { Loader2 } from "lucide-react";
+import CONFIG from "@/lib/config";
 
 function FilterDialogContent({ filterOptions, activeFilters, onApply }) {
   const [localFilters, setLocalFilters] = useState({});
@@ -116,21 +118,22 @@ function FilterDialogContent({ filterOptions, activeFilters, onApply }) {
   );
 }
 
-export default function CustomerReport({ onBack }) {
+export default function CustomerReport({ onBack, userId }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [activeReportType, setActiveReportType] = useState("Commercial REC Generation");
   const [activeTab, setActiveTab] = useState("Commercial REC Sales");
-  
+  const [loading, setLoading] = useState(true);
+
   // State for data
   const [salesData, setSalesData] = useState([]);
   const [payoutsData, setPayoutsData] = useState([]);
   const [wregisData, setWregisData] = useState([]);
-  
+
   // State for filtered/sorted data
   const [filteredSalesData, setFilteredSalesData] = useState([]);
   const [filteredPayoutsData, setFilteredPayoutsData] = useState([]);
   const [filteredWregisData, setFilteredWregisData] = useState([]);
-  
+
   // State for filter dialog
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
   const [filterOptions, setFilterOptions] = useState({});
@@ -141,49 +144,108 @@ export default function CustomerReport({ onBack }) {
     direction: 'asc'
   });
 
+  function formatDate(d) {
+    if (!d) return "—";
+    try { return new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }); } catch { return "—"; }
+  }
+
   useEffect(() => {
-    const mockSalesData = Array(25).fill().map((_, i) => ({
-      name: `Customer ${i + 1}`,
-      customerId: `CUS-${1000 + i}`,
-      address: `${100 + i} Main Street`,
-      zipcode: i % 2 === 0 ? "90010" : "90210",
-      avgRecPrice: `$${(15 + Math.random() * 10).toFixed(2)}`,
-      recBalance: `${Math.floor(10 + Math.random() * 30)}`,
-      recSold: `${Math.floor(5 + Math.random() * 25)}`,
-      date: `${(i % 28) + 1}-${(i % 12) + 1}-2025`
-    }));
+    const fetchData = async () => {
+      setLoading(true);
+      const authToken = localStorage.getItem("authToken");
+      if (!authToken) { setLoading(false); return; }
+      const headers = { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" };
 
-    // Mock data for REC Payouts
-    const mockPayoutsData = Array(25).fill().map((_, i) => ({
-      name: `Customer ${i + 1}`,
-      customerId: `CUS-${1000 + i}`,
-      address: `${100 + i} Main Street`,
-      zipcode: i % 2 === 0 ? "90010" : "90210",
-      avgRecPrice: `$${(15 + Math.random() * 10).toFixed(2)}`,
-      recSold: `${Math.floor(5 + Math.random() * 25)}`,
-      revenueTier: i % 3 === 0 ? "60%" : i % 3 === 1 ? "75%" : "50%",
-      recPayout: `$${(100 + Math.random() * 300).toFixed(2)}`,
-      date: `${(i % 28) + 1}-${(i % 12) + 1}-2025`
-    }));
+      try {
+        // Fetch REC sales data
+        const salesUrl = userId
+          ? `${CONFIG.API_BASE_URL}/api/rec/user/facility-sales/${userId}`
+          : `${CONFIG.API_BASE_URL}/api/rec/?page=1&limit=200`;
+        const salesRes = await fetch(salesUrl, { headers });
+        if (salesRes.ok) {
+          const json = await salesRes.json();
+          const records = json.status === "success"
+            ? Array.isArray(json.data) ? json.data : json.data?.sales || json.data?.recSales || json.data?.records || []
+            : [];
+          const mapped = records.map((r) => ({
+            name: r.user ? `${r.user.firstName || ""} ${r.user.lastName || ""}`.trim() : r.userName || r.facilityName || "—",
+            customerId: r.userId?.slice(0, 8) || r.id?.slice(0, 8) || "—",
+            address: r.facility?.address || r.address || "—",
+            zipcode: r.facility?.zipCode || r.zipCode || "—",
+            avgRecPrice: r.pricePerRec != null ? `$${Number(r.pricePerRec).toFixed(2)}` : r.averagePrice != null ? `$${Number(r.averagePrice).toFixed(2)}` : "—",
+            recBalance: r.recBalance ?? r.balance ?? "—",
+            recSold: r.recsSold ?? r.soldQuantity ?? r.quantity ?? "—",
+            date: formatDate(r.createdAt || r.date || r.periodEnd),
+          }));
+          setSalesData(mapped);
+          setFilteredSalesData(mapped);
+        }
 
-    // Mock data for WREGIS Generation Report
-    const mockWregisData = Array(25).fill().map((_, i) => ({
-      generatorId: `GEN-${2000 + i}`,
-      reportingUnitId: `RU-${3000 + i}`,
-      vintage: `${(i % 28) + 1}-${(i % 12) + 1}-${2022 + (i % 3)}`,
-      startDate: `${(i % 28) + 1}-${(i % 12) + 1}-2025`,
-      endDate: `${((i + 15) % 28) + 1}-${((i + 1) % 12) + 1}-2025`,
-      totalMwh: (0.05 + Math.random() * 0.1).toFixed(4)
-    }));
+        // Fetch payout data
+        const payoutUrl = userId
+          ? `${CONFIG.API_BASE_URL}/api/payout/history/${userId}`
+          : `${CONFIG.API_BASE_URL}/api/payout-request?userType=COMMERCIAL`;
+        const payoutRes = await fetch(payoutUrl, { headers });
+        if (payoutRes.ok) {
+          const json = await payoutRes.json();
+          const records = json.status === "success"
+            ? Array.isArray(json.data) ? json.data : json.data?.payouts || json.data?.payoutRequests || json.data?.history || []
+            : [];
+          const mapped = records.map((r) => ({
+            name: r.user ? `${r.user.firstName || ""} ${r.user.lastName || ""}`.trim() : r.userName || "—",
+            customerId: r.userId?.slice(0, 8) || r.id?.slice(0, 8) || "—",
+            address: r.user?.address || r.address || "—",
+            zipcode: r.user?.zipCode || r.zipCode || "—",
+            avgRecPrice: r.recPrice != null ? `$${Number(r.recPrice).toFixed(2)}` : "—",
+            recSold: r.recsSold ?? r.quantity ?? "—",
+            revenueTier: r.revenueTier || r.tier || "—",
+            recPayout: r.amount != null ? `$${Number(r.amount).toFixed(2)}` : "—",
+            date: formatDate(r.createdAt || r.processedAt || r.date),
+          }));
+          setPayoutsData(mapped);
+          setFilteredPayoutsData(mapped);
+        }
 
-    setSalesData(mockSalesData);
-    setPayoutsData(mockPayoutsData);
-    setWregisData(mockWregisData);
-    
-    setFilteredSalesData(mockSalesData);
-    setFilteredPayoutsData(mockPayoutsData);
-    setFilteredWregisData(mockWregisData);
-  }, []);
+        // Fetch WREGIS / meter records for generation data
+        const wregisRes = await fetch(`${CONFIG.API_BASE_URL}/api/admin/meter-records/commercial?page=1&limit=200`, { headers });
+        if (wregisRes.ok) {
+          const json = await wregisRes.json();
+          const records = json.status === "success" ? (json.data?.records || []) : [];
+
+          // Aggregate by facility
+          const facilityMap = new Map();
+          records.forEach((r) => {
+            const fac = r.commercialFacility;
+            const key = fac?.id || r.commercialFacilityId;
+            if (!key) return;
+            const existing = facilityMap.get(key) || { wregisId: fac?.wregisId, totalKWh: 0, startDate: null, endDate: null };
+            existing.totalKWh += Number(r.intervalKWh || 0);
+            const start = r.intervalStart ? new Date(r.intervalStart) : null;
+            const end = r.intervalEnd ? new Date(r.intervalEnd) : null;
+            if (start && (!existing.startDate || start < existing.startDate)) existing.startDate = start;
+            if (end && (!existing.endDate || end > existing.endDate)) existing.endDate = end;
+            facilityMap.set(key, existing);
+          });
+
+          const mapped = Array.from(facilityMap.entries()).map(([key, val]) => ({
+            generatorId: val.wregisId || key.slice(0, 12),
+            reportingUnitId: val.wregisId || key.slice(0, 12),
+            vintage: val.startDate ? `${String(val.startDate.getMonth() + 1).padStart(2, "0")}/${val.startDate.getFullYear()}` : "—",
+            startDate: val.startDate ? formatDate(val.startDate) : "—",
+            endDate: val.endDate ? formatDate(val.endDate) : "—",
+            totalMwh: (val.totalKWh / 1000).toFixed(4),
+          }));
+          setWregisData(mapped);
+          setFilteredWregisData(mapped);
+        }
+      } catch (err) {
+        console.error("Error fetching customer report data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [userId]);
 
   // Get current data based on active report type and tab
   const getCurrentData = () => {
@@ -402,7 +464,7 @@ export default function CustomerReport({ onBack }) {
     const rows = data.map(item => {
       return columns.map(col => {
         // Wrap values with commas in quotes
-        const value = item[col.key];
+        const value = String(item[col.key] ?? "");
         if (value.includes(',')) {
           return `"${value}"`;
         }
@@ -595,7 +657,14 @@ export default function CustomerReport({ onBack }) {
                   ))}
                 </tr>
               ))}
-              {currentItems.length === 0 && (
+              {loading && (
+                <tr>
+                  <td colSpan={getColumns().length} className="py-8 text-center text-gray-500">
+                    <Loader2 className="h-5 w-5 animate-spin inline mr-2" />Loading data...
+                  </td>
+                </tr>
+              )}
+              {!loading && currentItems.length === 0 && (
                 <tr>
                   <td colSpan={getColumns().length} className="py-6 text-center text-gray-500">
                     No data found matching your filters
@@ -635,7 +704,14 @@ export default function CustomerReport({ onBack }) {
                   ))}
                 </tr>
               ))}
-              {currentItems.length === 0 && (
+              {loading && currentItems.length === 0 && (
+                <tr>
+                  <td colSpan={getColumns().length} className="py-8 text-center text-gray-500">
+                    <Loader2 className="h-5 w-5 animate-spin inline mr-2" />Loading data...
+                  </td>
+                </tr>
+              )}
+              {!loading && currentItems.length === 0 && (
                 <tr>
                   <td colSpan={getColumns().length} className="py-6 text-center text-gray-500">
                     No data found matching your filters
@@ -675,7 +751,14 @@ export default function CustomerReport({ onBack }) {
                   ))}
                 </tr>
               ))}
-              {currentItems.length === 0 && (
+              {loading && currentItems.length === 0 && (
+                <tr>
+                  <td colSpan={getColumns().length} className="py-8 text-center text-gray-500">
+                    <Loader2 className="h-5 w-5 animate-spin inline mr-2" />Loading data...
+                  </td>
+                </tr>
+              )}
+              {!loading && currentItems.length === 0 && (
                 <tr>
                   <td colSpan={getColumns().length} className="py-6 text-center text-gray-500">
                     No data found matching your filters

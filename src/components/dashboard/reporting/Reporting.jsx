@@ -11,16 +11,7 @@ import PartnerPerformanceFilterModal from "./modals/PartnerPerformanceFilterModa
 import WregisGenerationFilterModal from "./modals/WregisGenerationFilterModal"
 import CONFIG from "@/lib/config"
 
-// Static placeholder data for report types without live endpoints yet
-const partnerPerformanceData = [
-  { id: 1, name: "Partner One", address: "123 Main St", activeCommGenerators: "5", activeResidentGenerators: "25", totalCommGen: "150", totalRecsSold: "1200", totalEarnings: "$14,400" },
-  { id: 2, name: "Partner Two", address: "456 Oak Ave", activeCommGenerators: "3", activeResidentGenerators: "18", totalCommGen: "90", totalRecsSold: "750", totalEarnings: "$9,000" },
-]
-
-const wregisGenerationData = [
-  { id: 1, generatorId: "GEN-001", reportingUnitId: "RU-001", vintage: "2024", startDate: "01-01-2024", endDate: "31-12-2024", totalMWh: "150" },
-  { id: 2, generatorId: "GEN-002", reportingUnitId: "RU-002", vintage: "2024", startDate: "01-01-2024", endDate: "31-12-2024", totalMWh: "225" },
-]
+// No more static placeholder data — all report types now fetch from the API
 
 function formatDate(d) {
   if (!d) return "—"
@@ -214,13 +205,124 @@ export default function ReportsDashboard() {
           setFilteredData(mapped)
         }
       } else if (type === "Partner Performance") {
-        setAllData(partnerPerformanceData)
-        setFilteredData(partnerPerformanceData)
+        const authToken = localStorage.getItem("authToken")
+        // Fetch partners list
+        const res = await fetch(`${CONFIG.API_BASE_URL}/api/admin/partners?page=1&limit=200`, {
+          headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+        })
+        if (res.ok) {
+          const json = await res.json()
+          const partners = json.status === "success"
+            ? Array.isArray(json.data) ? json.data : json.data?.partners || json.data?.users || []
+            : []
+          const mapped = partners.map((p, idx) => ({
+            id: p.id || idx,
+            name: p.user ? `${p.user.firstName || ""} ${p.user.lastName || ""}`.trim() : p.name || p.firstName || "—",
+            address: p.user?.address || p.address || "—",
+            partnerType: p.partnerType || p.type || "—",
+            email: p.user?.email || p.email || "—",
+            phone: p.user?.phoneNumber || p.phoneNumber || "—",
+            totalReferrals: p.totalReferrals ?? p._count?.referrals ?? "—",
+            status: p.status || p.user?.status || "Active",
+            dateJoined: formatDate(p.createdAt || p.user?.createdAt),
+          }))
+          setAllData(mapped)
+          setFilteredData(mapped)
+        } else {
+          setAllData([])
+          setFilteredData([])
+        }
       } else if (type === "WREGIS Generation Report") {
-        setAllData(wregisGenerationData)
-        setFilteredData(wregisGenerationData)
+        // Fetch both residential and commercial meter records to build WREGIS generation data
+        const authToken = localStorage.getItem("authToken")
+        const [commRes, resiRes] = await Promise.allSettled([
+          fetch(`${CONFIG.API_BASE_URL}/api/admin/meter-records/commercial?page=1&limit=500`, {
+            headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+          }),
+          fetch(`${CONFIG.API_BASE_URL}/api/admin/meter-records/residential?page=1&limit=500`, {
+            headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+          }),
+        ])
+
+        const parseRecords = async (result) => {
+          if (result.status !== "fulfilled" || !result.value.ok) return []
+          const json = await result.value.json()
+          return json.status === "success" ? (json.data?.records || []) : []
+        }
+
+        const commRecords = await parseRecords(commRes)
+        const resiRecords = await parseRecords(resiRes)
+
+        // Aggregate by facility to build WREGIS-style rows
+        const facilityMap = new Map()
+        const processRecord = (r, facilityKey, wregisId) => {
+          if (!facilityKey) return
+          const existing = facilityMap.get(facilityKey) || {
+            generatorId: wregisId || facilityKey.slice(0, 12),
+            reportingUnitId: wregisId || facilityKey.slice(0, 12),
+            totalKWh: 0,
+            startDate: null,
+            endDate: null,
+          }
+          const kwh = Number(r.intervalKWh || r.revKwh || 0)
+          existing.totalKWh += kwh
+          const start = r.intervalStart ? new Date(r.intervalStart) : null
+          const end = r.intervalEnd ? new Date(r.intervalEnd) : null
+          if (start && (!existing.startDate || start < existing.startDate)) existing.startDate = start
+          if (end && (!existing.endDate || end > existing.endDate)) existing.endDate = end
+          facilityMap.set(facilityKey, existing)
+        }
+
+        commRecords.forEach((r) => {
+          const fac = r.commercialFacility
+          processRecord(r, fac?.id || r.commercialFacilityId, fac?.wregisId)
+        })
+        resiRecords.forEach((r) => {
+          const fac = r.residentialFacility
+          processRecord(r, fac?.id || r.residentialFacilityId, fac?.wregisId)
+        })
+
+        const mapped = Array.from(facilityMap.entries()).map(([key, val], idx) => {
+          const startMonth = val.startDate ? String(val.startDate.getMonth() + 1).padStart(2, "0") : "—"
+          const startYear = val.startDate ? val.startDate.getFullYear() : "—"
+          return {
+            id: idx + 1,
+            generatorId: val.generatorId || "—",
+            reportingUnitId: val.reportingUnitId || "—",
+            vintage: val.startDate ? `${startMonth}/${startYear}` : "—",
+            startDate: val.startDate ? val.startDate.toLocaleDateString("en-US") : "—",
+            endDate: val.endDate ? val.endDate.toLocaleDateString("en-US") : "—",
+            totalMWh: (val.totalKWh / 1000).toFixed(4),
+          }
+        })
+        setAllData(mapped)
+        setFilteredData(mapped)
+      } else if (type === "Residential REC Generation" && resView === "redemption") {
+        // Fetch residential payout requests for redemption data
+        const authToken = localStorage.getItem("authToken")
+        const res = await fetch(`${CONFIG.API_BASE_URL}/api/payout-request?userType=RESIDENTIAL`, {
+          headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+        })
+        if (res.ok) {
+          const json = await res.json()
+          const payouts = json.status === "success"
+            ? Array.isArray(json.data) ? json.data : json.data?.payoutRequests || json.data?.payouts || []
+            : []
+          const mapped = payouts.map((p, idx) => ({
+            id: p.id || idx,
+            Name: p.user ? `${p.user.firstName || ""} ${p.user.lastName || ""}`.trim() : p.userName || "—",
+            Amount: p.amount != null ? `$${Number(p.amount).toFixed(2)}` : "—",
+            Status: p.status || "—",
+            "Request Date": formatDate(p.createdAt),
+            "Processed Date": formatDate(p.processedAt || p.updatedAt),
+          }))
+          setAllData(mapped)
+          setFilteredData(mapped)
+        } else {
+          setAllData([])
+          setFilteredData([])
+        }
       } else {
-        // residential redemption — no endpoint yet, show empty state
         setAllData([])
         setFilteredData([])
       }
@@ -313,7 +415,10 @@ export default function ReportsDashboard() {
       return ["Invoice ID", "User / Company", "Amount", "Status", "Period", "Date", "Actions"]
     }
     if (reportType === "Partner Performance") {
-      return ["Name", "Address", "Active Comm. Generators", "Active Resident Generators", "Total Comm. Gen. (MWh)", "Total RECs Sold", "Total Earnings"]
+      return ["Name", "Email", "Partner Type", "Address", "Total Referrals", "Status", "Date Joined"]
+    }
+    if (reportType === "Residential REC Generation" && residentialView === "redemption") {
+      return ["Name", "Amount", "Status", "Request Date", "Processed Date"]
     }
     if (reportType === "WREGIS Generation Report") {
       return ["Generator ID", "Reporting Unit ID", "Vintage", "Start Date", "End Date", "Total MWh"]
@@ -336,11 +441,17 @@ export default function ReportsDashboard() {
     const keyMap = {
       "Generator ID": "generatorId",
       "Reporting Unit ID": "reportingUnitId",
-      "Total Comm. Gen. (MWh)": "totalCommGen",
-      "Active Comm. Generators": "activeCommGenerators",
-      "Active Resident Generators": "activeResidentGenerators",
-      "Total RECs Sold": "totalRecsSold",
-      "Total Earnings": "totalEarnings",
+      "Total MWh": "totalMWh",
+      "Partner Type": "partnerType",
+      "Total Referrals": "totalReferrals",
+      "Date Joined": "dateJoined",
+      "Email": "email",
+      "Name": "name",
+      "Status": "status",
+      "Address": "address",
+      "Request Date": "Request Date",
+      "Processed Date": "Processed Date",
+      "Amount": "Amount",
     }
     return item[keyMap[col] ?? col] ?? "—"
   }
