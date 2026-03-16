@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import ResidentialRedemptionPayout from "./ResidentialRedemptionPayout"
 import CommercialStatementReport from "./CommercialStatementReport"
 import PartnerCommissionPayout from "./PartnerCommissionPayout"
+import InvoiceReview from "./InvoiceReview"
 import * as styles from "./styles"
 
 export default function PayoutProcessing() {
@@ -13,9 +14,10 @@ export default function PayoutProcessing() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
 
   const payoutTypes = [
-    "Residential Redemption Payout", 
-    "Commercial Statement Payout", 
-    "Partner Commission Payout"
+    "Residential Redemption Payout",
+    "Commercial Statement Payout",
+    "Partner Commission Payout",
+    "Invoice Review"
   ]
 
   const handlePayoutTypeChange = (type) => {
@@ -31,6 +33,8 @@ export default function PayoutProcessing() {
         return <CommercialStatementReport />
       case "Partner Commission Payout":
         return <PartnerCommissionPayout />
+      case "Invoice Review":
+        return <InvoiceReview />
       default:
         return <ResidentialRedemptionPayout />
     }
