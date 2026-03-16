@@ -122,8 +122,8 @@ export default function CommercialDetails({ customer, onBack }) {
     const hasAgreement = !!(customerDetails?.agreementSigned || customerDetails?.agreements?.termsAccepted || customerDetails?.agreement);
     const hasUtilityAuth = !!(customerDetails?.utilityAuthorization || customerDetails?.utilityAuthStatus === "AUTHORIZED" || customerDetails?.utility);
     const hasFacility = facilities.length > 0;
-    const allDocsApproved = hasFacility && facilities.some(f => f.verificationStatus === "VERIFIED" || f.verificationStatus === "APPROVED");
-    const facilityVerified = hasFacility && facilities.some(f => f.verificationStatus === "VERIFIED");
+    const allDocsApproved = hasFacility && facilities.some(f => f.status === "APPROVED" || f.status === "VERIFIED");
+    const facilityVerified = hasFacility && facilities.some(f => f.status === "VERIFIED");
     const isActive = status === "active";
     const isTerminated = status === "terminated" || status === "inactive";
 

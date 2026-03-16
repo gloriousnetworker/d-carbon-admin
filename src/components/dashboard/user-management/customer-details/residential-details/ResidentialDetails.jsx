@@ -676,7 +676,7 @@ export default function ResidentialDetails({ customer, onBack }) {
         const hasAgreement = !!(customerDetails?.agreementSigned || customerDetails?.agreements?.termsAccepted || customerDetails?.agreement);
         const hasUtilityAuth = !!(customerDetails?.utilityAuthorization || customerDetails?.utilityAuthStatus === "AUTHORIZED" || customerDetails?.utility);
         const hasFacility = facilities.length > 0;
-        const facilityVerified = hasFacility && facilities.some(f => f.verificationStatus === "VERIFIED" || f.verificationStatus === "APPROVED");
+        const facilityVerified = hasFacility && facilities.some(f => f.status === "VERIFIED" || f.status === "APPROVED");
         const isActive = status === "active";
         const isTerminated = status === "terminated" || status === "inactive";
 
