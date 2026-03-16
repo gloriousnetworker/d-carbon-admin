@@ -1,34 +1,29 @@
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
+import CONFIG from "../../lib/config";
 
 /**
  * Fetches a file from a URL and returns it as a Blob.
- * Tries multiple strategies to handle CORS restrictions on GCS signed URLs.
+ * Routes GCS URLs through the server proxy to avoid CORS issues.
  */
 async function fetchBlob(url) {
-  // Strategy 1: Standard fetch (works if CORS is configured)
-  try {
-    const res = await fetch(url);
+  const authToken = localStorage.getItem("authToken");
+
+  // Strategy 1: Proxy through server for GCS URLs (avoids CORS)
+  if (url.startsWith("https://storage.googleapis.com/") && authToken) {
+    const proxyUrl = `${CONFIG.API_BASE_URL}/api/admin/proxy-document?url=${encodeURIComponent(url)}`;
+    const res = await fetch(proxyUrl, {
+      headers: { Authorization: `Bearer ${authToken}` },
+    });
     if (res.ok) return res.blob();
-  } catch {
-    // CORS blocked — try next strategy
+    // If proxy fails, fall through to direct fetch
   }
 
-  // Strategy 2: XHR approach (sometimes succeeds where fetch fails)
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("GET", url, true);
-    xhr.responseType = "blob";
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        resolve(xhr.response);
-      } else {
-        reject(new Error(`XHR failed: ${xhr.status}`));
-      }
-    };
-    xhr.onerror = () => reject(new Error("XHR network error"));
-    xhr.send();
-  });
+  // Strategy 2: Direct fetch (works if CORS is configured)
+  const res = await fetch(url);
+  if (res.ok) return res.blob();
+
+  throw new Error(`Failed to fetch document`);
 }
 
 /**
