@@ -148,6 +148,7 @@ export default function RegistrationPipeline() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   const handleCustomerClick = (customer) => {
     // Store selected customer for UserManagement to pick up
@@ -173,7 +174,9 @@ export default function RegistrationPipeline() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setCustomers(data.data?.users || []);
-      setTotalUsers(data.data?.total || data.data?.totalUsers || data.data?.users?.length || 0);
+      const meta = data.data?.metadata || {};
+      setTotalUsers(meta.total || data.data?.users?.length || 0);
+      setTotalPages(meta.totalPages || 1);
     } catch (err) {
       setError(err.message || "Failed to load customers");
     } finally {
@@ -368,10 +371,10 @@ export default function RegistrationPipeline() {
           </table>
 
           {/* Pagination */}
-          {totalUsers > PAGE_SIZE && (
+          {totalPages > 1 && (
             <div className="flex items-center justify-between px-4 py-3 border-t bg-gray-50/60">
               <span className="text-xs text-gray-500 font-sfpro">
-                Page {page} of {Math.ceil(totalUsers / PAGE_SIZE)} ({totalUsers} total)
+                Page {page} of {totalPages} ({totalUsers} total)
               </span>
               <div className="flex items-center gap-2">
                 <Button
@@ -386,7 +389,7 @@ export default function RegistrationPipeline() {
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={page >= Math.ceil(totalUsers / PAGE_SIZE)}
+                  disabled={page >= totalPages}
                   onClick={() => setPage((p) => p + 1)}
                   className="text-xs font-sfpro"
                 >

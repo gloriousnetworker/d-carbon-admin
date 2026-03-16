@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { ChevronLeft, Upload, Loader2, CheckCircle, Download, Package, FileSpreadsheet } from "lucide-react";
-import { exportDocumentPackage } from "@/lib/documentExport";
+import { exportDocumentPackage, downloadDocumentsIndividually } from "@/lib/documentExport";
 import { exportWregisCoverSheet } from "@/lib/exportUtils";
 import { Button } from "@/components/ui/button";
 import { toast } from "react-hot-toast";
@@ -374,7 +374,10 @@ export default function CommercialDetails({ customer, onBack }) {
         ownerName: customer?.name,
       });
 
-      if (result.failed > 0) {
+      if (result.corsFallback) {
+        const opened = downloadDocumentsIndividually(documents);
+        toast.success(`Opening ${opened} document(s) in new tabs for individual download.`);
+      } else if (result.failed > 0) {
         toast.error(`Package downloaded. ${result.failed} document(s) failed — see placeholder files in ZIP.`);
       } else {
         toast.success(`Document package downloaded (${result.success} files)`);

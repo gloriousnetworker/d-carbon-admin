@@ -115,6 +115,11 @@ export async function exportDocumentPackage(documents, facilityInfo, onProgress)
     if (onProgress) onProgress(i + 1, uploadedDocs.length);
   }
 
+  // If all downloads failed (likely CORS), offer individual downloads instead
+  if (failed === uploadedDocs.length && uploadedDocs.length > 0) {
+    return { success: 0, failed, skipped, corsFallback: true };
+  }
+
   // Generate and save ZIP
   const facilitySlug = sanitizeFilename(
     facilityInfo.facilityName || facilityInfo.id || "facility"
@@ -122,5 +127,19 @@ export async function exportDocumentPackage(documents, facilityInfo, onProgress)
   const zipBlob = await zip.generateAsync({ type: "blob" });
   saveAs(zipBlob, `${facilitySlug}_documents.zip`);
 
-  return { success, failed, skipped };
+  return { success, failed, skipped, corsFallback: false };
+}
+
+/**
+ * Fallback: open each document URL in a new tab for individual download.
+ * Used when CORS blocks the ZIP packaging approach.
+ */
+export function downloadDocumentsIndividually(documents) {
+  const uploadedDocs = documents.filter((d) => d.url);
+  let opened = 0;
+  for (const doc of uploadedDocs) {
+    window.open(doc.url, "_blank");
+    opened++;
+  }
+  return opened;
 }
