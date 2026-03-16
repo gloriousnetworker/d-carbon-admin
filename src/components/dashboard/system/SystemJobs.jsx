@@ -114,7 +114,7 @@ export default function SystemJobs() {
       id: "monthly-rec",
       label: "Monthly REC Aggregation",
       description: "Aggregates facility REC data for the current month",
-      endpoint: "/api/monthly-rec-data/aggregate",
+      endpoint: "/api/monthly-rec-data/start",
     },
     {
       id: "historical",
