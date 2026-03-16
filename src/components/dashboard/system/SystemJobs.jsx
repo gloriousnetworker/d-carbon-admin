@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Loader2, Play, RefreshCw, Clock } from "lucide-react"
+import { Loader2, Play, RefreshCw, Clock, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import CONFIG from "@/lib/config"
@@ -11,6 +11,11 @@ export default function SystemJobs() {
   const [jobLogs, setJobLogs] = useState([])
   const [loading, setLoading] = useState(false)
   const [triggering, setTriggering] = useState(null)
+  const [modalJob, setModalJob] = useState(null)
+  const [bonusParams, setBonusParams] = useState({
+    year: new Date().getFullYear(),
+    quarter: Math.ceil((new Date().getMonth() + 1) / 3),
+  })
 
   const getAuthToken = () => localStorage.getItem("authToken")
 
@@ -33,34 +38,34 @@ export default function SystemJobs() {
     }
   }
 
-  const triggerJob = async (jobType) => {
-    setTriggering(jobType)
+  const triggerJob = async (jobId, body) => {
+    setTriggering(jobId)
     try {
-      const endpoint = jobType === "commission"
-        ? "/api/commission-cron"
-        : jobType === "monthly-rec"
-        ? "/api/monthly-rec-data/aggregate"
-        : "/api/historical-collection/run"
-
-      const res = await fetch(`${CONFIG.API_BASE_URL}${endpoint}`, {
+      const job = jobs.find((j) => j.id === jobId)
+      const res = await fetch(`${CONFIG.API_BASE_URL}${job.endpoint}`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${getAuthToken()}`,
           "Content-Type": "application/json",
         },
+        body: body ? JSON.stringify(body) : undefined,
       })
 
       if (res.ok) {
-        toast.success(`${jobType} job triggered successfully`)
+        toast.success(`${job.label} triggered successfully`)
+        if (jobId === "commission") {
+          toast.success("Sales agent bonus will trigger automatically in 15 minutes", { duration: 6000 })
+        }
         fetchJobLogs()
       } else {
         const json = await res.json().catch(() => ({}))
-        toast.error(json.message || `Failed to trigger ${jobType} job`)
+        toast.error(json.message || `Failed to trigger ${job.label}`)
       }
     } catch {
-      toast.error(`Error triggering ${jobType} job`)
+      toast.error(`Error triggering job`)
     } finally {
       setTriggering(null)
+      setModalJob(null)
     }
   }
 
@@ -85,10 +90,55 @@ export default function SystemJobs() {
   }
 
   const jobs = [
-    { id: "commission", label: "Commission Calculation", description: "Calculates partner/agent commissions for the current period" },
-    { id: "monthly-rec", label: "Monthly REC Aggregation", description: "Aggregates facility REC data for the current month" },
-    { id: "historical", label: "Historical Data Collection", description: "Collects and processes historical meter data" },
+    {
+      id: "commission",
+      label: "Commission Calculation",
+      description: "Calculates partner/agent commissions for the current period",
+      endpoint: "/api/commission-cron/trigger",
+      hasParams: true,
+    },
+    {
+      id: "sales-agent",
+      label: "Sales Agent Bonus",
+      description: "Manually triggers sales agent bonus calculation (normally auto 15min after commission)",
+      endpoint: "/api/commission-cron/sales-agent",
+    },
+    {
+      id: "partner-bonus",
+      label: "Partner Bonus",
+      description: "Triggers partner bonus calculation for a specific quarter",
+      endpoint: "/api/bonus/trigger-bonus",
+      hasParams: true,
+    },
+    {
+      id: "monthly-rec",
+      label: "Monthly REC Aggregation",
+      description: "Aggregates facility REC data for the current month",
+      endpoint: "/api/monthly-rec-data/aggregate",
+    },
+    {
+      id: "historical",
+      label: "Historical Data Collection",
+      description: "Collects and processes historical meter data",
+      endpoint: "/api/historical-collection/start",
+    },
   ]
+
+  const handleRunClick = (job) => {
+    if (job.hasParams) {
+      setModalJob(job.id)
+      setBonusParams({
+        year: new Date().getFullYear(),
+        quarter: Math.ceil((new Date().getMonth() + 1) / 3),
+      })
+    } else {
+      triggerJob(job.id)
+    }
+  }
+
+  const handleModalSubmit = () => {
+    triggerJob(modalJob, { year: bonusParams.year, quarter: bonusParams.quarter })
+  }
 
   return (
     <div className="space-y-6">
@@ -109,7 +159,7 @@ export default function SystemJobs() {
               <p className="font-sfpro text-xs text-[#626060] mb-3">{job.description}</p>
               <Button
                 size="sm"
-                onClick={() => triggerJob(job.id)}
+                onClick={() => handleRunClick(job)}
                 disabled={triggering === job.id}
                 className="bg-[#039994] text-white hover:bg-[#028884] w-full"
               >
@@ -171,6 +221,67 @@ export default function SystemJobs() {
           )}
         </CardContent>
       </Card>
+
+      {/* Parameter Modal for Commission / Partner Bonus */}
+      {modalJob && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-sm mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-sfpro text-base font-semibold text-[#1E1E1E]">
+                {modalJob === "commission" ? "Commission Calculation" : "Partner Bonus Calculation"}
+              </h3>
+              <button onClick={() => setModalJob(null)} className="text-gray-400 hover:text-gray-600">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-[#626060] mb-1 font-sfpro">Year</label>
+                <input
+                  type="number"
+                  value={bonusParams.year}
+                  onChange={(e) => setBonusParams((p) => ({ ...p, year: parseInt(e.target.value) }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro"
+                  min="2020"
+                  max="2030"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[#626060] mb-1 font-sfpro">Quarter</label>
+                <select
+                  value={bonusParams.quarter}
+                  onChange={(e) => setBonusParams((p) => ({ ...p, quarter: parseInt(e.target.value) }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro"
+                >
+                  <option value={1}>Q1 (Jan - Mar)</option>
+                  <option value={2}>Q2 (Apr - Jun)</option>
+                  <option value={3}>Q3 (Jul - Sep)</option>
+                  <option value={4}>Q4 (Oct - Dec)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 mt-5">
+              <Button variant="outline" size="sm" onClick={() => setModalJob(null)}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleModalSubmit}
+                disabled={!!triggering}
+                className="bg-[#039994] text-white hover:bg-[#028884]"
+              >
+                {triggering ? (
+                  <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Running...</>
+                ) : (
+                  <><Play className="h-3 w-3 mr-1" /> Run</>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

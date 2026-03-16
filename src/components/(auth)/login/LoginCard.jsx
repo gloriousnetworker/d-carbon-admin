@@ -242,16 +242,6 @@ export default function AdminLoginCard() {
           Sign in
         </button>
 
-        <p className="mt-6 text-center font-sfpro font-[400] text-[14px] leading-[100%] tracking-[-0.05em] text-[#FFFFFF]">
-          Don't have an account?{' '}
-          <a
-            href="/register"
-            className="font-sfpro font-[600] text-[14px] leading-[100%] tracking-[-0.05em] text-[#039994] no-underline hover:text-[#02857f]"
-          >
-            Create account
-          </a>
-        </p>
-
         <hr className="border-t-2 border-gray-200 my-4 opacity-70" />
 
         <p className="font-sfpro font-[400] text-[10px] leading-[100%] tracking-[-0.05em] text-center text-[#FFFFFF] mb-0">

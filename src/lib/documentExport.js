@@ -3,12 +3,32 @@ import { saveAs } from "file-saver";
 
 /**
  * Fetches a file from a URL and returns it as a Blob.
- * Falls back to a proxy approach if direct fetch fails due to CORS.
+ * Tries multiple strategies to handle CORS restrictions on GCS signed URLs.
  */
 async function fetchBlob(url) {
-  const res = await fetch(url, { mode: "cors" });
-  if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
-  return res.blob();
+  // Strategy 1: Standard fetch (works if CORS is configured)
+  try {
+    const res = await fetch(url);
+    if (res.ok) return res.blob();
+  } catch {
+    // CORS blocked — try next strategy
+  }
+
+  // Strategy 2: XHR approach (sometimes succeeds where fetch fails)
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("GET", url, true);
+    xhr.responseType = "blob";
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(xhr.response);
+      } else {
+        reject(new Error(`XHR failed: ${xhr.status}`));
+      }
+    };
+    xhr.onerror = () => reject(new Error("XHR network error"));
+    xhr.send();
+  });
 }
 
 /**

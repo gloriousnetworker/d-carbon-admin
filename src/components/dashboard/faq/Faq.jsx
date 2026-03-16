@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { ChevronUp, ChevronDown, Trash2, Edit, Plus, X } from "lucide-react"
 import toast from "react-hot-toast"
+import CONFIG from "@/lib/config"
 
 const mainContainer = 'min-h-screen w-full flex flex-col items-center justify-center py-8 px-4 bg-white'
 const pageTitle = 'mb-4 font-[600] text-[36px] leading-[100%] tracking-[-0.05em] text-[#039994] font-sfpro text-center'

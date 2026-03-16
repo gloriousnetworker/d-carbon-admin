@@ -137,6 +137,8 @@ function formatDate(d) {
   catch { return "—"; }
 }
 
+const PAGE_SIZE = 20;
+
 export default function RegistrationPipeline() {
   const router = useRouter();
   const [customers, setCustomers] = useState([]);
@@ -144,6 +146,8 @@ export default function RegistrationPipeline() {
   const [error, setError] = useState(null);
   const [activeFilter, setActiveFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalUsers, setTotalUsers] = useState(0);
 
   const handleCustomerClick = (customer) => {
     // Store selected customer for UserManagement to pick up
@@ -152,10 +156,10 @@ export default function RegistrationPipeline() {
   };
 
   useEffect(() => {
-    fetchCustomers();
-  }, []);
+    fetchCustomers(page);
+  }, [page]);
 
-  const fetchCustomers = async () => {
+  const fetchCustomers = async (p) => {
     setLoading(true);
     setError(null);
     try {
@@ -163,12 +167,13 @@ export default function RegistrationPipeline() {
       if (!authToken) throw new Error("Not authenticated");
 
       const res = await fetch(
-        `${CONFIG.API_BASE_URL}/api/admin/get-all-users?page=1&limit=200`,
+        `${CONFIG.API_BASE_URL}/api/admin/get-all-users?page=${p}&limit=${PAGE_SIZE}`,
         { headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" } }
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setCustomers(data.data?.users || []);
+      setTotalUsers(data.data?.total || data.data?.totalUsers || data.data?.users?.length || 0);
     } catch (err) {
       setError(err.message || "Failed to load customers");
     } finally {
@@ -315,7 +320,7 @@ export default function RegistrationPipeline() {
                       stage === "docs_pending" ? "bg-orange-50/30" : ""
                     }`}
                   >
-                    <td className="py-3 px-4 font-sfpro text-gray-400 text-xs">{i + 1}</td>
+                    <td className="py-3 px-4 font-sfpro text-gray-400 text-xs">{(page - 1) * PAGE_SIZE + i + 1}</td>
                     <td className="py-3 px-4 font-sfpro font-medium text-[#1E1E1E]">
                       {customer.name || "—"}
                     </td>
@@ -361,6 +366,35 @@ export default function RegistrationPipeline() {
               })}
             </tbody>
           </table>
+
+          {/* Pagination */}
+          {totalUsers > PAGE_SIZE && (
+            <div className="flex items-center justify-between px-4 py-3 border-t bg-gray-50/60">
+              <span className="text-xs text-gray-500 font-sfpro">
+                Page {page} of {Math.ceil(totalUsers / PAGE_SIZE)} ({totalUsers} total)
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  className="text-xs font-sfpro"
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= Math.ceil(totalUsers / PAGE_SIZE)}
+                  onClick={() => setPage((p) => p + 1)}
+                  className="text-xs font-sfpro"
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

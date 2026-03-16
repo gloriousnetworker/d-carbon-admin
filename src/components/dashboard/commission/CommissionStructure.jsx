@@ -8,7 +8,7 @@ import ManageTiersModal from "./ManageTiersModal";
 import BonusCommissionStructure from "./commission/BonusCommissionStructure";
 import BonusCommissionSetup from "./setupModals/BonusCommissionSetup";
 import ContractTermsTab from "./ContractTermsTab";
-import CalculationTriggers from "./CalculationTriggers";
+
 
 const CommissionStructure = () => {
   const [activeTab, setActiveTab] = useState("COMMISSION");
@@ -286,7 +286,7 @@ const CommissionStructure = () => {
                       Manage Tiers
                     </button>
                   </div>
-                  <CalculationTriggers />
+                  {/* Commission/bonus triggers moved to System Jobs */}
                 </div>
 
                 {loading ? (
