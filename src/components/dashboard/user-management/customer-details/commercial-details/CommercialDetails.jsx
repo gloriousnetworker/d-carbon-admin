@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ChevronLeft, Upload, Loader2, CheckCircle, Download, Package, FileSpreadsheet } from "lucide-react";
+import { ChevronLeft, Upload, Loader2, CheckCircle, Download, Package, FileSpreadsheet, History } from "lucide-react";
 import { exportDocumentPackage, downloadDocumentsIndividually } from "@/lib/documentExport";
 import { exportWregisCoverSheet } from "@/lib/exportUtils";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { toast } from "react-hot-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import DocumentsModal from "./DocumentsModal";
+import FacilityRECHistory from "../FacilityRECHistory";
 import CONFIG from "../../../../../../lib/config";
 
 export const mainContainer = 'min-h-screen w-full flex flex-col items-center justify-center py-8 px-4 bg-white';
@@ -32,6 +33,8 @@ export default function CommercialDetails({ customer, onBack }) {
   const [currentFacility, setCurrentFacility] = useState(null);
   const [ackModalOpen, setAckModalOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+  // FIX-12: selected facility for REC generation history
+  const [recHistoryFacility, setRecHistoryFacility] = useState(null);
 
   useEffect(() => {
     if (customer?.id) {
@@ -495,6 +498,22 @@ export default function CommercialDetails({ customer, onBack }) {
             <FileSpreadsheet className="h-4 w-4 mr-1" />
             WREGIS Cover Sheet
           </Button>
+
+          {/* FIX-12: Toggle REC generation history for this facility */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              setRecHistoryFacility(prev =>
+                prev?.id === facility.id ? null : { id: facility.id, name: facility.facilityName }
+              );
+            }}
+            className={`${recHistoryFacility?.id === facility.id ? "bg-[#039994] text-white border-[#039994]" : "text-[#039994] border-[#039994] hover:bg-[#03999410]"}`}
+          >
+            <History className="h-4 w-4 mr-1" />
+            REC History
+          </Button>
         </div>
       </div>
     );
@@ -735,7 +754,17 @@ export default function CommercialDetails({ customer, onBack }) {
         )}
 
         {facilities.map((facility) => (
-          <FacilityCard key={facility.id} facility={facility} />
+          <React.Fragment key={facility.id}>
+            <FacilityCard facility={facility} />
+            {/* FIX-12: Inline REC generation history when selected */}
+            {recHistoryFacility?.id === facility.id && (
+              <FacilityRECHistory
+                facilityId={facility.id}
+                facilityType="commercial"
+                facilityName={facility.facilityName}
+              />
+            )}
+          </React.Fragment>
         ))}
       </div>
     </div>

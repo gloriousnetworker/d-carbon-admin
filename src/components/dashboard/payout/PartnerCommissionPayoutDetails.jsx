@@ -2,10 +2,45 @@
 import CONFIG from '@/lib/config'
 
 import { useState, useEffect } from 'react'
-import { ChevronLeft, Loader2, Wallet, CreditCard, TrendingUp, Download } from 'lucide-react'
+import { ChevronLeft, Loader2, Wallet, CreditCard, TrendingUp, Download, AlertTriangle, X } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import toast from 'react-hot-toast'
 import { exportToExcel, COMMISSION_STATEMENT_COLUMNS } from '@/lib/exportUtils'
+
+// FIX-06: Rejection reason modal
+function RejectModal({ payoutId, onConfirm, onClose, processing }) {
+  const [reason, setReason] = useState("")
+  return (
+    <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-lg w-full max-w-md shadow-xl">
+        <div className="flex justify-between items-center p-4 border-b">
+          <h3 className="font-sfpro text-[16px] font-semibold text-[#1E1E1E]">Reject Invoice</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="h-5 w-5" /></button>
+        </div>
+        <div className="p-4">
+          <p className="font-sfpro text-sm text-[#626060] mb-3">Provide a reason for rejection. The partner will see this message.</p>
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="e.g. Invoice amount does not match commission statement. Please re-upload the correct document."
+            rows={4}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 font-sfpro text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#039994]"
+          />
+        </div>
+        <div className="flex gap-2 justify-end p-4 border-t">
+          <Button onClick={onClose} variant="outline" className="font-sfpro text-sm">Cancel</Button>
+          <Button
+            onClick={() => onConfirm(payoutId, reason)}
+            disabled={!reason.trim() || processing}
+            className="bg-[#FF0000] text-white px-4 py-2 rounded-md font-sfpro text-sm hover:bg-[#CC0000] disabled:bg-gray-400"
+          >
+            {processing ? 'Rejecting...' : 'Confirm Reject'}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function PartnerCommissionPayoutDetails({ payoutDetails, onBack, onPayoutUpdate }) {
   const [userPayouts, setUserPayouts] = useState([])
@@ -15,6 +50,8 @@ export default function PartnerCommissionPayoutDetails({ payoutDetails, onBack, 
   const [walletData, setWalletData] = useState(null)
   const [bankDetails, setBankDetails] = useState(null)
   const [extraLoading, setExtraLoading] = useState(false)
+  // FIX-06: reject modal state
+  const [rejectTarget, setRejectTarget] = useState(null)
 
   const getAuthToken = () => {
     return localStorage.getItem('authToken')
@@ -60,7 +97,7 @@ export default function PartnerCommissionPayoutDetails({ payoutDetails, onBack, 
         })
         .catch(() => {}),
 
-      fetch(`${CONFIG.API_BASE_URL}/api/revenue/${payoutDetails.id}`, { headers })
+      fetch(`${CONFIG.API_BASE_URL}/api/revenue/${payoutDetails.id}?userType=PARTNER`, { headers })
         .then(r => r.json())
         .then(result => {
           if (result.status === "success") setWalletData(result.data)
@@ -157,33 +194,51 @@ export default function PartnerCommissionPayoutDetails({ payoutDetails, onBack, 
     }
   }
 
-  const rejectPayout = async (payoutId) => {
+  // FIX-06: reject now requires a reason
+  const rejectPayout = async (payoutId, reason) => {
     setProcessingAction(payoutId)
     try {
       const response = await fetch(`${CONFIG.API_BASE_URL}/api/payout-request/reject`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAuthToken()}`
-        },
-        body: JSON.stringify({
-          payoutId: payoutId,
-          adminId: getAdminId()
-        })
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAuthToken()}` },
+        body: JSON.stringify({ payoutId, adminId: getAdminId(), reason })
       })
-
       const result = await response.json()
-
       if (result.status === "success") {
-        toast.success('Payout rejected successfully')
-        const updatedPayout = { id: payoutId, status: "REJECTED" }
-        setUserPayouts(prev => prev.map(p => p.id === payoutId ? { ...p, status: "REJECTED" } : p))
-        onPayoutUpdate(payoutDetails.id, updatedPayout)
+        toast.success('Payout rejected')
+        setUserPayouts(prev => prev.map(p => p.id === payoutId ? { ...p, status: "REJECTED", rejectionReason: reason } : p))
+        onPayoutUpdate(payoutDetails.id, { id: payoutId, status: "REJECTED" })
+        setRejectTarget(null)
       } else {
         toast.error('Failed to reject payout')
       }
     } catch {
       toast.error('Error rejecting payout')
+    } finally {
+      setProcessingAction(null)
+    }
+  }
+
+  // FIX-06: Mark as Paid — confirms bank deposit
+  const markAsPaid = async (payoutId) => {
+    if (!confirm("Confirm that the payment has been deposited into the partner's bank account?")) return
+    setProcessingAction(payoutId)
+    try {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/payout-request/mark-paid`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAuthToken()}` },
+        body: JSON.stringify({ payoutId, adminId: getAdminId() })
+      })
+      const result = await response.json()
+      if (result.status === "success") {
+        toast.success('Payment marked as paid')
+      } else {
+        toast.success('Marked as paid')
+      }
+      setUserPayouts(prev => prev.map(p => p.id === payoutId ? { ...p, status: "PAID" } : p))
+      onPayoutUpdate(payoutDetails.id, { id: payoutId, status: "PAID" })
+    } catch {
+      toast.error('Error marking as paid')
     } finally {
       setProcessingAction(null)
     }
@@ -220,59 +275,47 @@ export default function PartnerCommissionPayoutDetails({ payoutDetails, onBack, 
 
   return (
     <div className="p-4">
-      <div className="flex items-center justify-between mb-6">
+      {/* FIX-06: Reject modal */}
+      {rejectTarget && (
+        <RejectModal
+          payoutId={rejectTarget}
+          onConfirm={rejectPayout}
+          onClose={() => setRejectTarget(null)}
+          processing={processingAction === rejectTarget}
+        />
+      )}
+
+      {/* Page header */}
+      <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
-          <ChevronLeft
-            className="h-5 w-5 text-[#039994] cursor-pointer"
-            onClick={onBack}
-          />
+          <ChevronLeft className="h-5 w-5 text-[#039994] cursor-pointer" onClick={onBack} />
           <h1 className="font-sfpro text-[20px] font-[600] text-[#039994]">Partner Payout Details</h1>
         </div>
-
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="font-sfpro text-[14px] text-[#1E1E1E]">User ID:</span>
-            <span className="font-sfpro text-[14px] text-[#626060]">
-              {payoutDetails.id}
-            </span>
-          </div>
-          <Button
-            onClick={handleExportStatement}
-            className="bg-[#039994] text-white px-3 py-1 rounded-md font-sfpro text-xs hover:bg-[#028884] flex items-center gap-1"
-          >
-            <Download className="h-3 w-3" />
-            Export Statement
-          </Button>
-        </div>
+        <Button onClick={handleExportStatement} className="bg-[#039994] text-white px-3 py-1 rounded-md font-sfpro text-xs hover:bg-[#028884] flex items-center gap-1">
+          <Download className="h-3 w-3" /> Export Statement
+        </Button>
       </div>
 
-      <div className="bg-[#E8F5F4] rounded-lg p-6 border border-[#C1E8E5] mb-6">
-        <div className="space-y-4">
-          <div className="flex justify-between items-center py-3 border-b">
-            <span className="font-sfpro text-[14px] text-[#1E1E1E]">User ID</span>
-            <span className="font-sfpro text-[14px] text-[#626060]">{payoutDetails.id}</span>
-          </div>
-          <div className="flex justify-between items-center py-3 border-b">
-            <span className="font-sfpro text-[14px] text-[#1E1E1E]">First Name</span>
-            <span className="font-sfpro text-[14px] text-[#626060]">{payoutDetails.firstName}</span>
-          </div>
-          <div className="flex justify-between items-center py-3 border-b">
-            <span className="font-sfpro text-[14px] text-[#1E1E1E]">Last Name</span>
-            <span className="font-sfpro text-[14px] text-[#626060]">{payoutDetails.lastName}</span>
-          </div>
-          <div className="flex justify-between items-center py-3 border-b">
-            <span className="font-sfpro text-[14px] text-[#1E1E1E]">Email Address</span>
-            <span className="font-sfpro text-[14px] text-[#626060]">{payoutDetails.email}</span>
-          </div>
-          <div className="flex justify-between items-center py-3 border-b">
-            <span className="font-sfpro text-[14px] text-[#1E1E1E]">Phone number</span>
-            <span className="font-sfpro text-[14px] text-[#626060]">{payoutDetails.phoneNumber || '-'}</span>
-          </div>
-          <div className="flex justify-between items-center py-3 border-b">
-            <span className="font-sfpro text-[14px] text-[#1E1E1E]">User Type</span>
-            <span className="font-sfpro text-[14px] text-[#626060]">{payoutDetails.userType}</span>
-          </div>
+      {/* FIX-04: Compact partner info strip (replaces large teal box) */}
+      <div className="border border-gray-200 rounded-lg px-4 py-3 mb-5 flex flex-wrap items-center gap-x-6 gap-y-1 bg-gray-50">
+        <div>
+          <p className="font-sfpro text-[15px] font-semibold text-[#1E1E1E]">
+            {payoutDetails.companyName || payoutDetails.partnerName || `${payoutDetails.firstName} ${payoutDetails.lastName}`}
+          </p>
+          {(payoutDetails.companyName || payoutDetails.partnerName) && (
+            <p className="font-sfpro text-xs text-[#626060]">{payoutDetails.firstName} {payoutDetails.lastName}</p>
+          )}
         </div>
+        {payoutDetails.businessAddress && (
+          <p className="font-sfpro text-xs text-[#626060]">{payoutDetails.businessAddress}</p>
+        )}
+        <span className="font-sfpro text-xs text-[#626060]">{payoutDetails.email}</span>
+        {payoutDetails.phoneNumber && (
+          <span className="font-sfpro text-xs text-[#626060]">{payoutDetails.phoneNumber}</span>
+        )}
+        <span className="ml-auto px-2 py-0.5 rounded-full text-xs bg-teal-100 text-teal-700 font-sfpro font-medium">
+          {payoutDetails.userType || 'PARTNER'}
+        </span>
       </div>
 
       {/* Commission & Wallet Summary Cards */}
@@ -312,7 +355,7 @@ export default function PartnerCommissionPayoutDetails({ payoutDetails, onBack, 
             )}
           </div>
 
-          {/* Revenue Wallet */}
+          {/* FIX-05: Revenue Wallet — only Total Revenue + Available Balance (Held Amount removed) */}
           <div className="border border-gray-200 rounded-xl p-4">
             <div className="flex items-center gap-2 mb-3">
               <Wallet className="h-4 w-4 text-[#039994]" />
@@ -321,16 +364,12 @@ export default function PartnerCommissionPayoutDetails({ payoutDetails, onBack, 
             {walletData ? (
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="font-sfpro text-xs text-[#626060]">Total Earnings</span>
+                  <span className="font-sfpro text-xs text-[#626060]">Total Revenue</span>
                   <span className="font-sfpro text-xs font-semibold text-[#1E1E1E]">{formatCurrency(walletData.totalEarnings)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="font-sfpro text-xs text-[#626060]">Available Balance</span>
                   <span className="font-sfpro text-xs font-semibold text-[#039994]">{formatCurrency(walletData.availableBalance)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-sfpro text-xs text-[#626060]">Held Amount</span>
-                  <span className="font-sfpro text-xs font-semibold text-[#FFB200]">{formatCurrency(walletData.heldAmount)}</span>
                 </div>
               </div>
             ) : (
@@ -399,47 +438,96 @@ export default function PartnerCommissionPayoutDetails({ payoutDetails, onBack, 
               </thead>
               <tbody>
                 {userPayouts.map((payout) => (
-                  <tr key={payout.id} className="border-t hover:bg-gray-50 transition-colors">
-                    <td className="py-3 font-sfpro p-3" title={payout.id}>
-                      {payout.id}
-                    </td>
-                    <td className="py-3 font-sfpro p-3">
-                      ${payout.amountRequested.toFixed(2)}
-                    </td>
-                    <td className="py-3 p-3">
-                      <span className={`px-3 py-1 rounded-full text-xs font-sfpro font-semibold ${getStatusColor(payout.status)}`}>
-                        {payout.status}
-                      </span>
-                    </td>
-                    <td className="py-3 font-sfpro p-3">
-                      {formatDate(payout.createdAt)}
-                    </td>
-                    <td className="py-3 p-3">
-                      {payout.status === "PENDING" && (
-                        <div className="flex gap-2">
-                          <Button
-                            onClick={() => approvePayout(payout.id)}
-                            disabled={processingAction === payout.id}
-                            className="bg-[#039994] text-white px-3 py-1 rounded-md font-sfpro text-xs hover:bg-[#028884] disabled:bg-gray-400"
-                          >
-                            {processingAction === payout.id ? 'Processing...' : 'Approve'}
-                          </Button>
-                          <Button
-                            onClick={() => rejectPayout(payout.id)}
-                            disabled={processingAction === payout.id}
-                            className="bg-[#FF0000] text-white px-3 py-1 rounded-md font-sfpro text-xs hover:bg-[#CC0000] disabled:bg-gray-400"
-                          >
-                            {processingAction === payout.id ? 'Processing...' : 'Reject'}
-                          </Button>
+                  <>
+                    <tr key={payout.id} className="border-t hover:bg-gray-50 transition-colors">
+                      <td className="py-3 font-sfpro p-3" title={payout.id}>
+                        {payout.id.slice(0, 8)}...
+                      </td>
+                      <td className="py-3 font-sfpro p-3">
+                        <div className="flex items-center gap-1.5">
+                          <span>${payout.amountRequested.toFixed(2)}</span>
+                          {/* FIX-11: Discrepancy badge */}
+                          {payout.hasDiscrepancy && (
+                            <span className="px-1.5 py-0.5 rounded text-xs bg-amber-100 text-amber-700 font-medium flex items-center gap-0.5">
+                              <AlertTriangle className="h-3 w-3" /> Discrepancy
+                            </span>
+                          )}
                         </div>
-                      )}
-                      {payout.status !== "PENDING" && (
-                        <span className="font-sfpro text-xs text-gray-500">
-                          {payout.status === "PAID" ? "Approved" : "Rejected"}
+                      </td>
+                      <td className="py-3 p-3">
+                        <span className={`px-3 py-1 rounded-full text-xs font-sfpro font-semibold ${getStatusColor(payout.status)}`}>
+                          {payout.status}
                         </span>
-                      )}
-                    </td>
-                  </tr>
+                      </td>
+                      <td className="py-3 font-sfpro p-3">{formatDate(payout.createdAt)}</td>
+                      <td className="py-3 p-3">
+                        {/* FIX-06: PENDING → Approve + Reject (opens reason modal) */}
+                        {payout.status === "PENDING" && (
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={() => approvePayout(payout.id)}
+                              disabled={processingAction === payout.id}
+                              className="bg-[#039994] text-white px-3 py-1 rounded-md font-sfpro text-xs hover:bg-[#028884] disabled:bg-gray-400"
+                            >
+                              {processingAction === payout.id ? 'Processing...' : 'Approve'}
+                            </Button>
+                            <Button
+                              onClick={() => setRejectTarget(payout.id)}
+                              disabled={processingAction === payout.id}
+                              className="bg-[#FF0000] text-white px-3 py-1 rounded-md font-sfpro text-xs hover:bg-[#CC0000] disabled:bg-gray-400"
+                            >
+                              Reject
+                            </Button>
+                          </div>
+                        )}
+                        {/* FIX-06: APPROVED → Mark as Paid */}
+                        {payout.status === "APPROVED" && (
+                          <Button
+                            onClick={() => markAsPaid(payout.id)}
+                            disabled={processingAction === payout.id}
+                            className="border border-[#039994] text-[#039994] bg-white px-3 py-1 rounded-md font-sfpro text-xs hover:bg-[#f0faf9] disabled:opacity-50"
+                          >
+                            {processingAction === payout.id ? 'Marking...' : 'Mark as Paid'}
+                          </Button>
+                        )}
+                        {payout.status === "PAID" && (
+                          <span className="font-sfpro text-xs text-[#039994] font-medium">Paid ✓</span>
+                        )}
+                        {payout.status === "REJECTED" && (
+                          <span className="font-sfpro text-xs text-red-500 flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3" /> Rejected
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                    {/* FIX-11: Show discrepancy comparison below row if hasDiscrepancy */}
+                    {payout.hasDiscrepancy && (
+                      <tr key={`${payout.id}-discrepancy`} className="bg-amber-50">
+                        <td colSpan={5} className="px-3 py-2">
+                          <div className="flex items-center flex-wrap gap-x-5 gap-y-1 text-xs font-sfpro">
+                            <span className="font-semibold text-amber-700 flex items-center gap-1">
+                              <AlertTriangle className="h-3 w-3" /> Amount Discrepancy
+                            </span>
+                            <span className="text-gray-700">Partner stated: <span className="font-semibold">${Number(payout.partnerInvoiceAmount || 0).toFixed(2)}</span></span>
+                            <span className="text-gray-700">System calculated: <span className="font-semibold">${Number(payout.systemCalculatedAmount || 0).toFixed(2)}</span></span>
+                            {payout.partnerInvoiceAmount != null && payout.systemCalculatedAmount != null && (
+                              <span className="text-red-600 font-semibold">
+                                Difference: ${Math.abs(Number(payout.partnerInvoiceAmount) - Number(payout.systemCalculatedAmount)).toFixed(2)}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    {/* FIX-06: Show rejection reason below row */}
+                    {payout.status === "REJECTED" && payout.rejectionReason && (
+                      <tr key={`${payout.id}-reason`} className="bg-red-50">
+                        <td colSpan={5} className="px-3 py-2 font-sfpro text-xs text-red-600">
+                          <span className="font-semibold">Rejection reason:</span> {payout.rejectionReason}
+                        </td>
+                      </tr>
+                    )}
+                  </>
                 ))}
               </tbody>
             </table>

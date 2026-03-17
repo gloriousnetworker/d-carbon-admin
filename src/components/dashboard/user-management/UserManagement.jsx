@@ -639,6 +639,34 @@ export default function CustomerManagement() {
               <Info className="h-4 w-4 text-teal-500" />
             </div>
 
+            {/* FIX-02: Inline status filter tabs */}
+            <div className="flex gap-1.5 flex-wrap mb-3">
+              {[
+                { label: "All",        value: "" },
+                { label: "Active",     value: "Active" },
+                { label: "Invited",    value: "Invited" },
+                { label: "Registered", value: "Registered" },
+                { label: "Terminated", value: "Terminated" },
+                { label: "Inactive",   value: "Inactive" },
+              ].map(({ label, value }) => (
+                <button
+                  key={label}
+                  onClick={() => {
+                    const newFilters = { ...filters, status: value };
+                    setFilters(newFilters);
+                    applyFilters(newFilters);
+                  }}
+                  className={`px-3 py-1 rounded-full text-xs font-sfpro font-medium transition-colors ${
+                    filters.status === value
+                      ? "bg-[#039994] text-white"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
             <div className="mb-3">
               <div className="w-full h-2 rounded-full overflow-hidden bg-gray-200">
                 <div className="flex h-full">
@@ -693,7 +721,7 @@ export default function CustomerManagement() {
                   <thead>
                     <tr className="border-y text-sm">
                       <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">S/N</th>
-                      <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Name</th>
+                      <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Name / Company</th>
                       <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Email</th>
                       <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Phone</th>
                       <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Type</th>
@@ -709,7 +737,17 @@ export default function CustomerManagement() {
                         className="border-b hover:bg-gray-50 transition-colors duration-100"
                       >
                         <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E]">{(currentPage - 1) * 50 + index + 1}</td>
-                        <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E] truncate max-w-[140px] cursor-pointer" onClick={() => handleCustomerClick(customer)}>{customer.name}</td>
+                        {/* FIX-03: company name as primary identity for commercial users */}
+                        <td className="py-3 px-4 font-sfpro text-[#1E1E1E] cursor-pointer" onClick={() => handleCustomerClick(customer)}>
+                          {customer.userType === "COMMERCIAL" && customer.companyName ? (
+                            <div>
+                              <p className="text-sm font-semibold truncate max-w-[160px]">{customer.companyName}</p>
+                              <p className="text-xs text-gray-400 truncate max-w-[160px]">{customer.name}</p>
+                            </div>
+                          ) : (
+                            <span className="text-sm truncate max-w-[140px] block">{customer.name || "—"}</span>
+                          )}
+                        </td>
                         <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E] truncate max-w-[160px] cursor-pointer" onClick={() => handleCustomerClick(customer)}>{customer.email}</td>
                         <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E] cursor-pointer" onClick={() => handleCustomerClick(customer)}>{customer.phoneNumber}</td>
                         <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E] cursor-pointer" onClick={() => handleCustomerClick(customer)}>{customer.userType}</td>

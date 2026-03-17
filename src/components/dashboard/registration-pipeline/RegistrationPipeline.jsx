@@ -139,12 +139,33 @@ function formatDate(d) {
 
 const PAGE_SIZE = 20;
 
+// FIX-01: Status group definitions — maps operational labels to pipeline stage keys
+const STATUS_GROUPS = {
+  all:          null,
+  pending:      ["invited", "registered"],
+  under_review: ["docs_pending"],
+  approved:     ["docs_approved", "verified"],
+  active:       ["active"],
+  terminated:   ["terminated"],
+};
+
+const STATUS_GROUP_LABELS = [
+  { key: "all",          label: "All" },
+  { key: "pending",      label: "Pending" },
+  { key: "under_review", label: "Under Review" },
+  { key: "approved",     label: "Approved" },
+  { key: "active",       label: "Active" },
+  { key: "terminated",   label: "Terminated" },
+];
+
 export default function RegistrationPipeline() {
   const router = useRouter();
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeFilter, setActiveFilter] = useState("all");
+  // FIX-01: top-level status group filter (above stage cards)
+  const [statusGroupFilter, setStatusGroupFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
@@ -190,16 +211,21 @@ export default function RegistrationPipeline() {
     return acc;
   }, {});
 
-  // Filtered list
+  // FIX-01: Filtered list — respects both statusGroupFilter (group tabs) and activeFilter (stage cards)
   const filtered = customers.filter((c) => {
     const stage = getStage(c);
+    // Group filter: if not "all", stage must be in the selected group
+    const groupStages = STATUS_GROUPS[statusGroupFilter];
+    const matchesGroup = !groupStages || groupStages.includes(stage);
+    // Stage card filter: further narrows within the selected group
     const matchesStage = activeFilter === "all" || stage === activeFilter;
     const q = search.toLowerCase();
     const matchesSearch =
       !q ||
       (c.name || "").toLowerCase().includes(q) ||
+      (c.companyName || "").toLowerCase().includes(q) ||
       (c.email || "").toLowerCase().includes(q);
-    return matchesStage && matchesSearch;
+    return matchesGroup && matchesStage && matchesSearch;
   });
 
   const actionNeededCount = customers.filter((c) => getStage(c) === "docs_pending").length;
@@ -222,6 +248,33 @@ export default function RegistrationPipeline() {
             </span>
           </div>
         )}
+      </div>
+
+      {/* FIX-01: Status group filter tabs */}
+      <div className="flex gap-1.5 flex-wrap mb-4">
+        {STATUS_GROUP_LABELS.map(({ key, label }) => {
+          const groupStages = STATUS_GROUPS[key];
+          const count = groupStages
+            ? customers.filter((c) => groupStages.includes(getStage(c))).length
+            : customers.length;
+          const isActive = statusGroupFilter === key;
+          return (
+            <button
+              key={key}
+              onClick={() => { setStatusGroupFilter(key); setActiveFilter("all"); }}
+              className={`px-3 py-1.5 rounded-full text-xs font-sfpro font-medium transition-colors ${
+                isActive
+                  ? "bg-[#039994] text-white"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              {label}
+              <span className={`ml-1.5 ${isActive ? "opacity-80" : "text-gray-400"}`}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Stage summary cards */}
@@ -266,12 +319,12 @@ export default function RegistrationPipeline() {
           onChange={(e) => setSearch(e.target.value)}
           className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm font-sfpro focus:outline-none focus:ring-2 focus:ring-[#039994]"
         />
-        {(activeFilter !== "all" || search) && (
+        {(activeFilter !== "all" || statusGroupFilter !== "all" || search) && (
           <Button
             variant="outline"
             size="sm"
             className="text-sm font-sfpro"
-            onClick={() => { setActiveFilter("all"); setSearch(""); }}
+            onClick={() => { setActiveFilter("all"); setStatusGroupFilter("all"); setSearch(""); }}
           >
             Clear filters
           </Button>
@@ -304,7 +357,7 @@ export default function RegistrationPipeline() {
           <table className="w-full border-y text-sm">
             <thead className="bg-gray-50">
               <tr>
-                {["#", "Name", "Email", "Type", "Stage", "Facility Status", "Date Joined", ""].map((h) => (
+                {["#", "Name / Company", "Email", "Type", "Stage", "Facility Status", "Date Joined", ""].map((h) => (
                   <th key={h} className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">
                     {h}
                   </th>
@@ -324,8 +377,16 @@ export default function RegistrationPipeline() {
                     }`}
                   >
                     <td className="py-3 px-4 font-sfpro text-gray-400 text-xs">{(page - 1) * PAGE_SIZE + i + 1}</td>
-                    <td className="py-3 px-4 font-sfpro font-medium text-[#1E1E1E]">
-                      {customer.name || "—"}
+                    {/* FIX-03: Company name as primary identity for commercial users */}
+                    <td className="py-3 px-4 font-sfpro text-[#1E1E1E]">
+                      {customer.userType === "COMMERCIAL" && customer.companyName ? (
+                        <div>
+                          <p className="text-sm font-semibold">{customer.companyName}</p>
+                          <p className="text-xs text-gray-400">{customer.name}</p>
+                        </div>
+                      ) : (
+                        <span className="text-sm font-medium">{customer.name || "—"}</span>
+                      )}
                     </td>
                     <td className="py-3 px-4 font-sfpro text-[#1E1E1E] max-w-[180px] truncate">
                       {customer.email || "—"}

@@ -4,19 +4,23 @@ import { useState, useEffect } from "react"
 import { ChevronDown, ChevronLeft, ChevronRight, Filter, Download, Eye, X } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import ResidentialRecGenerationFilterModal from "./modals/ResidentialRecGenerationFilterModal"
-import CommercialRecGenerationFilterModal from "./modals/CommercialRecGenerationFilterModal"
 import PartnerPerformanceFilterModal from "./modals/PartnerPerformanceFilterModal"
 import WregisGenerationFilterModal from "./modals/WregisGenerationFilterModal"
 import CONFIG from "@/lib/config"
 
-// No more static placeholder data — all report types now fetch from the API
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
 
 function formatDate(d) {
   if (!d) return "—"
   try { return new Date(d).toLocaleDateString("en-GB") } catch { return "—" }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Invoice preview modal
+// ─────────────────────────────────────────────────────────────────────────────
 
 function InvoiceModal({ invoice, onClose }) {
   if (!invoice) return null
@@ -80,29 +84,54 @@ function InvoiceModal({ invoice, onClose }) {
   )
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Facility Type badge (used in merged REC Generation table)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function FacilityTypeBadge({ type }) {
+  if (type === "Commercial") return (
+    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">Commercial</span>
+  )
+  if (type === "Residential") return (
+    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-teal-100 text-teal-700">Residential</span>
+  )
+  return <span className="text-gray-400">—</span>
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main component
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function ReportsDashboard() {
   const [currentPage, setCurrentPage] = useState(1)
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
-  const [reportType, setReportType] = useState("Residential REC Generation")
+  // FIX-10: default changed to "REC Generation" (merged view)
+  const [reportType, setReportType] = useState("REC Generation")
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [allData, setAllData] = useState([])
   const [filteredData, setFilteredData] = useState([])
-  const [residentialView, setResidentialView] = useState("sales")
-  const [commercialView, setCommercialView] = useState("sales")
+  // FIX-10: replaces residentialView + commercialView toggles
+  const [recGenerationFilter, setRecGenerationFilter] = useState("all")
   const [loading, setLoading] = useState(false)
-  const [exporting, setExporting] = useState(false)
   const [selectedInvoice, setSelectedInvoice] = useState(null)
 
   const totalPages = Math.ceil(filteredData.length / 10)
 
+  // FIX-09: "Commercial REC Generation" renamed to "Commercial REC Sales"
+  // FIX-10: "Residential REC Generation" + "Commercial REC Sales" merged into "REC Generation"
+  //         "Residential Redemption" is the former redemption sub-view, now its own report
+  // FIX-13: Added three new report types from /api/reports/* endpoints
   const reportTypes = [
-    "Residential REC Generation",
-    "Commercial REC Generation",
+    "REC Generation",
+    "Residential Redemption",
     "Partner Performance",
     "WREGIS Generation Report",
+    "Points Report",
+    "REC Generation Report",
+    "REC Sales Entries",
   ]
 
-  // ── Data fetchers ──────────────────────────────────────────────────────────
+  // ── Data mappers ──────────────────────────────────────────────────────────
 
   const fetchAllPages = async (buildUrl, extractRecords) => {
     const authToken = localStorage.getItem("authToken")
@@ -127,15 +156,18 @@ export default function ReportsDashboard() {
     return all
   }
 
-  const mapResidential = (records) =>
+  // FIX-10: residential records now include Facility Type + _type for filtering
+  const mapResidentialForREC = (records) =>
     records.map((r) => ({
       id: r.id,
+      "Facility Type": "Residential",
+      _type: "residential",
       Name: r.residentialFacility?.user
         ? `${r.residentialFacility.user.firstName} ${r.residentialFacility.user.lastName}`
         : "—",
+      "Facility / Property": r.residentialFacility?.address || r.utilityServiceAddress || "—",
       "Meter UID": r.meterUid || "—",
       Utility: r.utility || "—",
-      Address: r.residentialFacility?.address || r.utilityServiceAddress || "—",
       "Start Date": formatDate(r.intervalStart),
       "End Date": formatDate(r.intervalEnd),
       "Interval kWh": r.intervalKWh != null ? Number(r.intervalKWh).toFixed(2) : "—",
@@ -143,13 +175,16 @@ export default function ReportsDashboard() {
       RECs: r.recs != null ? Number(r.recs).toFixed(8) : "—",
     }))
 
-  const mapCommercial = (records) =>
+  // FIX-10: commercial records now include Facility Type + _type for filtering
+  const mapCommercialForREC = (records) =>
     records.map((r) => ({
       id: r.id,
+      "Facility Type": "Commercial",
+      _type: "commercial",
       Name: r.commercialFacility?.commercialUser?.user
         ? `${r.commercialFacility.commercialUser.user.firstName} ${r.commercialFacility.commercialUser.user.lastName}`
         : "—",
-      "Facility Name": r.commercialFacility?.facilityName || "—",
+      "Facility / Property": r.commercialFacility?.facilityName || "—",
       "Meter UID": r.meterUid || "—",
       Utility: r.utility || "—",
       "Start Date": formatDate(r.intervalStart),
@@ -171,96 +206,89 @@ export default function ReportsDashboard() {
       _raw: inv,
     }))
 
-  const loadData = async (type, resView, commView) => {
+  // ── Load data by report type ──────────────────────────────────────────────
+
+  const loadData = async (type) => {
     setLoading(true)
     try {
-      if (type === "Residential REC Generation" && resView === "sales") {
-        const records = await fetchAllPages(
-          (p) => `${CONFIG.API_BASE_URL}/api/admin/meter-records/residential?page=${p}&limit=100`,
-          (d) => ({ records: d.records || [], hasNextPage: d.metadata?.hasNextPage || false })
-        )
-        const mapped = mapResidential(records)
-        setAllData(mapped)
-        setFilteredData(mapped)
-      } else if (type === "Commercial REC Generation" && commView === "sales") {
-        const records = await fetchAllPages(
-          (p) => `${CONFIG.API_BASE_URL}/api/admin/meter-records/commercial?page=${p}&limit=100`,
-          (d) => ({ records: d.records || [], hasNextPage: d.metadata?.hasNextPage || false })
-        )
-        const mapped = mapCommercial(records)
-        setAllData(mapped)
-        setFilteredData(mapped)
-      } else if (type === "Commercial REC Generation" && commView === "payout") {
+      // FIX-10: combined REC Generation fetches both residential + commercial
+      if (type === "REC Generation") {
         const authToken = localStorage.getItem("authToken")
-        const res = await fetch(`${CONFIG.API_BASE_URL}/api/quarterly-statements/invoices`, {
+        const [resiResult, commResult] = await Promise.allSettled([
+          fetchAllPages(
+            (p) => `${CONFIG.API_BASE_URL}/api/admin/meter-records/residential?page=${p}&limit=100`,
+            (d) => ({ records: d.records || [], hasNextPage: d.metadata?.hasNextPage || false })
+          ),
+          fetchAllPages(
+            (p) => `${CONFIG.API_BASE_URL}/api/admin/meter-records/commercial?page=${p}&limit=100`,
+            (d) => ({ records: d.records || [], hasNextPage: d.metadata?.hasNextPage || false })
+          ),
+        ])
+        const resiRecords = resiResult.status === "fulfilled" ? resiResult.value : []
+        const commRecords = commResult.status === "fulfilled" ? commResult.value : []
+        const combined = [
+          ...mapResidentialForREC(resiRecords),
+          ...mapCommercialForREC(commRecords),
+        ]
+        setAllData(combined)
+        setFilteredData(combined)
+
+      // Residential Redemption (was sub-view of "Residential REC Generation")
+      } else if (type === "Residential Redemption") {
+        const authToken = localStorage.getItem("authToken")
+        const res = await fetch(`${CONFIG.API_BASE_URL}/api/payout-request?userType=RESIDENTIAL`, {
           headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
         })
         if (res.ok) {
           const json = await res.json()
-          const invoices = json.status === "success"
-            ? Array.isArray(json.data) ? json.data : json.data?.invoices || []
+          const payouts = json.status === "success"
+            ? Array.isArray(json.data) ? json.data : json.data?.payoutRequests || json.data?.payouts || []
             : []
-          const mapped = mapInvoices(invoices)
+          const mapped = payouts.map((p, idx) => ({
+            id: p.id || idx,
+            Name: p.user ? `${p.user.firstName || ""} ${p.user.lastName || ""}`.trim() : p.userName || "—",
+            Amount: p.amount != null ? `$${Number(p.amount).toFixed(2)}` : "—",
+            Status: p.status || "—",
+            "Request Date": formatDate(p.createdAt),
+            "Processed Date": formatDate(p.processedAt || p.updatedAt),
+          }))
           setAllData(mapped)
           setFilteredData(mapped)
+        } else {
+          setAllData([])
+          setFilteredData([])
         }
+
+      // FIX-08 + FIX-13: Partner Performance — uses dedicated /api/admin/partner-performance endpoint
       } else if (type === "Partner Performance") {
         const authToken = localStorage.getItem("authToken")
-        // Fetch partners list
-        const res = await fetch(`${CONFIG.API_BASE_URL}/api/admin/partners?page=1&limit=200`, {
+        const res = await fetch(`${CONFIG.API_BASE_URL}/api/admin/partner-performance?page=1&limit=100`, {
           headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
         })
         if (res.ok) {
           const json = await res.json()
           const partners = json.status === "success"
-            ? Array.isArray(json.data) ? json.data : json.data?.partners || json.data?.users || []
+            ? Array.isArray(json.data) ? json.data : json.data?.partners || json.data?.data || []
             : []
           const mapped = partners.map((p, idx) => ({
             id: p.id || idx,
-            name: p.user ? `${p.user.firstName || ""} ${p.user.lastName || ""}`.trim() : p.name || p.firstName || "—",
-            address: p.user?.address || p.address || "—",
-            partnerType: p.partnerType || p.type || "—",
-            email: p.user?.email || p.email || "—",
-            phone: p.user?.phoneNumber || p.phoneNumber || "—",
-            totalReferrals: p.totalReferrals ?? p._count?.referrals ?? (Array.isArray(p.referrals) ? p.referrals.length : null),
-            status: p.status || p.user?.status || "Active",
-            dateJoined: formatDate(p.createdAt || p.user?.createdAt),
+            companyName: p.companyName || "—",
+            name: p.email || "—",
+            partnerType: p.partnerType || "—",
+            email: p.email || "—",
+            totalReferrals: p.totalReferrals ?? 0,
+            totalFacilities: p.totalFacilities ?? "—",
+            recsGenerated: p.recsGenerated != null ? Number(p.recsGenerated).toFixed(4) : "—",
+            dateJoined: formatDate(p.createdAt),
           }))
           setAllData(mapped)
           setFilteredData(mapped)
-
-          // Fetch referral counts for partners that don't have them
-          const needsReferrals = mapped.filter(p => p.totalReferrals == null && p.email && p.email !== "—")
-          if (needsReferrals.length > 0) {
-            const referralResults = await Promise.allSettled(
-              needsReferrals.map(p =>
-                fetch(`${CONFIG.API_BASE_URL}/api/admin/customer/${encodeURIComponent(p.email.trim())}`, {
-                  headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
-                }).then(r => r.ok ? r.json() : null)
-              )
-            )
-            const referralMap = {}
-            needsReferrals.forEach((p, i) => {
-              const result = referralResults[i]
-              if (result.status === "fulfilled" && result.value?.data?.referrals) {
-                referralMap[p.email] = result.value.data.referrals.length
-              }
-            })
-            if (Object.keys(referralMap).length > 0) {
-              const updated = mapped.map(p => ({
-                ...p,
-                totalReferrals: p.totalReferrals ?? referralMap[p.email] ?? 0,
-              }))
-              setAllData(updated)
-              setFilteredData(updated)
-            }
-          }
         } else {
           setAllData([])
           setFilteredData([])
         }
+
       } else if (type === "WREGIS Generation Report") {
-        // Fetch both residential and commercial meter records to build WREGIS generation data
         const authToken = localStorage.getItem("authToken")
         const [commRes, resiRes] = await Promise.allSettled([
           fetch(`${CONFIG.API_BASE_URL}/api/admin/meter-records/commercial?page=1&limit=500`, {
@@ -280,7 +308,6 @@ export default function ReportsDashboard() {
         const commRecords = await parseRecords(commRes)
         const resiRecords = await parseRecords(resiRes)
 
-        // Aggregate by facility to build WREGIS-style rows
         const facilityMap = new Map()
         const processRecord = (r, facilityKey, wregisId) => {
           if (!facilityKey) return
@@ -309,7 +336,7 @@ export default function ReportsDashboard() {
           processRecord(r, fac?.id || r.residentialFacilityId, fac?.wregisId)
         })
 
-        const mapped = Array.from(facilityMap.entries()).map(([key, val], idx) => {
+        const mapped = Array.from(facilityMap.entries()).map(([, val], idx) => {
           const startMonth = val.startDate ? String(val.startDate.getMonth() + 1).padStart(2, "0") : "—"
           const startYear = val.startDate ? val.startDate.getFullYear() : "—"
           return {
@@ -324,24 +351,25 @@ export default function ReportsDashboard() {
         })
         setAllData(mapped)
         setFilteredData(mapped)
-      } else if (type === "Residential REC Generation" && resView === "redemption") {
-        // Fetch residential payout requests for redemption data
+      // FIX-13: Points Report — GET /api/reports/points
+      } else if (type === "Points Report") {
         const authToken = localStorage.getItem("authToken")
-        const res = await fetch(`${CONFIG.API_BASE_URL}/api/payout-request?userType=RESIDENTIAL`, {
+        const res = await fetch(`${CONFIG.API_BASE_URL}/api/reports/points?page=1&limit=200`, {
           headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
         })
         if (res.ok) {
           const json = await res.json()
-          const payouts = json.status === "success"
-            ? Array.isArray(json.data) ? json.data : json.data?.payoutRequests || json.data?.payouts || []
+          const records = json.status === "success"
+            ? Array.isArray(json.data) ? json.data : json.data?.records || json.data?.data || []
             : []
-          const mapped = payouts.map((p, idx) => ({
-            id: p.id || idx,
-            Name: p.user ? `${p.user.firstName || ""} ${p.user.lastName || ""}`.trim() : p.userName || "—",
-            Amount: p.amount != null ? `$${Number(p.amount).toFixed(2)}` : "—",
-            Status: p.status || "—",
-            "Request Date": formatDate(p.createdAt),
-            "Processed Date": formatDate(p.processedAt || p.updatedAt),
+          const mapped = records.map((r, idx) => ({
+            id: r.id || idx,
+            "User / Facility": r.facilityName || r.facilityId
+              || (r.user ? `${r.user.firstName || ""} ${r.user.lastName || ""}`.trim() : null)
+              || r.userId || "—",
+            "Earned Points": r.earnedPoints ?? r.totalEarnedPoints ?? "—",
+            "Redeemed Points": r.redeemedPoints ?? r.totalRedeemedPoints ?? "—",
+            "Open Balance": r.openBalance ?? r.carryOverPoints ?? r.pointBalance ?? "—",
           }))
           setAllData(mapped)
           setFilteredData(mapped)
@@ -349,6 +377,63 @@ export default function ReportsDashboard() {
           setAllData([])
           setFilteredData([])
         }
+
+      // FIX-13: REC Generation Report (WREGIS pipeline) — GET /api/reports/rec-generation
+      } else if (type === "REC Generation Report") {
+        const authToken = localStorage.getItem("authToken")
+        const res = await fetch(`${CONFIG.API_BASE_URL}/api/reports/rec-generation?page=1&limit=200`, {
+          headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+        })
+        if (res.ok) {
+          const json = await res.json()
+          const records = json.status === "success"
+            ? Array.isArray(json.data) ? json.data : json.data?.records || json.data?.data || []
+            : []
+          const mapped = records.map((r, idx) => ({
+            id: r.id || idx,
+            _wregisStatus: r.wregisStatus,
+            "Facility": r.facilityName || r.facilityId || "—",
+            "Month/Year": r.month && r.year
+              ? `${String(r.month).padStart(2, "0")}/${r.year}`
+              : formatDate(r.intervalStart || r.createdAt),
+            "RECs Generated": r.recsGenerated != null ? Number(r.recsGenerated).toFixed(8) : "—",
+            "RECs Approved": r.approvedRecsAmount != null ? Number(r.approvedRecsAmount).toFixed(8) : "—",
+            "WREGIS Status": r.wregisStatus || "—",
+          }))
+          setAllData(mapped)
+          setFilteredData(mapped)
+        } else {
+          setAllData([])
+          setFilteredData([])
+        }
+
+      // FIX-13: REC Sales Entries — GET /api/reports/rec-sales
+      } else if (type === "REC Sales Entries") {
+        const authToken = localStorage.getItem("authToken")
+        const res = await fetch(`${CONFIG.API_BASE_URL}/api/reports/rec-sales?page=1&limit=200`, {
+          headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+        })
+        if (res.ok) {
+          const json = await res.json()
+          const records = json.status === "success"
+            ? Array.isArray(json.data) ? json.data : json.data?.records || json.data?.sales || json.data?.data || []
+            : []
+          const mapped = records.map((r, idx) => ({
+            id: r.id || idx,
+            "Sale Date": formatDate(r.saleDate || r.createdAt),
+            "Vintage": r.vintage || (r.month && r.year ? `${String(r.month).padStart(2, "0")}/${r.year}` : "—"),
+            "RECs Sold": r.recsSold ?? r.quantity ?? r.totalRecsSold ?? "—",
+            "Price Per REC": r.pricePerRec != null ? `$${Number(r.pricePerRec).toFixed(4)}` : "—",
+            "Total Amount": r.totalAmount != null ? `$${Number(r.totalAmount).toFixed(2)}` : "—",
+            "Buyer": r.buyer || r.recBuyer || r.buyerName || "—",
+          }))
+          setAllData(mapped)
+          setFilteredData(mapped)
+        } else {
+          setAllData([])
+          setFilteredData([])
+        }
+
       } else {
         setAllData([])
         setFilteredData([])
@@ -363,15 +448,28 @@ export default function ReportsDashboard() {
   }
 
   useEffect(() => {
-    loadData(reportType, residentialView, commercialView)
+    loadData(reportType)
     setCurrentPage(1)
-  }, [reportType, residentialView, commercialView])
+    // Reset rec generation filter when switching report types
+    if (reportType === "REC Generation") setRecGenerationFilter("all")
+  }, [reportType])
+
+  // FIX-10: filter the combined REC generation data by facility type
+  useEffect(() => {
+    if (reportType !== "REC Generation") return
+    if (recGenerationFilter === "all") {
+      setFilteredData(allData)
+    } else {
+      setFilteredData(allData.filter((r) => r._type === recGenerationFilter))
+    }
+    setCurrentPage(1)
+  }, [recGenerationFilter])
 
   // ── Export ─────────────────────────────────────────────────────────────────
 
   const handleExport = () => {
     if (!filteredData.length) return
-    const exportRows = filteredData.map(({ id, _raw, ...rest }) => rest)
+    const exportRows = filteredData.map(({ id, _raw, _type, _wregisStatus, ...rest }) => rest)
     const headers = Object.keys(exportRows[0] || {})
     const csv = [
       headers.join(","),
@@ -397,7 +495,7 @@ export default function ReportsDashboard() {
     let results = [...allData]
     if (filters.name) {
       results = results.filter((item) =>
-        (item.Name || item.name || "").toLowerCase().includes(filters.name.toLowerCase())
+        (item.Name || item.name || item.companyName || "").toLowerCase().includes(filters.name.toLowerCase())
       )
     }
     if (filters.dateFrom && filters.dateTo) {
@@ -407,6 +505,10 @@ export default function ReportsDashboard() {
         const d = new Date(parts)
         return d >= new Date(filters.dateFrom) && d <= new Date(filters.dateTo)
       })
+    }
+    // Re-apply recGenerationFilter on top of name/date filter
+    if (reportType === "REC Generation" && recGenerationFilter !== "all") {
+      results = results.filter((r) => r._type === recGenerationFilter)
     }
     setFilteredData(results)
     setIsFilterModalOpen(false)
@@ -419,36 +521,32 @@ export default function ReportsDashboard() {
     setCurrentPage(1)
   }
 
-  const handleResidentialViewChange = (value) => {
-    setResidentialView(value)
-    setCurrentPage(1)
-  }
-
-  const handleCommercialViewChange = (value) => {
-    setCommercialView(value)
-    setCurrentPage(1)
-  }
-
-  // ── Table columns by context ───────────────────────────────────────────────
+  // ── Table columns by report type ───────────────────────────────────────────
 
   const getColumns = () => {
-    if (reportType === "Residential REC Generation" && residentialView === "sales") {
-      return ["Name", "Meter UID", "Utility", "Address", "Start Date", "End Date", "Interval kWh", "Points", "RECs"]
+    // FIX-10: merged REC Generation columns with Facility Type
+    if (reportType === "REC Generation") {
+      return ["Facility Type", "Name", "Facility / Property", "Meter UID", "Utility", "Start Date", "End Date", "Interval kWh", "Points", "RECs"]
     }
-    if (reportType === "Commercial REC Generation" && commercialView === "sales") {
-      return ["Name", "Facility Name", "Meter UID", "Utility", "Start Date", "End Date", "Interval kWh", "Points", "RECs"]
-    }
-    if (reportType === "Commercial REC Generation" && commercialView === "payout") {
-      return ["Invoice ID", "User / Company", "Amount", "Status", "Period", "Date", "Actions"]
-    }
-    if (reportType === "Partner Performance") {
-      return ["Name", "Email", "Partner Type", "Address", "Total Referrals", "Status", "Date Joined"]
-    }
-    if (reportType === "Residential REC Generation" && residentialView === "redemption") {
+    if (reportType === "Residential Redemption") {
       return ["Name", "Amount", "Status", "Request Date", "Processed Date"]
+    }
+    // FIX-08: updated partner performance columns
+    if (reportType === "Partner Performance") {
+      return ["Company Name", "Partner Type", "Total Referrals", "Total Facilities", "RECs Generated", "Date Joined"]
     }
     if (reportType === "WREGIS Generation Report") {
       return ["Generator ID", "Reporting Unit ID", "Vintage", "Start Date", "End Date", "Total MWh"]
+    }
+    // FIX-13: Three new report types
+    if (reportType === "Points Report") {
+      return ["User / Facility", "Earned Points", "Redeemed Points", "Open Balance"]
+    }
+    if (reportType === "REC Generation Report") {
+      return ["Facility", "Month/Year", "RECs Generated", "RECs Approved", "WREGIS Status"]
+    }
+    if (reportType === "REC Sales Entries") {
+      return ["Sale Date", "Vintage", "RECs Sold", "Price Per REC", "Total Amount", "Buyer"]
     }
     return []
   }
@@ -464,22 +562,55 @@ export default function ReportsDashboard() {
         </Button>
       )
     }
-    // Map column label to item key
+    // FIX-10: render badge for Facility Type
+    if (col === "Facility Type") {
+      return <FacilityTypeBadge type={item["Facility Type"]} />
+    }
+    // FIX-13: render badge for WREGIS Status in REC Generation Report
+    if (col === "WREGIS Status") {
+      const s = item["WREGIS Status"]
+      const styleMap = {
+        PENDING_SUBMISSION: "bg-gray-100 text-gray-600",
+        SUBMITTED:          "bg-amber-100 text-amber-700",
+        APPROVED:           "bg-teal-100 text-teal-700",
+        REJECTED:           "bg-red-100 text-red-700",
+        ADJUSTED:           "bg-purple-100 text-purple-700",
+      }
+      const labelMap = {
+        PENDING_SUBMISSION: "Pending",
+        SUBMITTED:          "Submitted",
+        APPROVED:           "Approved",
+        REJECTED:           "Rejected",
+        ADJUSTED:           "Adjusted",
+      }
+      return (
+        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold font-sfpro ${styleMap[s] || "bg-gray-100 text-gray-500"}`}>
+          {labelMap[s] || s || "—"}
+        </span>
+      )
+    }
     const keyMap = {
       "Generator ID": "generatorId",
       "Reporting Unit ID": "reportingUnitId",
       "Total MWh": "totalMWh",
+      // FIX-08: new partner performance columns
+      "Company Name": "companyName",
       "Partner Type": "partnerType",
       "Total Referrals": "totalReferrals",
+      "Total Facilities": "totalFacilities",
+      "RECs Generated": "recsGenerated",
       "Date Joined": "dateJoined",
+      // shared
       "Email": "email",
       "Name": "name",
       "Status": "status",
       "Address": "address",
+      "Facility / Property": "Facility / Property",
       "Request Date": "Request Date",
       "Processed Date": "Processed Date",
       "Amount": "Amount",
     }
+    // FIX-13: new report columns map directly by column name (used as object key)
     return item[keyMap[col] ?? col] ?? "—"
   }
 
@@ -496,6 +627,8 @@ export default function ReportsDashboard() {
 
       <Card className="border-gray-200">
         <CardContent className="p-0">
+
+          {/* Header row */}
           <div className="p-4 flex items-center justify-between">
             <div className="relative">
               <div
@@ -510,7 +643,7 @@ export default function ReportsDashboard() {
                   {reportTypes.map((type) => (
                     <div
                       key={type}
-                      className="p-3 hover:bg-gray-50 cursor-pointer font-sfpro text-sm"
+                      className={`p-3 hover:bg-gray-50 cursor-pointer font-sfpro text-sm ${reportType === type ? "bg-teal-50 text-teal-600 font-medium" : ""}`}
                       onClick={() => handleReportTypeChange(type)}
                     >
                       {type}
@@ -532,30 +665,37 @@ export default function ReportsDashboard() {
             </div>
           </div>
 
-          {/* Sub-view toggles */}
-          {reportType === "Residential REC Generation" && (
-            <div className="px-4 pb-4">
-              <ToggleGroup type="single" value={residentialView} onValueChange={handleResidentialViewChange} className="grid grid-cols-2">
-                <ToggleGroupItem value="sales" className="data-[state=on]:bg-teal-500 data-[state=on]:text-white">
-                  Residential REC Sales
-                </ToggleGroupItem>
-                <ToggleGroupItem value="redemption" className="data-[state=on]:bg-teal-500 data-[state=on]:text-white">
-                  Residential REC Points Redemption
-                </ToggleGroupItem>
-              </ToggleGroup>
-            </div>
-          )}
-
-          {reportType === "Commercial REC Generation" && (
-            <div className="px-4 pb-4">
-              <ToggleGroup type="single" value={commercialView} onValueChange={handleCommercialViewChange} className="grid grid-cols-2">
-                <ToggleGroupItem value="sales" className="data-[state=on]:bg-teal-500 data-[state=on]:text-white">
-                  Commercial REC Sales
-                </ToggleGroupItem>
-                <ToggleGroupItem value="payout" className="data-[state=on]:bg-teal-500 data-[state=on]:text-white">
-                  Commercial REC Payout (Invoices)
-                </ToggleGroupItem>
-              </ToggleGroup>
+          {/* FIX-10: REC Generation filter pills (All | Residential | Commercial) */}
+          {reportType === "REC Generation" && (
+            <div className="px-4 pb-3 flex items-center gap-2">
+              <span className="text-xs text-gray-500 font-sfpro mr-1">Filter by type:</span>
+              {[
+                { label: "All", value: "all" },
+                { label: "Residential", value: "residential" },
+                { label: "Commercial", value: "commercial" },
+              ].map(({ label, value }) => (
+                <button
+                  key={value}
+                  onClick={() => setRecGenerationFilter(value)}
+                  className={`px-3 py-1 rounded-full text-xs font-sfpro font-medium transition-colors ${
+                    recGenerationFilter === value
+                      ? "bg-[#039994] text-white"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  {label}
+                  {value !== "all" && allData.length > 0 && (
+                    <span className="ml-1 opacity-75">
+                      ({allData.filter((r) => r._type === value).length})
+                    </span>
+                  )}
+                </button>
+              ))}
+              {allData.length > 0 && (
+                <span className="ml-auto text-xs text-gray-400 font-sfpro">
+                  {filteredData.length} record{filteredData.length !== 1 ? "s" : ""}
+                </span>
+              )}
             </div>
           )}
 
@@ -635,11 +775,12 @@ export default function ReportsDashboard() {
       </Card>
 
       {/* Filter Modals */}
-      {isFilterModalOpen && reportType === "Residential REC Generation" && (
-        <ResidentialRecGenerationFilterModal onClose={() => setIsFilterModalOpen(false)} onApplyFilter={handleFilterApply} view={residentialView} />
-      )}
-      {isFilterModalOpen && reportType === "Commercial REC Generation" && (
-        <CommercialRecGenerationFilterModal onClose={() => setIsFilterModalOpen(false)} onApplyFilter={handleFilterApply} view={commercialView} />
+      {isFilterModalOpen && (reportType === "REC Generation" || reportType === "Residential Redemption") && (
+        <ResidentialRecGenerationFilterModal
+          onClose={() => setIsFilterModalOpen(false)}
+          onApplyFilter={handleFilterApply}
+          view="sales"
+        />
       )}
       {isFilterModalOpen && reportType === "Partner Performance" && (
         <PartnerPerformanceFilterModal onClose={() => setIsFilterModalOpen(false)} onApplyFilter={handleFilterApply} />
