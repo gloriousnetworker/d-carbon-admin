@@ -64,8 +64,8 @@ export default function ResidentialPayoutDetails({ payoutDetails, onBack, onPayo
       
       if (result.status === "success") {
         toast.success('Payout approved successfully')
-        const updatedPayout = { id: payoutId, status: "PAID" }
-        setUserPayouts(prev => prev.map(p => p.id === payoutId ? { ...p, status: "PAID" } : p))
+        const updatedPayout = { id: payoutId, status: "APPROVED" }
+        setUserPayouts(prev => prev.map(p => p.id === payoutId ? { ...p, status: "APPROVED" } : p))
         onPayoutUpdate(payoutDetails.id, updatedPayout)
       } else {
         toast.error('Failed to approve payout')
@@ -253,7 +253,7 @@ export default function ResidentialPayoutDetails({ payoutDetails, onBack, onPayo
                       {payout.id}
                     </td>
                     <td className="py-3 font-sfpro p-3">
-                      ${payout.amountRequested.toFixed(2)}
+                      ${(payout.amountRequested ?? 0).toFixed(2)}
                     </td>
                     <td className="py-3 p-3">
                       <span className={`px-3 py-1 rounded-full text-xs font-sfpro font-semibold ${getStatusColor(payout.status)}`}>

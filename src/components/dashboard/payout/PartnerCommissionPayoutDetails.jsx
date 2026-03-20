@@ -181,8 +181,8 @@ export default function PartnerCommissionPayoutDetails({ payoutDetails, onBack, 
 
       if (result.status === "success") {
         toast.success('Payout approved successfully')
-        const updatedPayout = { id: payoutId, status: "PAID" }
-        setUserPayouts(prev => prev.map(p => p.id === payoutId ? { ...p, status: "PAID" } : p))
+        const updatedPayout = { id: payoutId, status: "APPROVED" }
+        setUserPayouts(prev => prev.map(p => p.id === payoutId ? { ...p, status: "APPROVED" } : p))
         onPayoutUpdate(payoutDetails.id, updatedPayout)
       } else {
         toast.error('Failed to approve payout')
@@ -453,7 +453,7 @@ export default function PartnerCommissionPayoutDetails({ payoutDetails, onBack, 
                       </td>
                       <td className="py-3 font-sfpro p-3">
                         <div className="flex items-center gap-1.5">
-                          <span>${payout.amountRequested.toFixed(2)}</span>
+                          <span>${(payout.amountRequested ?? 0).toFixed(2)}</span>
                           {/* FIX-11: Discrepancy badge */}
                           {payout.hasDiscrepancy && (
                             <span className="px-1.5 py-0.5 rounded text-xs bg-amber-100 text-amber-700 font-medium flex items-center gap-0.5">
