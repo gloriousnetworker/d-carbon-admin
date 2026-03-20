@@ -271,6 +271,11 @@ export default function PartnerCommissionPayout() {
         setSelectedPayout({
           ...item,
           ...result.data,
+          // Preserve company fields from list data (get-all-users) since /api/user/:email doesn't return them
+          companyName: item.companyName || result.data?.companyName || '',
+          ownerFullName: item.ownerFullName || result.data?.ownerFullName || '',
+          address: item.address || result.data?.address || '',
+          phoneNumber: item.phoneNumber || result.data?.phoneNumber || '',
           payouts: item.payouts
         })
       }

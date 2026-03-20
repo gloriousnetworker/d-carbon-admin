@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ChevronLeft, Upload, Loader2, CheckCircle, Download, Package, FileSpreadsheet, History } from "lucide-react";
+import { ChevronLeft, Upload, Loader2, CheckCircle, Download, Package, FileSpreadsheet, History, Copy, Check } from "lucide-react";
 import { exportDocumentPackage, downloadDocumentsIndividually } from "@/lib/documentExport";
 import { exportWregisCoverSheet } from "@/lib/exportUtils";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,27 @@ export default function CommercialDetails({ customer, onBack }) {
   const [selectedFile, setSelectedFile] = useState(null);
   // FIX-12: selected facility for REC generation history
   const [recHistoryFacility, setRecHistoryFacility] = useState(null);
+  const [copied, setCopied] = useState(false);
+
+  const copyAllDetails = () => {
+    const cd = customerDetails || customer || {};
+    const lines = [
+      `Company: ${cd.companyName || "—"}`,
+      `Contact: ${cd.ownerFullName || `${cd.firstName || ""} ${cd.lastName || ""}`.trim() || "—"}`,
+      `Email: ${cd.email || "—"}`,
+      `Phone: ${cd.phoneNumber || cd.companyPhone || "—"}`,
+      `Address: ${cd.companyAddress || cd.address || "—"}`,
+      `User Type: ${cd.userType || "—"}`,
+      `User ID: ${cd.id || customer?.id || "—"}`,
+      `Utility: ${cd.utility || "—"}`,
+      `Finance Company: ${cd.financeCompany || "—"}`,
+      `Facilities: ${facilities.length}`,
+    ];
+    navigator.clipboard.writeText(lines.join("\n")).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    });
+  };
 
   useEffect(() => {
     if (customer?.id) {
@@ -659,9 +680,15 @@ export default function CommercialDetails({ customer, onBack }) {
             Contact: {customerDetails?.ownerFullName || customer?.ownerFullName || `${customer?.firstName || ""} ${customer?.lastName || ""}`.trim() || "—"}
           </p>
         </div>
-        <span className="text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2.5 py-0.5 font-sfpro flex-shrink-0 ml-4">
-          COMMERCIAL
-        </span>
+        <div className="flex items-center gap-2 flex-shrink-0 ml-4">
+          <Button variant="outline" size="sm" className="h-7 text-xs font-sfpro gap-1" onClick={copyAllDetails}>
+            {copied ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+            {copied ? "Copied" : "Copy Details"}
+          </Button>
+          <span className="text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2.5 py-0.5 font-sfpro">
+            COMMERCIAL
+          </span>
+        </div>
       </div>
 
       <div className="mb-6 w-full max-w-7xl px-5 py-4 border border-gray-200 rounded-xl bg-white">
@@ -697,46 +724,44 @@ export default function CommercialDetails({ customer, onBack }) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 w-full max-w-7xl">
-        <div className="border border-gray-200 rounded-lg bg-[#069B960D] p-6">
-          <h3 className="text-lg font-semibold text-[#039994] mb-4">Customer Information</h3>
-          <div className="grid grid-cols-2 gap-y-4 gap-x-6">
-            <div className="space-y-1">
-              <p className={labelClass}>User ID</p>
-              <p className="font-medium text-xs break-all">{customer?.id || "Not specified"}</p>
+        <div className="border border-gray-200 rounded-lg bg-[#069B960D] p-4 overflow-hidden">
+          <h3 className="text-lg font-semibold text-[#039994] mb-3">Customer Information</h3>
+          <div className="space-y-2.5">
+            <div className="flex justify-between items-start gap-2">
+              <span className="text-xs text-gray-500 font-sfpro shrink-0">User ID</span>
+              <span className="text-xs font-medium text-right truncate max-w-[60%]">{customer?.id || "—"}</span>
             </div>
-            <div className="space-y-1">
-              <p className={labelClass}>Name</p>
-              <p className="font-medium">{customerDetails?.ownerFullName || customer?.ownerFullName || `${customer?.firstName || ""} ${customer?.lastName || ""}`.trim() || "Not specified"}</p>
+            <div className="flex justify-between items-start gap-2">
+              <span className="text-xs text-gray-500 font-sfpro shrink-0">Name</span>
+              <span className="text-xs font-medium text-right truncate max-w-[60%]">{customerDetails?.ownerFullName || customer?.ownerFullName || `${customer?.firstName || ""} ${customer?.lastName || ""}`.trim() || "—"}</span>
             </div>
-            <div className="space-y-1">
-              <p className={labelClass}>Email</p>
-              <p className="font-medium">{customer?.email || "Not specified"}</p>
+            <div className="flex justify-between items-start gap-2">
+              <span className="text-xs text-gray-500 font-sfpro shrink-0">Email</span>
+              <span className="text-xs font-medium text-right truncate max-w-[60%]">{customer?.email || "—"}</span>
             </div>
-            <div className="space-y-1">
-              <p className={labelClass}>Customer Type</p>
-              <p className="font-medium">{customer?.userType || "Not specified"}</p>
+            <div className="flex justify-between items-start gap-2">
+              <span className="text-xs text-gray-500 font-sfpro shrink-0">Customer Type</span>
+              <span className="text-xs font-medium">{customer?.userType || "—"}</span>
             </div>
-            <div className="space-y-1">
-              <p className={labelClass}>Utility Provider</p>
-              <p className="font-medium">{customer?.utility || "Not specified"}</p>
+            <div className="flex justify-between items-start gap-2">
+              <span className="text-xs text-gray-500 font-sfpro shrink-0">Utility Provider</span>
+              <span className="text-xs font-medium text-right truncate max-w-[60%]">{customer?.utility || "—"}</span>
             </div>
-            <div className="space-y-1">
-              <p className={labelClass}>Finance Company</p>
-              <p className="font-medium">{customer?.financeCompany || "Not specified"}</p>
+            <div className="flex justify-between items-start gap-2">
+              <span className="text-xs text-gray-500 font-sfpro shrink-0">Finance Company</span>
+              <span className="text-xs font-medium text-right truncate max-w-[60%]">{customer?.financeCompany || "—"}</span>
             </div>
-            <div className="space-y-1">
-              <p className={labelClass}>Address</p>
-              <p className="font-medium">{customer?.address || "Not specified"}</p>
+            <div className="flex justify-between items-start gap-2">
+              <span className="text-xs text-gray-500 font-sfpro shrink-0">Address</span>
+              <span className="text-xs font-medium text-right truncate max-w-[60%]">{customer?.address || "—"}</span>
             </div>
-            <div className="space-y-1">
-              <p className={labelClass}>Date Registered</p>
-              <p className="font-medium">{formatDate(customer?.date)}</p>
+            <div className="flex justify-between items-start gap-2">
+              <span className="text-xs text-gray-500 font-sfpro shrink-0">Date Registered</span>
+              <span className="text-xs font-medium">{formatDate(customer?.date)}</span>
             </div>
-            <div className="space-y-1">
-              <p className={labelClass}>Status</p>
-              <p className="font-medium">
-                <StatusBadge status={customer?.status || "Not specified"} />
-              </p>
+            <div className="flex justify-between items-start gap-2">
+              <span className="text-xs text-gray-500 font-sfpro shrink-0">Status</span>
+              <StatusBadge status={customer?.status || "Not specified"} />
             </div>
           </div>
         </div>

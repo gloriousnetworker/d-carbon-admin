@@ -174,31 +174,27 @@ export default function ResidentialPayoutDetails({ payoutDetails, onBack, onPayo
         </div>
       </div>
 
-      <div className="bg-[#E8F5F4] rounded-lg px-4 py-3 border border-[#C1E8E5] mb-6">
-        <div className="space-y-4">
-          <div className="flex justify-between items-center py-3 border-b">
-            <span className="font-sfpro text-[14px] text-[#1E1E1E]">User ID</span>
-            <span className="font-sfpro text-[14px] text-[#626060]">{payoutDetails.id}</span>
+      <div className="bg-[#E8F5F4] rounded-lg px-4 py-3 border border-[#C1E8E5] mb-5">
+        <div className="divide-y divide-[#C1E8E5]">
+          <div className="flex justify-between items-center py-2">
+            <span className="font-sfpro text-xs text-[#1E1E1E]">Name</span>
+            <span className="font-sfpro text-xs text-[#626060]">{`${payoutDetails.firstName || ''} ${payoutDetails.lastName || ''}`.trim() || '—'}</span>
           </div>
-          <div className="flex justify-between items-center py-3 border-b">
-            <span className="font-sfpro text-[14px] text-[#1E1E1E]">First Name</span>
-            <span className="font-sfpro text-[14px] text-[#626060]">{payoutDetails.firstName}</span>
+          <div className="flex justify-between items-center py-2">
+            <span className="font-sfpro text-xs text-[#1E1E1E]">Email</span>
+            <span className="font-sfpro text-xs text-[#626060]">{payoutDetails.email || '—'}</span>
           </div>
-          <div className="flex justify-between items-center py-3 border-b">
-            <span className="font-sfpro text-[14px] text-[#1E1E1E]">Last Name</span>
-            <span className="font-sfpro text-[14px] text-[#626060]">{payoutDetails.lastName}</span>
+          <div className="flex justify-between items-center py-2">
+            <span className="font-sfpro text-xs text-[#1E1E1E]">Phone</span>
+            <span className="font-sfpro text-xs text-[#626060]">{payoutDetails.phoneNumber || '—'}</span>
           </div>
-          <div className="flex justify-between items-center py-3 border-b">
-            <span className="font-sfpro text-[14px] text-[#1E1E1E]">Email Address</span>
-            <span className="font-sfpro text-[14px] text-[#626060]">{payoutDetails.email}</span>
+          <div className="flex justify-between items-center py-2">
+            <span className="font-sfpro text-xs text-[#1E1E1E]">User Type</span>
+            <span className="font-sfpro text-xs text-[#626060]">{payoutDetails.userType || '—'}</span>
           </div>
-          <div className="flex justify-between items-center py-3 border-b">
-            <span className="font-sfpro text-[14px] text-[#1E1E1E]">Phone number</span>
-            <span className="font-sfpro text-[14px] text-[#626060]">{payoutDetails.phoneNumber || '-'}</span>
-          </div>
-          <div className="flex justify-between items-center py-3 border-b">
-            <span className="font-sfpro text-[14px] text-[#1E1E1E]">User Type</span>
-            <span className="font-sfpro text-[14px] text-[#626060]">{payoutDetails.userType}</span>
+          <div className="flex justify-between items-center py-2">
+            <span className="font-sfpro text-xs text-[#1E1E1E]">User ID</span>
+            <span className="font-sfpro text-xs text-[#626060] truncate max-w-[50%] text-right">{payoutDetails.id || '—'}</span>
           </div>
         </div>
       </div>
