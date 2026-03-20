@@ -61,11 +61,16 @@ export default function PartnerDetails({ partner, onBack, onCustomerSelect }) {
       if (response.ok) {
         const data = await response.json();
         if (data.status === "success" && data.data) {
+          const d = data.data;
+          const partnerRel = d.partner || {};
           setPartnerDetails({
             ...partner,
-            ...data.data,
-            partnerType: partner.partnerType,
-            address: partner.address || data.data.address,
+            ...d,
+            // Preserve partner business name from either source
+            companyName: partner.companyName || partnerRel.name || d.companyName || '',
+            partnerType: partner.partnerType || d.partnerType,
+            address: partner.address || partnerRel.address || d.address || '',
+            phoneNumber: partner.phoneNumber || partnerRel.phoneNumber || d.phoneNumber || '',
           });
           return;
         }

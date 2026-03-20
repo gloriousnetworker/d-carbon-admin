@@ -27,9 +27,9 @@ export default function SystemJobs() {
       })
       if (res.ok) {
         const json = await res.json()
-        if (json.status === "success") {
-          setJobLogs(Array.isArray(json.data) ? json.data : [])
-        }
+        // Handle both { status: "success", data: [...] } and { data: [...] } and direct array responses
+        const logs = json.data?.logs || json.data || json.logs || (Array.isArray(json) ? json : [])
+        setJobLogs(Array.isArray(logs) ? logs : [])
       }
     } catch {
       // Job logs are supplementary
