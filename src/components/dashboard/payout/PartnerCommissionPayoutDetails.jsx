@@ -296,45 +296,36 @@ export default function PartnerCommissionPayoutDetails({ payoutDetails, onBack, 
         </Button>
       </div>
 
-      {/* Company & Contact Information */}
-      <div className="border border-gray-200 rounded-lg px-4 py-3 mb-5 bg-gray-50">
-        <div className="flex items-start justify-between gap-4 mb-3">
-          <div>
-            <p className="font-sfpro text-[15px] font-semibold text-[#1E1E1E]">
-              {payoutDetails.companyName || payoutDetails.partnerName || `${payoutDetails.firstName || ''} ${payoutDetails.lastName || ''}`.trim() || '—'}
-            </p>
-            {(payoutDetails.companyName || payoutDetails.partnerName) && (payoutDetails.firstName || payoutDetails.lastName) && (
-              <p className="font-sfpro text-xs text-[#626060] mt-0.5">
-                Contact: {`${payoutDetails.firstName || ''} ${payoutDetails.lastName || ''}`.trim()}
-              </p>
-            )}
+      {/* Company & Contact */}
+      <div className="flex items-stretch gap-3 mb-5">
+        {/* Company card */}
+        <div className="flex-1 border border-gray-200 rounded-lg px-4 py-3 bg-white">
+          <div className="flex items-center justify-between mb-2">
+            <span className="font-sfpro text-[10px] text-gray-400 uppercase tracking-wider">Business</span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] bg-teal-50 text-teal-700 font-sfpro font-medium">
+              {payoutDetails.userType || 'PARTNER'}
+            </span>
           </div>
-          <span className="flex-shrink-0 px-2 py-0.5 rounded-full text-xs bg-teal-100 text-teal-700 font-sfpro font-medium">
-            {payoutDetails.userType || 'PARTNER'}
-          </span>
-        </div>
-        <div className="divide-y divide-gray-200">
+          <p className="font-sfpro text-sm font-semibold text-[#1E1E1E] leading-tight">
+            {payoutDetails.companyName || payoutDetails.partnerName || '—'}
+          </p>
           {(payoutDetails.businessAddress || payoutDetails.address) && (
-            <div className="flex justify-between items-center py-1.5">
-              <span className="font-sfpro text-xs text-gray-500">Address</span>
-              <span className="font-sfpro text-xs text-[#1E1E1E] text-right max-w-[65%] truncate">{payoutDetails.businessAddress || payoutDetails.address}</span>
-            </div>
+            <p className="font-sfpro text-xs text-[#626060] mt-1 leading-snug">{payoutDetails.businessAddress || payoutDetails.address}</p>
           )}
-          {payoutDetails.email && (
-            <div className="flex justify-between items-center py-1.5">
-              <span className="font-sfpro text-xs text-gray-500">Email</span>
-              <span className="font-sfpro text-xs text-[#1E1E1E]">{payoutDetails.email}</span>
-            </div>
-          )}
-          {(payoutDetails.phoneNumber || payoutDetails.phone) && (
-            <div className="flex justify-between items-center py-1.5">
-              <span className="font-sfpro text-xs text-gray-500">Phone</span>
-              <span className="font-sfpro text-xs text-[#1E1E1E]">{payoutDetails.phoneNumber || payoutDetails.phone}</span>
-            </div>
-          )}
-          <div className="flex justify-between items-center py-1.5">
-            <span className="font-sfpro text-xs text-gray-500">User ID</span>
-            <span className="font-sfpro text-xs text-[#626060] truncate max-w-[55%] text-right">{payoutDetails.id || '—'}</span>
+        </div>
+        {/* Contact card */}
+        <div className="flex-1 border border-gray-200 rounded-lg px-4 py-3 bg-white">
+          <span className="font-sfpro text-[10px] text-gray-400 uppercase tracking-wider block mb-2">Contact</span>
+          <p className="font-sfpro text-sm font-semibold text-[#1E1E1E] leading-tight">
+            {`${payoutDetails.firstName || ''} ${payoutDetails.lastName || ''}`.trim() || payoutDetails.ownerFullName || '—'}
+          </p>
+          <div className="mt-1.5 space-y-0.5">
+            {payoutDetails.email && (
+              <p className="font-sfpro text-xs text-[#626060]">{payoutDetails.email}</p>
+            )}
+            {(payoutDetails.phoneNumber || payoutDetails.phone) && (
+              <p className="font-sfpro text-xs text-[#626060]">{payoutDetails.phoneNumber || payoutDetails.phone}</p>
+            )}
           </div>
         </div>
       </div>
