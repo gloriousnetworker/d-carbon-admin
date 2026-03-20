@@ -577,14 +577,14 @@ export default function DocumentsModal({ facility, documents, onVerifyFacility, 
                 const inRegTrack = isInRegulatorTrack(doc.status);
 
                 return (
-                  <div key={index} className={`grid grid-cols-12 p-3 border-b last:border-b-0 items-center text-sm ${!doc.url ? "bg-amber-50/30" : ""}`}>
+                  <div key={index} className={`grid grid-cols-12 p-3 border-b last:border-b-0 items-center text-sm ${!doc.url ? "bg-amber-50" : ""}`}>
                     <div className="col-span-3">
                       <p className="font-medium text-xs">{doc.name}</p>
                       {(doc.status === "REJECTED" || doc.status === "REGULATOR_REJECTED") && doc.rejectionReason && (
-                        <p className="text-[10px] text-red-500 mt-0.5 leading-tight">Reason: {doc.rejectionReason}</p>
+                        <p className="text-xs text-red-500 mt-0.5 leading-tight">Reason: {doc.rejectionReason}</p>
                       )}
                       {!doc.url && (
-                        <p className="text-[10px] text-amber-500 mt-0.5">Not yet uploaded by user</p>
+                        <p className="text-xs text-amber-500 mt-0.5">Not yet uploaded by user</p>
                       )}
                     </div>
 
@@ -620,12 +620,12 @@ export default function DocumentsModal({ facility, documents, onVerifyFacility, 
                           </TooltipProvider>
                         </div>
                       ) : (
-                        <span className="text-[10px] text-gray-400">—</span>
+                        <span className="text-xs text-gray-400">—</span>
                       )}
                     </div>
 
                     <div className="col-span-2">
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${getStatusColor(inRegTrack ? "APPROVED" : doc.status)}`}>
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${getStatusColor(inRegTrack ? "APPROVED" : doc.status)}`}>
                         {isApproving ? (
                           <span className="flex items-center gap-1"><Loader2 className="h-2.5 w-2.5 animate-spin" /> ...</span>
                         ) : inRegTrack ? "Approved" : (doc.status || "Not Uploaded")}
@@ -634,28 +634,28 @@ export default function DocumentsModal({ facility, documents, onVerifyFacility, 
 
                     <div className="col-span-2">
                       {inRegTrack ? (
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${getStatusColor(doc.status)}`}>
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${getStatusColor(doc.status)}`}>
                           {doc.status === "APPROVED" ? "Pending" : doc.status === "WREGIS_SUBMITTED" ? "Submitted" : doc.status === "REGULATOR_APPROVED" ? "Approved" : "Rejected"}
                         </span>
                       ) : (
-                        <span className="text-[10px] text-gray-300">—</span>
+                        <span className="text-xs text-gray-300">—</span>
                       )}
                     </div>
 
                     <div className="col-span-3 flex flex-wrap gap-1">
                       {doc.url && !inRegTrack && doc.status !== "APPROVED" && (
                         <>
-                          <Button variant="outline" size="sm" className="h-6 text-[10px] px-2" onClick={() => openStatusModal("APPROVE", doc)} disabled={isApproving}>Approve</Button>
-                          <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 bg-red-50 text-red-600 hover:bg-red-100" onClick={() => openStatusModal("REJECT", doc)} disabled={isApproving}>Reject</Button>
+                          <Button variant="outline" size="sm" className="h-8 text-xs px-3" onClick={() => openStatusModal("APPROVE", doc)} disabled={isApproving}>Approve</Button>
+                          <Button variant="outline" size="sm" className="h-8 text-xs px-3 bg-red-50 text-red-600 hover:bg-red-100" onClick={() => openStatusModal("REJECT", doc)} disabled={isApproving}>Reject</Button>
                         </>
                       )}
                       {doc.status === "APPROVED" && (
-                        <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 bg-purple-50 text-purple-700 hover:bg-purple-100" onClick={() => openStatusModal("WREGIS_SUBMIT", doc)} disabled={isApproving}>Submit to WREGIS</Button>
+                        <Button variant="outline" size="sm" className="h-8 text-xs px-3 bg-purple-50 text-purple-700 hover:bg-purple-100" onClick={() => openStatusModal("WREGIS_SUBMIT", doc)} disabled={isApproving}>Submit to WREGIS</Button>
                       )}
                       {doc.status === "WREGIS_SUBMITTED" && (
                         <>
-                          <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 bg-green-50 text-green-700 hover:bg-green-100" onClick={() => openStatusModal("REG_APPROVE", doc)} disabled={isApproving}>Reg. Approved</Button>
-                          <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 bg-red-50 text-red-600 hover:bg-red-100" onClick={() => openStatusModal("REG_REJECT", doc)} disabled={isApproving}>Reg. Rejected</Button>
+                          <Button variant="outline" size="sm" className="h-8 text-xs px-3 bg-green-50 text-green-700 hover:bg-green-100" onClick={() => openStatusModal("REG_APPROVE", doc)} disabled={isApproving}>Regulator Approved</Button>
+                          <Button variant="outline" size="sm" className="h-8 text-xs px-3 bg-red-50 text-red-600 hover:bg-red-100" onClick={() => openStatusModal("REG_REJECT", doc)} disabled={isApproving}>Regulator Rejected</Button>
                         </>
                       )}
                     </div>

@@ -214,14 +214,15 @@ export default function ResidentialPayoutDetails({ payoutDetails, onBack, onPayo
             <Wallet className="h-4 w-4 text-[#039994]" />
             <h4 className="font-sfpro text-[14px] font-semibold text-[#1E1E1E]">Revenue Wallet</h4>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="flex items-center gap-8">
             <div>
               <span className="font-sfpro text-xs text-[#626060] block">Total Earnings</span>
-              <span className="font-sfpro text-sm font-semibold text-[#1E1E1E]">{formatCurrency(walletData.totalEarnings)}</span>
+              <span className="font-sfpro text-lg font-semibold text-[#1E1E1E]">{formatCurrency(walletData.totalEarnings)}</span>
             </div>
+            <div className="h-8 w-px bg-gray-200" />
             <div>
               <span className="font-sfpro text-xs text-[#626060] block">Available Balance</span>
-              <span className="font-sfpro text-sm font-semibold text-[#039994]">{formatCurrency(walletData.availableBalance)}</span>
+              <span className="font-sfpro text-lg font-semibold text-[#039994]">{formatCurrency(walletData.availableBalance)}</span>
             </div>
           </div>
         </div>

@@ -360,13 +360,10 @@ export default function PartnerDetails({ partner, onBack, onCustomerSelect }) {
           <div className="border border-gray-200 rounded-xl p-5">
             <h3 className="text-sm font-semibold text-[#039994] font-sfpro mb-4">Contact Information</h3>
             <div className="grid grid-cols-2 gap-x-4 gap-y-4">
-              <InfoField label="Business Name" value={businessName || "Not specified"} icon={Building2} />
-              <InfoField label="Contact Person" value={personalName || "Not specified"} icon={User} />
-              <InfoField label="Partner Type" value={formatPartnerType(partnerDetails.partnerType)} />
-              <InfoField label="First Name" value={partnerDetails.firstName || partnerDetails.userDetails?.firstName} icon={User} />
-              <InfoField label="Last Name" value={partnerDetails.lastName || partnerDetails.userDetails?.lastName} />
+              <InfoField label="Partner Type" value={formatPartnerType(partnerDetails.partnerType)} icon={Building2} />
               <InfoField label="Email Address" value={partnerEmail} icon={Mail} />
               <InfoField label="Phone Number" value={partnerDetails.phoneNumber} icon={Phone} />
+              <InfoField label="Date Joined" value={partnerDetails.createdAt ? new Date(partnerDetails.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "N/A"} icon={Calendar} />
               <InfoField label="Address" value={partnerDetails.address} icon={MapPin} fullWidth />
             </div>
           </div>

@@ -702,18 +702,16 @@ export default function CommercialDetails({ customer, onBack }) {
           <div className="grid grid-cols-2 gap-y-4 gap-x-6">
             <div className="space-y-1">
               <p className={labelClass}>User ID</p>
-              <p className="font-medium">{customer?.id || "Not specified"}</p>
+              <p className="font-medium text-xs break-all">{customer?.id || "Not specified"}</p>
             </div>
             <div className="space-y-1">
-              <p className={labelClass}>Company Name</p>
-              <p className="font-medium">{customerDetails?.companyName || customer?.companyName || "Not specified"}</p>
+              <p className={labelClass}>Name</p>
+              <p className="font-medium">{customerDetails?.ownerFullName || customer?.ownerFullName || `${customer?.firstName || ""} ${customer?.lastName || ""}`.trim() || "Not specified"}</p>
             </div>
             <div className="space-y-1">
-              <p className={labelClass}>Owner / Contact</p>
-              <p className="font-medium">
-                {customerDetails?.ownerFullName || customer?.ownerFullName || `${customer?.firstName || ""} ${customer?.lastName || ""}`.trim() || "Not specified"}
-              </p>
-              </div>
+              <p className={labelClass}>Email</p>
+              <p className="font-medium">{customer?.email || "Not specified"}</p>
+            </div>
             <div className="space-y-1">
               <p className={labelClass}>Customer Type</p>
               <p className="font-medium">{customer?.userType || "Not specified"}</p>
