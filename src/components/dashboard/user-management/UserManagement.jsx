@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Filter,
@@ -25,6 +26,7 @@ import InviteCustomerModal from "./modals/customerManagement/InviteCustomerModal
 import InviteBulkCustomersModal from "./modals/customerManagement/InviteBulkCustomersModal";
 import FilterByModal from "./modals/customerManagement/FilterBy";
 import PartnerManagement from "./partner-management/PartnerManagement";
+import PartnerDetails from "./partner-management/PartnerDetails";
 import UtilityProviderManagement from "./utility-provider-management/UtilityProviderManagement";
 import FinanceTypes from "./partner-management/finance-types/FinanceType";
 import UtilityAuthManagement from "./utility-provider-management/UtilityAuthManagement";
@@ -32,6 +34,7 @@ import * as styles from "./styles";
 import CONFIG from "../../../../lib/config";
 
 export default function CustomerManagement() {
+  const router = useRouter();
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -324,6 +327,13 @@ export default function CustomerManagement() {
 
   const handleBackToList = () => {
     setSelectedCustomer(null);
+    // If we navigated here from the registration pipeline (partner click), return there
+    const returnSection = sessionStorage.getItem("pipelineReturnSection");
+    if (returnSection === "registrationPipeline") {
+      sessionStorage.removeItem("pipelineReturnSection");
+      router.push("/admin-dashboard?section=registrationPipeline");
+      return;
+    }
     const backTo = previousView || "management";
     setPreviousView(null);
     setCurrentView(backTo);
@@ -485,6 +495,16 @@ export default function CustomerManagement() {
         return <CommercialDetails customer={selectedCustomer} onBack={handleBackToList} />;
       case "RESIDENTIAL":
         return <ResidentialDetails customer={selectedCustomer} onBack={handleBackToList} />;
+      case "PARTNER":
+      case "SALES_AGENT":
+      case "INSTALLER":
+      case "FINANCE_COMPANY":
+        return (
+          <PartnerDetails
+            partner={{ ...selectedCustomer, email: selectedCustomer.email }}
+            onBack={handleBackToList}
+          />
+        );
       default:
         return null;
     }

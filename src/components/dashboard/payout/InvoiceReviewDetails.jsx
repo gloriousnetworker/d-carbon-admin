@@ -18,17 +18,25 @@ export default function InvoiceReviewDetails({ invoice, onBack, onAction }) {
   const [showDocViewer, setShowDocViewer] = useState(false)
   const [scale, setScale] = useState(1)
   const [rotation, setRotation] = useState(0)
+  // Item-20: earnings breakdown
+  const [earningsBreakdown, setEarningsBreakdown] = useState(null)
+  const [earningsLoading, setEarningsLoading] = useState(false)
 
   const getAuthToken = () => localStorage.getItem("authToken")
   const getAdminId = () => localStorage.getItem("userId")
 
   const userType = invoice.user?.userType || ""
-  const userName = invoice.user
+  // Item-19: show company name as primary for COMMERCIAL users
+  const individualName = invoice.user
     ? `${invoice.user.firstName || ""} ${invoice.user.lastName || ""}`.trim() || invoice.user.email
     : "—"
+  const userName = userType === "COMMERCIAL" && invoice.user?.companyName
+    ? invoice.user.companyName
+    : individualName
 
   useEffect(() => {
     fetchStatementData()
+    fetchEarningsBreakdown()
   }, [])
 
   const fetchStatementData = async () => {
@@ -52,6 +60,26 @@ export default function InvoiceReviewDetails({ invoice, onBack, onAction }) {
       // Statement data is supplementary
     } finally {
       setStatementLoading(false)
+    }
+  }
+
+  // Item-20: fetch quarterly earnings breakdown
+  const fetchEarningsBreakdown = async () => {
+    if (!invoice.userId || !invoice.quarter || !invoice.year) return
+    setEarningsLoading(true)
+    try {
+      const res = await fetch(
+        `${CONFIG.API_BASE_URL}/api/quarterly-statements/earnings-breakdown?userId=${invoice.userId}&quarter=${invoice.quarter}&year=${invoice.year}&userType=${userType}`,
+        { headers: { Authorization: `Bearer ${getAuthToken()}` } }
+      )
+      if (res.ok) {
+        const json = await res.json()
+        if (json.status === "success") setEarningsBreakdown(json.data)
+      }
+    } catch {
+      // Supplementary — fail silently
+    } finally {
+      setEarningsLoading(false)
     }
   }
 
@@ -171,7 +199,10 @@ export default function InvoiceReviewDetails({ invoice, onBack, onAction }) {
             <div className="space-y-2">
               {[
                 ["Invoice #", invoice.invoiceNo],
-                ["User", userName],
+                // Item-19: company name as primary row, individual contact below for COMMERCIAL
+                ...(userType === "COMMERCIAL" && invoice.user?.companyName
+                  ? [["Company", invoice.user.companyName], ["Contact", individualName]]
+                  : [["User", userName]]),
                 ["Email", invoice.user?.email],
                 ["User Type", userType],
                 ["Quarter", `Q${invoice.quarter} ${invoice.year}`],
@@ -303,6 +334,63 @@ export default function InvoiceReviewDetails({ invoice, onBack, onAction }) {
               <p className="font-sfpro text-xs text-[#626060] py-4 text-center">
                 No statement data available for this period.
               </p>
+            )}
+          </div>
+
+          {/* Item-20: Quarterly Earnings Breakdown */}
+          <div className="border border-gray-200 rounded-xl p-4">
+            <h3 className="font-sfpro text-sm font-semibold text-[#1E1E1E] mb-3">
+              Earnings Breakdown — Q{invoice.quarter} {invoice.year}
+            </h3>
+            {earningsLoading ? (
+              <div className="flex justify-center py-6">
+                <Loader2 className="h-5 w-5 animate-spin text-[#039994]" />
+              </div>
+            ) : earningsBreakdown && Array.isArray(earningsBreakdown) && earningsBreakdown.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs font-sfpro">
+                  <thead>
+                    <tr className="border-b border-gray-200 text-[#626060]">
+                      <th className="pb-2 text-left font-medium">Facility</th>
+                      <th className="pb-2 text-left font-medium">Type</th>
+                      <th className="pb-2 text-right font-medium">Amount Earned</th>
+                      <th className="pb-2 text-center font-medium">Quarter</th>
+                      <th className="pb-2 text-center font-medium">Year</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {earningsBreakdown.map((row, idx) => (
+                      <tr key={idx} className="border-b border-gray-50 hover:bg-gray-50">
+                        <td className="py-1.5 text-[#1E1E1E]">{row.facility || row.facilityName || "—"}</td>
+                        <td className="py-1.5 text-[#626060]">{row.type || row.earningType || "—"}</td>
+                        <td className="py-1.5 text-right font-medium text-[#1E1E1E]">{formatCurrency(row.amountEarned ?? row.amount)}</td>
+                        <td className="py-1.5 text-center text-[#626060]">Q{row.quarter ?? invoice.quarter}</td>
+                        <td className="py-1.5 text-center text-[#626060]">{row.year ?? invoice.year}</td>
+                      </tr>
+                    ))}
+                    <tr className="border-t-2 border-gray-300 bg-gray-50 font-semibold">
+                      <td className="py-2 text-[#1E1E1E]">Total</td>
+                      <td />
+                      <td className="py-2 text-right text-[#039994]">
+                        {formatCurrency(earningsBreakdown.reduce((sum, r) => sum + Number(r.amountEarned ?? r.amount ?? 0), 0))}
+                      </td>
+                      <td />
+                      <td />
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="py-4 text-center">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="w-full h-3 bg-gray-100 rounded animate-pulse" />
+                  <div className="w-3/4 h-3 bg-gray-100 rounded animate-pulse" />
+                  <div className="w-5/6 h-3 bg-gray-100 rounded animate-pulse" />
+                </div>
+                <p className="font-sfpro text-xs text-[#626060] mt-3">
+                  {earningsLoading ? "Loading breakdown..." : "No earnings breakdown available for this period."}
+                </p>
+              </div>
             )}
           </div>
 

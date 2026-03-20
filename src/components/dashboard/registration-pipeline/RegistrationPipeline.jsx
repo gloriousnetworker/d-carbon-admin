@@ -174,6 +174,13 @@ export default function RegistrationPipeline() {
   const handleCustomerClick = (customer) => {
     // Store selected customer for UserManagement to pick up
     sessionStorage.setItem("pipelineSelectedCustomer", JSON.stringify(customer));
+    // Tag partner-type users so UserManagement can return to the pipeline on Back
+    const PARTNER_TYPES = ["PARTNER", "SALES_AGENT", "INSTALLER", "FINANCE_COMPANY"];
+    if (PARTNER_TYPES.includes(customer.userType)) {
+      sessionStorage.setItem("pipelineReturnSection", "registrationPipeline");
+    } else {
+      sessionStorage.removeItem("pipelineReturnSection");
+    }
     router.push("/admin-dashboard?section=userManagement");
   };
 
@@ -377,9 +384,25 @@ export default function RegistrationPipeline() {
                     }`}
                   >
                     <td className="py-3 px-4 font-sfpro text-gray-400 text-xs">{(page - 1) * PAGE_SIZE + i + 1}</td>
-                    {/* FIX-03: Company name as primary identity for commercial users */}
+                    {/* Item-16 / FIX-03: Company name as primary identity; use inviteeUser when available */}
                     <td className="py-3 px-4 font-sfpro text-[#1E1E1E]">
-                      {customer.userType === "COMMERCIAL" && customer.companyName ? (
+                      {customer.inviteeUser ? (
+                        customer.inviteeUser.userType === "COMMERCIAL" && customer.inviteeUser.companyName ? (
+                          <div>
+                            <p className="text-sm font-semibold">{customer.inviteeUser.companyName}</p>
+                            {customer.inviteeUser.ownerFullName && (
+                              <p className="text-xs text-gray-400">{customer.inviteeUser.ownerFullName}</p>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-sm font-medium">{customer.inviteeUser.displayName || customer.inviteeUser.companyName || customer.name || "—"}</span>
+                        )
+                      ) : customer.inviteeEmail ? (
+                        <div>
+                          <span className="text-sm text-gray-500">{customer.inviteeEmail}</span>
+                          <span className="ml-2 text-xs font-medium bg-gray-100 text-gray-500 border border-gray-300 rounded-full px-2 py-0.5">Unregistered</span>
+                        </div>
+                      ) : customer.userType === "COMMERCIAL" && customer.companyName ? (
                         <div>
                           <p className="text-sm font-semibold">{customer.companyName}</p>
                           <p className="text-xs text-gray-400">{customer.name}</p>

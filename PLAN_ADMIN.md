@@ -1,6 +1,7 @@
 # DCarbon Admin Web App — Fix & Change Plan
-> Source: Meeting Notes — March 16, 2026
+> Source: Meeting Notes — March 16, 2026 + March 18, 2026
 > Scope: Admin-facing web application (used internally by DCarbon staff)
+> Last updated: March 20, 2026
 
 ---
 
@@ -296,3 +297,173 @@ The admin plan has several items that require server-side work to be completed f
 ---
 
 *Generated from meeting notes — March 16, 2026*
+
+---
+
+---
+
+# March 18, 2026 Meeting — New Admin Items
+
+> Source: DCarbon Project — 2026_03_18 19_56 WAT — Notes by Gemini
+> Added: March 20, 2026
+
+---
+
+## 🟠 HIGH — Registration Pipeline Fixes (mixed dependencies)
+
+### 16. Registration Pipeline — Show Invitee Company Name
+**Blocked by: PLAN_SERVER Item 16** 🔲
+
+**Meeting context:**
+During the live demo, Awam Victor showed "AK" appearing as just a name instead of "AK B company". This is the most-mentioned visual bug from the meeting. The root cause is that the registration pipeline reads from `GET /api/admin/referrals`, and the `Referral` table stores the invitee only as an email string — no join to the `User` table exists today.
+
+**What will change on the server (Item 16):**
+The `GET /api/admin/referrals` response will include a new `inviteeUser` object on each row:
+```json
+"inviteeUser": {
+  "id": "...",
+  "userType": "COMMERCIAL",
+  "companyName": "AK B company",
+  "ownerFullName": "AK Full Name",
+  "displayName": "AK B company"
+}
+```
+
+**What the admin app needs to do (once server Item 16 ships):**
+- Replace the current name display in the registration pipeline list with `row.inviteeUser.displayName`
+- For COMMERCIAL rows: show `companyName` as primary (large, bold), `ownerFullName` as secondary (smaller, grey)
+- For RESIDENTIAL rows: show `firstName + lastName` as before
+- For PARTNER rows: show partner name as before
+- If `inviteeUser` is `null` (user not yet registered despite referral existing): show `row.inviteeEmail` with an "Unregistered" badge
+
+---
+
+### 17. Registration Pipeline — Fix Partner Click → Blank Page Routing
+**No server dependency.** ✅ Can start now.
+
+**Meeting context:**
+When clicking a partner user row in the registration pipeline, the admin is redirected to a blank page. Clicking a commercial user works correctly. The fix is a routing correction in the admin app.
+
+**What to fix:**
+- Update the row click handler in the registration pipeline to check `inviteeUser.userType` (or `row.customerType`):
+  - If `COMMERCIAL` → navigate to commercial user detail page (already working)
+  - If `PARTNER` → navigate to **partner detail page** (the same one accessible via User Management → Partner Management)
+  - If `RESIDENTIAL` → navigate to residential user detail page
+- Ensure the partner detail page accepts the userId from a route param regardless of how it was navigated to
+
+---
+
+## 🟠 HIGH — Payout & Statement Screen Fixes (can start NOW)
+
+### 18. Payout + Statement Screens — Restore All Personal Details + Add Business Name
+**Server dependency:** Server-03 ✅ already complete.
+
+**Meeting context:**
+Chimdinma Kalu: *"the intention was to add business details, not remove existing user details such as name and address."* The admin payout and statement review pages had existing fields stripped during the March 16 implementation, leaving only username and email visible.
+
+**What to fix:**
+
+For **commercial user** payout/invoice screens in admin:
+- Restore ALL previously shown fields: name, email, address, phone number
+- ADD on top: `companyName` (primary identifier, large) + `ownerFullName` (secondary)
+- Fetch commercial profile from `GET /api/user/get-commercial-user/:userId` for the full set of fields
+
+For **partner** payout/invoice screens in admin:
+- Restore ALL personal fields: name, email, address, phone
+- ADD: partner company/organization name and business address
+- Fetch from the partner profile endpoint
+
+For **residential user** payout screens in admin:
+- Restore all personal detail fields (confirm none were inadvertently removed)
+
+**Key principle from meeting:** Adding business details is additive — never replace or remove existing user detail fields.
+
+---
+
+## 🟡 MEDIUM — Invoice Admin Workflow (mixed dependencies)
+
+### 19. Admin Invoice List — Show Commercial User Invoices
+**Server dependency:** Server Item 17 ✅ partially unblocks this (partners fully unblocked once done).
+
+**Meeting context:**
+*"The feature to 'submit invoice' was only built for the partner but should be available to commercial users as well."* On the admin side, the invoice review list (`GET /api/quarterly-statements/invoices`) already returns all invoices regardless of userType. But if the admin invoice list is filtering to only show PARTNER invoices, this filter must be removed or updated to include COMMERCIAL.
+
+**What to fix:**
+- Confirm the admin invoice list does NOT filter by `userType=PARTNER` only
+- The `GET /api/quarterly-statements/invoices?userType=COMMERCIAL` query param works — use it when showing the commercial-specific invoice tab if applicable
+- Ensure the approve/reject actions work for COMMERCIAL invoices (same flow as PARTNER — `PUT /api/quarterly-statements/invoices/:id/approve`)
+
+---
+
+### 20. Admin — Quarterly Earnings Breakdown View per User
+**Blocked by: PLAN_SERVER Item 18** 🔲
+
+**Meeting context:**
+Chimdinma requested that the earning statement should show what is due to the user per quarter/facility. On the admin side, this means the admin can view the breakdown of what a user earned in a given quarter before approving their invoice.
+
+**Target view (in admin, on the invoice detail page or user detail page):**
+- A table showing the quarterly earnings breakdown for the user being reviewed:
+
+| Facility | Type | Amount Earned | Quarter | Year |
+|---|---|---|---|---|
+| Solar Park A | COMMERCIAL | $750.00 | Q1 | 2026 |
+| Bonus | — | $500.00 | Q1 | 2026 |
+| **Total** | | **$1,250.00** | | |
+
+- The `Total Due` from this table should match the invoice amount — the admin can see at a glance whether the invoice matches what the system calculated
+- This is especially useful alongside the discrepancy flag (existing Admin Item #4)
+
+**API to use (once ready):** `GET /api/quarterly-statements/earnings-breakdown?userId=:id&quarter=Q&year=Y&userType=T`
+
+**What to build now (before server Item 18 ships):**
+- The UI shell can be built now — just show a loading skeleton where the breakdown table will appear
+- Wire up the actual API call once server Item 18 is deployed
+
+---
+
+## Updated Summary Table (all items)
+
+| # | Item | Priority | Area | Server Dep | Status |
+|---|---|---|---|---|---|
+| 1 | Filter registration pipeline by status | 🟠 HIGH | Registration Pipeline | None ✅ | Start now |
+| 2 | Filter user management by status | 🟠 HIGH | User Management | None ✅ | Start now |
+| 3 | Company name as primary identity in all admin lists | 🟠 HIGH | User Management | Server-03 ✅ | Start now |
+| 4 | Invoice discrepancy auto-flag (side-by-side amounts) | 🟡 MEDIUM | Invoice / Payout | Server-07 ✅ | Start now |
+| 5 | Invoice approve/reject + separate "Mark as Paid" action | 🟡 MEDIUM | Invoice / Payout | None ✅ | Start now |
+| 6 | Fix green profile box (smaller, company name/address) | 🟡 MEDIUM | Payout UI | Server-03 ✅ | Start now |
+| 7 | Revenue wallet — remove Held Amount for commercial/partner | 🟡 MEDIUM | Wallet | Server-08 ✅ | Start now |
+| 8 | Admin: approve/reject/adjust REC per facility + bulk approve | 🟡 MEDIUM | REC Management | Server-01/02 ✅ | Start now |
+| 9 | REC Sales Management — aggregate overview | 🟡 MEDIUM | REC Reporting | Server-09 ✅ | Start now |
+| 10 | Three-report structure: Points, REC Generation, Sales | 🟡 MEDIUM | Admin Reporting | Server-04 ✅ | Start now |
+| 11 | WREGIS export — multi-file chunked download UI | 🟡 MEDIUM | REC Export | Server-05 ✅ | Start now |
+| 12 | Partner performance table: remove Address/Status, add Company/RECs | 🟡 MEDIUM | Partner Reporting | Server-10 ✅ | Start now |
+| 13 | REC reporting label: "generation" → "Commercial REC Sales" | 🟢 LOW | REC Reporting | None ✅ | Start now |
+| 14 | Remove commercial/residential split from REC generation view | 🟢 LOW | REC Reporting | None ✅ | Start now |
+| 15 | Fix HTTPS certificate on corporate website | 🟢 LOW | Infrastructure | None | DevOps task |
+| **16** | **Registration pipeline — show invitee company name** | 🟠 HIGH | Registration Pipeline | Server Item 16 ✅ | **Start now** |
+| **17** | **Registration pipeline — fix partner click routing** | 🟠 HIGH | Registration Pipeline | None ✅ | **Start now** |
+| **18** | **Payout/statement screens — restore all fields + add business name** | 🟠 HIGH | Payout Screens | Server-03 ✅ | **Start now** |
+| **19** | **Admin invoice list — include commercial user invoices** | 🟡 MEDIUM | Invoice | None ✅ | **Start now** |
+| **20** | **Quarterly earnings breakdown view on invoice detail page** | 🟡 MEDIUM | Invoice / Reporting | Server Item 18 ✅ | **Start now** |
+
+---
+
+## Updated Cross-System Dependencies
+
+| Admin Item | Depends On | Server Status |
+|---|---|---|
+| Item 4 — Invoice discrepancy auto-flag | PLAN_SERVER #7 | ✅ Done |
+| Item 8 — REC approve/reject/adjust | PLAN_SERVER #1 & #2 | ✅ Done |
+| Item 10 — Three-report structure | PLAN_SERVER #4 | ✅ Done |
+| Item 11 — WREGIS export chunking UI | PLAN_SERVER #5 | ✅ Done |
+| Item 12 — Partner performance columns | PLAN_SERVER #10 | ✅ Done |
+| Item 9 — Aggregate REC view | PLAN_SERVER #9 | ✅ Done |
+| Item 3, 6, 18 — Company name in lists/payout | PLAN_SERVER #3 (March 16) | ✅ Done |
+| **Item 16 — Pipeline invitee company name** | **PLAN_SERVER Item 16** | ✅ DONE |
+| **Item 20 — Earnings breakdown view** | **PLAN_SERVER Item 18** | ✅ DONE |
+
+**All server dependencies are resolved. Every admin item can start now.**
+
+---
+
+*Updated: March 20, 2026 — All server fixes complete. All admin items fully unblocked.*

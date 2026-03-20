@@ -313,26 +313,34 @@ export default function CommercialPayoutDetails({ payoutDetails, onBack, onPayou
         <h1 className="font-sfpro text-[20px] font-[600] text-[#039994]">Commercial Payout Details</h1>
       </div>
 
-      {/* ── FIX-04: Compact user info strip (replaces large teal box) ────── */}
-      <div className="border border-gray-200 rounded-lg px-4 py-3 mb-5 flex flex-wrap items-center gap-x-6 gap-y-1 bg-gray-50">
-        <div>
-          <p className="font-sfpro text-[15px] font-semibold text-[#1E1E1E]">
-            {payoutDetails.companyName || `${payoutDetails.firstName} ${payoutDetails.lastName}`}
-          </p>
-          {payoutDetails.companyName && (
-            <p className="font-sfpro text-xs text-[#626060]">{payoutDetails.firstName} {payoutDetails.lastName}</p>
+      {/* ── FIX-04 / Item-18: Compact user info strip — all personal details ── */}
+      <div className="border border-gray-200 rounded-lg px-4 py-3 mb-5 bg-gray-50">
+        <div className="flex items-start justify-between gap-4 mb-2">
+          <div>
+            <p className="font-sfpro text-[15px] font-semibold text-[#1E1E1E]">
+              {payoutDetails.companyName || `${payoutDetails.firstName || ''} ${payoutDetails.lastName || ''}`.trim() || '—'}
+            </p>
+            {payoutDetails.companyName && (payoutDetails.firstName || payoutDetails.lastName) && (
+              <p className="font-sfpro text-xs text-[#626060] mt-0.5">
+                Contact: {`${payoutDetails.firstName || ''} ${payoutDetails.lastName || ''}`.trim()}
+              </p>
+            )}
+          </div>
+          <span className="flex-shrink-0 px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-700 font-sfpro font-medium">
+            {payoutDetails.userType || 'COMMERCIAL'}
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-x-6 gap-y-1">
+          {(payoutDetails.businessAddress || payoutDetails.address) && (
+            <span className="font-sfpro text-xs text-[#626060]">{payoutDetails.businessAddress || payoutDetails.address}</span>
+          )}
+          {payoutDetails.email && (
+            <span className="font-sfpro text-xs text-[#626060]">{payoutDetails.email}</span>
+          )}
+          {(payoutDetails.phoneNumber || payoutDetails.phone) && (
+            <span className="font-sfpro text-xs text-[#626060]">{payoutDetails.phoneNumber || payoutDetails.phone}</span>
           )}
         </div>
-        {payoutDetails.businessAddress && (
-          <p className="font-sfpro text-xs text-[#626060]">{payoutDetails.businessAddress}</p>
-        )}
-        <span className="font-sfpro text-xs text-[#626060]">{payoutDetails.email}</span>
-        {payoutDetails.phoneNumber && (
-          <span className="font-sfpro text-xs text-[#626060]">{payoutDetails.phoneNumber}</span>
-        )}
-        <span className="ml-auto px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-700 font-sfpro font-medium">
-          {payoutDetails.userType || 'COMMERCIAL'}
-        </span>
       </div>
 
       {/* ── FIX-05: Revenue Wallet — only Total Earnings + Available Balance ── */}

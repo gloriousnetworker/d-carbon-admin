@@ -1,6 +1,7 @@
 # DCarbon Web App — Fix & Change Plan
-> Source: Meeting Notes — March 16, 2026
+> Source: Meeting Notes — March 16, 2026 + March 18, 2026
 > Scope: Customer-facing web application (used by residential users, commercial users, and partners)
+> Last updated: March 20, 2026
 
 ---
 
@@ -210,3 +211,174 @@ Already covered in item #3. Note it here as a separate checklist item to confirm
 ---
 
 *Generated from meeting notes — March 16, 2026*
+
+---
+
+---
+
+# March 18, 2026 Meeting — New Web App Items
+
+> Source: DCarbon Project — 2026_03_18 19_56 WAT — Notes by Gemini
+> Added: March 20, 2026
+
+---
+
+## 🟠 HIGH — Confirmed Broken Displays (can start NOW — no server dependency)
+
+### 13. Residential Payout Screen — Remove "Amount Held" and "Total Commission" Display
+
+**Meeting context:**
+Awam Victor confirmed in the demo: the residential payout screen still shows "amount held" and "total commission" fields. These must not be displayed for residential users.
+
+**Current state:** The server correctly returns `pendingPayout` in the full wallet for residential users. The frontend is rendering it when it should not be.
+
+**What to fix:**
+- Locate the residential payout / redemption screen components
+- Remove any rendering of `pendingPayout`, `heldAmount`, and `totalCommission` fields
+- Only show: `availableBalance` and `pointBalance` (plus any REC-related fields)
+- Do NOT change the API call — the server intentionally returns these fields; just stop displaying them
+
+**Server dependency:** None — server is correct. ✅ Can start now.
+
+---
+
+### 14. Residential Payout Screen — Reduce Padding on Customer Detail Lines
+
+**Meeting context:**
+Awam Victor flagged this in the demo — the customer detail lines on the residential payout screen still have excessive vertical padding between them.
+
+**What to fix:**
+- Find the customer detail rows section on the residential payout / redemption screen
+- Reduce `py-*` / `p-*` Tailwind spacing on each detail row to compact them
+- Target: tight, compact rows — similar to the commercial invoice list style
+
+**Server dependency:** None. ✅ Can start now.
+
+---
+
+### 15. Commercial & Partner Payout Screens — Restore All Personal Details + Add Business Name
+
+**Meeting context:**
+Chimdinma Kalu explicitly stated: *"the intention was to add business details, not remove existing user details such as name and address."* The commercial payout and partner commission statement screens had their personal fields stripped, leaving only username and email.
+
+**What to fix — for Commercial payout screen:**
+- Restore ALL previously displayed fields: name, email, address, phone
+- ADD on top of that: `companyName` (primary, large) + `ownerFullName` (secondary, smaller)
+- Fetch from `GET /api/user/get-commercial-user/:userId` on mount to get company details
+
+**What to fix — for Partner commission statement screen:**
+- Restore ALL previously displayed fields: name, email, address, phone
+- ADD: partner company/organization name and business address
+- Fetch from the partner profile endpoint on mount
+
+**Server dependency:** Server-03 ✅ already done. `companyName` and `ownerFullName` available in user endpoints. Can start now.
+
+---
+
+## 🟠 HIGH — Invoice Submission for Commercial Users (can start NOW)
+
+### 16. Add Invoice Submission UI for Commercial Users
+
+**Meeting context:**
+*"The feature to 'submit invoice' was only built for the partner but should be available to commercial users as well."*
+
+**Important:** The server already supports commercial user invoice submission — `POST /api/quarterly-statements/invoices` accepts any authenticated user and `getOrCreateUserQuarterlyStatement` handles `COMMERCIAL` userType. This is a **frontend-only gap** — the invoice submission UI was never surfaced to commercial users.
+
+**What to fix:**
+- Add an "Submit Invoice" button / flow to the commercial user dashboard or payout screen
+- The flow mirrors the partner invoice flow:
+  1. **Generate Invoice mode** — system computes the quarterly earnings; user confirms and submits (JSON body, no file)
+  2. **Upload Custom Invoice mode** — user uploads their own document + enters invoice amount
+- Pre-populate the quarter/year selector with the current quarter
+- Show the invoice history table below (fetched from `GET /api/quarterly-statements/invoices/user/:userId`)
+
+**Server dependency:** None (server already supports commercial users). ✅ Can start now.
+**Note:** Partner invoice flow also works for the file upload mode. For the "Generate Invoice" mode, partners are currently blocked server-side — see Item 17 in PLAN_SERVER.md.
+
+---
+
+## 🟡 MEDIUM — New Feature: Earnings Breakdown on Invoice Screen (waits on server)
+
+### 17. Invoice Submission Screen — Show Per-Quarter Earnings Breakdown Table
+
+**Meeting context:**
+Chimdinma Kalu: *"the submit invoice function should connect to the earning statement table. The earnings statement should display what is due to the user based on commission or bonus, using a table format with facility ID, type, amount earned, quarter, and year."*
+
+**Current state:** The invoice submission screen has a standalone amount field. Users have no visibility into how that amount was calculated.
+
+**Target state:**
+When the user opens the invoice submission form and selects a quarter/year:
+1. Fetch `GET /api/quarterly-statements/earnings-breakdown?userId=:id&quarter=Q&year=Y&userType=T`
+2. Display a breakdown table above the form:
+
+| Facility | Type | Amount Earned | Quarter | Year |
+|---|---|---|---|---|
+| Solar Park A | COMMERCIAL | $750.00 | Q1 | 2026 |
+| Bonus | — | $500.00 | Q1 | 2026 |
+
+3. Pre-populate the invoice `amount` field with `totalDue` from the response
+4. User can still edit the amount (for custom invoice mode) — discrepancy warning will show if they change it
+
+**Server dependency:** ⏳ Blocked on PLAN_SERVER.md **Item 18** (`GET /api/quarterly-statements/earnings-breakdown` endpoint). Start this once server Item 18 is deployed.
+
+---
+
+## 🟡 MEDIUM — Partner Invoice Generate Mode (waits on server)
+
+### 18. Partner "Generate Invoice" Mode — Remove Workaround, Wire Up Fully
+
+**Meeting context:**
+The "no file uploaded" bug was discussed. The server fix (PLAN_SERVER.md Item 17 + previous fix) now supports generate mode for partners with no file.
+
+**Current state:**
+The generate mode sends a JSON body (no file). The server now accepts this, but:
+- The frontend may have a `catch` block showing a workaround message — this should be removed
+- The invoice record returned by the server will have `invoiceDocument: null` for system-generated invoices
+
+**What to fix:**
+- Remove any temporary error workaround added for the "no file uploaded" error
+- In the invoice history list / detail view: when `invoiceDocument` is `null`, show "System Generated" label instead of a download link
+- Wire the "Generate Invoice" form to `POST /api/quarterly-statements/invoices` with JSON body (no file field)
+
+**Server dependency:** ⏳ Blocked on PLAN_SERVER.md **Item 17** (PARTNER support in quarterly statement — partners need `userType=PARTNER` to work before the full flow can be tested).
+
+---
+
+## Updated Summary Table (all items)
+
+| # | Item | Priority | Area | Server Dep | Status |
+|---|---|---|---|---|---|
+| 1 | Fix partner invoice upload flow | 🔴 CRITICAL | Invoice | Server-06 ✅ | Start now |
+| 2 | Residential payout button gating by eligibility | 🔴 CRITICAL | Residential | Server-12 ✅ | Start now |
+| 3 | Partner invoice submission — two options, remove VAT, hide system # | 🟠 HIGH | Partner Invoice | None | Start now |
+| 4 | Fix green profile box (smaller, show company name/address) | 🟠 HIGH | Payout UI | Server-03 ✅ | Start now |
+| 5 | Partner payout view → align with commercial invoice list | 🟠 HIGH | Partner Payout | None | Start now |
+| 6 | Revenue Wallet — remove Held Amount for commercial/partner | 🟡 MEDIUM | Wallet | Server-08 ✅ | Start now |
+| 7 | REC reporting label: "generation" → "Commercial REC Sales" | 🟡 MEDIUM | REC Reporting | None | Start now |
+| 8 | Partner performance table: remove Address/Status, add Company/RECs | 🟡 MEDIUM | Partner Reporting | Server-10 ✅ | Start now |
+| 9 | Commercial REC generation list → aggregate view | 🟡 MEDIUM | REC Reporting | Server-09 ✅ | Start now |
+| 10 | Discrepancy warning during invoice amount entry | 🟡 MEDIUM | Invoice | None | Start now |
+| 11 | Confirm "Request Payout" removed from reporting page | 🟢 LOW | Reporting | None | Start now |
+| 12 | Consistent "Revenue/Total Earnings" terminology | 🟢 LOW | Terminology | None | Start now |
+| **13** | **Residential payout — remove held amount + commission display** | 🟠 HIGH | Residential Payout | None ✅ | **Start now** |
+| **14** | **Residential payout — reduce padding on detail lines** | 🟢 LOW | Residential Payout | None ✅ | **Start now** |
+| **15** | **Commercial + partner payout — restore all fields + add company name** | 🟠 HIGH | Payout Screens | Server-03 ✅ | **Start now** |
+| **16** | **Add invoice submission UI for commercial users** | 🟠 HIGH | Invoice | None ✅ | **Start now** |
+| **17** | **Invoice screen — earnings breakdown table + pre-populate amount** | 🟡 MEDIUM | Invoice | Server Item 18 ✅ | **Start now** |
+| **18** | **Partner generate invoice — remove workaround, handle null doc** | 🟡 MEDIUM | Partner Invoice | Server Item 17 ✅ | **Start now** |
+
+---
+
+## Server Dependency Map (updated March 20, 2026)
+
+| Web App Item | Blocked By | Server Status |
+|---|---|---|
+| Item 17 — Earnings breakdown table | PLAN_SERVER Item 18 | ✅ DONE |
+| Item 18 — Partner generate invoice fully wired | PLAN_SERVER Item 17 | ✅ DONE |
+| Items 1–16 (all others) | Various — all complete | ✅ Unblocked |
+
+**All server dependencies are resolved. Every web app item can start now.**
+
+---
+
+*Updated: March 20, 2026 — All server fixes complete. All web app items fully unblocked.*

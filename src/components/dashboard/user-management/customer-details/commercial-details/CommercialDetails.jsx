@@ -632,11 +632,28 @@ export default function CommercialDetails({ customer, onBack }) {
         </DialogContent>
       </Dialog>
 
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-4">
         <button className="flex items-center text-[#039994] hover:text-[#02857f] pl-0" onClick={onBack}>
           <ChevronLeft className="h-5 w-5 mr-1" />
           <span>Customer Details</span>
         </button>
+      </div>
+
+      {/* ADMIN-02: Company identity strip */}
+      <div className="border border-gray-200 rounded-lg px-4 py-3 mb-4 bg-white flex items-start justify-between w-full max-w-7xl">
+        <div>
+          <p className="text-base font-bold text-[#1E1E1E] font-sfpro leading-tight">
+            {customer?.companyName || customer?.name || "—"}
+          </p>
+          {(customer?.ownerFullName || (customer?.firstName && customer?.lastName)) && (
+            <p className="text-xs text-gray-400 font-sfpro mt-0.5">
+              Contact: {customer.ownerFullName || `${customer.firstName || ""} ${customer.lastName || ""}`.trim()}
+            </p>
+          )}
+        </div>
+        <span className="text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2.5 py-0.5 font-sfpro flex-shrink-0 ml-4">
+          COMMERCIAL
+        </span>
       </div>
 
       <div className="mb-6 w-full max-w-7xl px-5 py-4 border border-gray-200 rounded-xl bg-white">
@@ -680,9 +697,17 @@ export default function CommercialDetails({ customer, onBack }) {
               <p className="font-medium">{customer?.id || "Not specified"}</p>
             </div>
             <div className="space-y-1">
-              <p className={labelClass}>Name</p>
-              <p className="font-medium">{customer?.name || "Not specified"}</p>
+              <p className={labelClass}>Company Name</p>
+              <p className="font-medium">{customer?.companyName || customer?.name || "Not specified"}</p>
             </div>
+            {(customer?.ownerFullName || (customer?.firstName && customer?.lastName)) && (
+              <div className="space-y-1">
+                <p className={labelClass}>Owner / Contact</p>
+                <p className="font-medium">
+                  {customer.ownerFullName || `${customer.firstName || ""} ${customer.lastName || ""}`.trim()}
+                </p>
+              </div>
+            )}
             <div className="space-y-1">
               <p className={labelClass}>Customer Type</p>
               <p className="font-medium">{customer?.userType || "Not specified"}</p>

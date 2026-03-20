@@ -1,8 +1,10 @@
 # DCarbon Admin — QA Test Plan
 > Source: Meeting Notes (March 16, 2026) · PLAN_ADMIN.md · ADMIN_IMPLEMENTATION_PLAN.md
-> Scope: All 14 admin-facing changes from the March 16 sprint
-> Created: March 17, 2026
+> Scope: All 14 admin-facing changes from the March 16 sprint + 6 new changes from the March 18 sprint
+> Created: March 17, 2026 · Updated: March 20, 2026
 > Intended for: QA Engineer testing the `dcarbon-admin` dashboard
+
+> ⚠️ **NEW TESTS ADDED — March 18, 2026 Sprint:** See [SECTION 8](#section-8) at the bottom of this document for all new test cases covering Items 16–20 and the QA bug fixes (ADMIN-02, ADMIN-03) from the March 18 meeting.
 
 ---
 
@@ -1041,4 +1043,400 @@ When reporting a bug from this test plan, include:
 
 ---
 
-*Total test cases: 56 | Generated from meeting notes March 16, 2026 + implementation changes*
+*Total test cases: 56 (March 16 sprint) + 28 (March 18 sprint) = 84 total | See Section 8 for all new cases*
+
+---
+
+---
+
+# ═══════════════════════════════════════════════════════
+# SECTION 8 — MARCH 18, 2026 SPRINT UPDATES
+# New test cases for Items 16, 17, 18, 19, 20 + ADMIN-02, ADMIN-03 bug fixes
+# ═══════════════════════════════════════════════════════
+
+> **Scope of this section:** Tests the 6 changes shipped after the March 18, 2026 meeting demo. These are entirely new behaviours — they do NOT overlap with any Section 1–7 test cases. Run Section 8 tests in addition to (not instead of) the full suite above.
+>
+> **Test data required (additional to existing setup):**
+> - 1+ Commercial user with `companyName` and `ownerFullName` populated in the DB
+> - 1+ Partner user in the Registration Pipeline
+> - 1+ Referral row where the invitee has NOT yet registered (to test "Unregistered" badge)
+> - 1+ Invoice in the Invoice Review list with `userType = COMMERCIAL`
+> - 1+ Invoice with quarterly earnings breakdown data for `userId`, `quarter`, `year`
+> - A known facility: "Nicholas" (mentioned in meeting — has forward + reverse REC data, residential)
+
+---
+
+## TEST-18: Registration Pipeline — Invitee Company Name Display
+**Source:** PLAN_ADMIN Item 16 | **File:** `RegistrationPipeline.jsx`
+**Location:** Dashboard → Registration Pipeline
+
+### TC-18-A: Commercial invitee shows company name as bold primary + owner name secondary
+**Pre-condition:** A referral row exists where `inviteeUser.userType = COMMERCIAL` and `inviteeUser.companyName` is populated (e.g., "AK B company").
+**Steps:**
+1. Navigate to Registration Pipeline.
+2. Find the row for "AK" (or any known commercial invitee).
+3. Inspect the Name / Company cell.
+
+**Expected:**
+- The **company name** ("AK B company") appears in **bold** as the primary line.
+- The **owner's full name** appears on a smaller second line in grey, if `ownerFullName` is populated.
+
+**Fail:** Only the individual name "AK" shows; company name is absent.
+
+---
+
+### TC-18-B: Residential and Partner invitees show display name as single line
+**Pre-condition:** At least one RESIDENTIAL and one PARTNER invitee row exist.
+**Steps:**
+1. Find a RESIDENTIAL invitee row. Inspect the Name cell.
+2. Find a PARTNER invitee row. Inspect the Name cell.
+
+**Expected:**
+- Both show a single line with the user's display name.
+- No second grey line.
+
+---
+
+### TC-18-C: Unregistered referral shows invitee email with "Unregistered" badge
+**Pre-condition:** A referral row exists where the invitee has NOT yet created an account (`inviteeUser` is null but `inviteeEmail` is set).
+**Steps:**
+1. Find such a referral row in the pipeline list.
+2. Inspect the Name / Company cell.
+
+**Expected:**
+- The **invitee email address** is shown in grey text.
+- Next to it, a **grey "Unregistered" badge/pill** is visible.
+- No bold name, no individual name sub-line.
+
+**Fail:** Row shows "—" or blank; no badge appears; or the badge says something other than "Unregistered".
+
+---
+
+### TC-18-D: Users with no inviteeUser and no inviteeEmail fall back to existing logic
+**Pre-condition:** A directly-registered user (not via referral) exists in the pipeline.
+**Steps:**
+1. Find a regular user row in the pipeline.
+2. Inspect the Name cell.
+
+**Expected:**
+- Commercial users: company name (bold) + individual name (grey), same as before.
+- Residential/Partner users: single individual name line.
+- No "Unregistered" badge.
+
+---
+
+## TEST-19: Registration Pipeline — Partner Click Routing Fix
+**Source:** PLAN_ADMIN Item 17 / ADMIN-03 | **Files:** `RegistrationPipeline.jsx`, `UserManagement.jsx`
+**Location:** Dashboard → Registration Pipeline → click a PARTNER row
+
+### TC-19-A: Clicking a PARTNER row opens the Partner Details page (not a blank screen)
+**Pre-condition:** At least one user with `userType = PARTNER` (or `SALES_AGENT`, `INSTALLER`, `FINANCE_COMPANY`) exists in the pipeline list.
+**Steps:**
+1. Navigate to Registration Pipeline.
+2. Find a PARTNER-type user in the list.
+3. Click their row.
+
+**Expected:**
+- The admin is navigated to **User Management** and the **Partner Details page** opens for that partner.
+- The partner's name, type, email, and other details are visible.
+- **No blank white screen appears.**
+
+**Fail:** A blank/empty white screen is shown; or a "page not found" error; or the commercial customer detail page opens instead.
+
+---
+
+### TC-19-B: All partner subtypes (SALES_AGENT, INSTALLER, FINANCE_COMPANY) also open correctly
+**Steps:**
+1. Repeat TC-19-A for each subtype if test data is available.
+
+**Expected:** Each subtype opens the Partner Details view correctly.
+
+---
+
+### TC-19-C: Back button from Partner Details returns to Registration Pipeline (not User Management list)
+**Steps:**
+1. Click a PARTNER row in the Registration Pipeline.
+2. On the Partner Details page, click the **Back** (←) button.
+
+**Expected:**
+- The admin is returned to the **Registration Pipeline** page.
+- The user is NOT sent to the User Management customer list.
+
+**Fail:** Back button navigates to User Management's customer list or to the home dashboard.
+
+---
+
+### TC-19-D: COMMERCIAL and RESIDENTIAL clicks still work (regression check)
+**Steps:**
+1. In the Registration Pipeline, click a COMMERCIAL user row.
+2. Click Back.
+3. Click a RESIDENTIAL user row.
+4. Click Back.
+
+**Expected:**
+- COMMERCIAL → Commercial Details page.
+- RESIDENTIAL → Residential Details page.
+- Back → returns to User Management (standard behaviour, no regression from the partner routing change).
+
+---
+
+## TEST-20: Commercial User Details Page — Company Identity Strip
+**Source:** ADMIN-02 bug fix | **File:** `CommercialDetails.jsx`
+**Location:** User Management → Customer Management → click a COMMERCIAL user
+
+### TC-20-A: Company identity strip appears at the top of the page
+**Steps:**
+1. Navigate to User Management → Customer Management.
+2. Click any COMMERCIAL user.
+
+**Expected:** Directly below the back button row, a compact identity strip is visible showing:
+- **Company name** in bold dark text (large) — this is the primary identity.
+- **"Contact: [Owner Full Name]"** in smaller grey text below the company name (if `ownerFullName` is available).
+- A **blue "COMMERCIAL" badge** on the right side of the strip.
+
+**Fail:** No identity strip; the page jumps straight to the registration progress bar or the customer information card.
+
+---
+
+### TC-20-B: "Name" label in the Customer Information grid is renamed "Company Name"
+**Steps:**
+1. On the Commercial user details page, scroll to the **Customer Information** card.
+2. Find the label next to the company name value.
+
+**Expected:** The label reads **"Company Name"** (not just "Name").
+
+**Fail:** Label still reads "Name" or is blank.
+
+---
+
+### TC-20-C: "Owner / Contact" row appears in the Customer Information grid
+**Steps:**
+1. On the same Customer Information card, look for an owner/contact row.
+
+**Expected:** A row with label **"Owner / Contact"** is present and shows the `ownerFullName` value (e.g., "AK Full Name") if that field is populated.
+
+**Fail:** No owner row exists; `ownerFullName` is not shown anywhere on the page.
+
+---
+
+### TC-20-D: Company name value in the grid uses `companyName` field, not just `name`
+**Steps:**
+1. Compare the value in the "Company Name" grid row against the company identity strip above.
+
+**Expected:** Both show the same company name. The grid shows the `companyName` field value (not the individual's name).
+
+---
+
+## TEST-21: Payout Detail Screens — All Personal Fields Restored
+**Source:** PLAN_ADMIN Item 18 | **Files:** `CommercialPayoutDetails.jsx`, `PartnerCommissionPayoutDetails.jsx`
+**Location:** Payout → Commercial Payout Details AND Partner Payout Details
+
+### TC-21-A: Commercial payout info strip shows company name (bold) and individual contact name
+**Steps:**
+1. Navigate to Payout → click a Commercial user payout entry.
+2. Look at the compact info strip at the top.
+
+**Expected:** The strip contains:
+- **Company name** (bold, larger text) as the primary identifier.
+- **"Contact: [First Last]"** on a second line in grey text (only if a company name exists and an individual name is also available).
+
+**Fail:** Only the individual's name shows; company name is missing. OR only the company name shows with no contact person.
+
+---
+
+### TC-21-B: Address field is shown in the commercial info strip
+**Steps:**
+1. On the same commercial payout info strip, look for an address.
+
+**Expected:** The business address (from `businessAddress` or `address` field) is visible in the strip details row if it is populated in the database.
+
+**Fail:** Address field is completely absent from the strip even for a user who has an address on record.
+
+---
+
+### TC-21-C: Email and phone are both shown in the commercial info strip
+**Steps:**
+1. On the same strip, verify contact details.
+
+**Expected:**
+- **Email address** is visible.
+- **Phone number** is visible (if the user has one on record — `phoneNumber` or `phone` field).
+
+**Fail:** Email or phone is missing from a user known to have both fields populated.
+
+---
+
+### TC-21-D: Partner payout info strip shows the same full set of fields
+**Steps:**
+1. Navigate to Payout → click a Partner payout entry.
+2. Look at the partner info strip.
+
+**Expected:**
+- **Organization / company name** (bold) as primary.
+- **"Contact: [Individual Name]"** as secondary (if applicable).
+- Address (if available).
+- Email and phone.
+- **Teal "PARTNER" badge** on the right.
+
+---
+
+### TC-21-E: No fields were removed — regression check
+**Steps:**
+1. Compare the current strip to what was present before (use the QA bug report from ADMIN-02 / meeting notes as reference): the old bug was that fields were "stripped down to only username and email".
+
+**Expected:** The current strip shows MORE fields than before (adding company + restoring address + phone), not fewer.
+
+**Fail:** Strip still shows only username and email; address and phone are absent.
+
+---
+
+## TEST-22: Invoice Review — Commercial Invoice Support
+**Source:** PLAN_ADMIN Item 19 | **Files:** `InvoiceReview.jsx`, `InvoiceReviewDetails.jsx`
+**Location:** Payout → Invoice Review
+
+### TC-22-A: "COMMERCIAL" appears as a type filter option in Invoice Review
+**Steps:**
+1. Navigate to Payout → Invoice Review.
+2. Look at the type filter pills/tabs at the top of the list.
+
+**Expected:** Three pills are visible: **ALL · COMMERCIAL · PARTNER**.
+
+**Fail:** Only "ALL" and "PARTNER" exist; "COMMERCIAL" is missing.
+
+---
+
+### TC-22-B: Clicking "COMMERCIAL" filter shows only commercial invoices
+**Steps:**
+1. Click the **COMMERCIAL** pill.
+
+**Expected:** The invoice list refreshes to show only invoices where `userType = COMMERCIAL`. Partner invoices are not shown.
+
+**Fail:** No invoices appear (even when COMMERCIAL invoices exist in the DB); or both COMMERCIAL and PARTNER invoices show.
+
+---
+
+### TC-22-C: Invoice detail page shows company name as primary identity for COMMERCIAL invoices
+**Steps:**
+1. From the invoice list, click a **COMMERCIAL** invoice to open its detail page.
+2. Look at the **Invoice Details** card on the left column.
+
+**Expected:**
+- A row labelled **"Company"** shows the company name (e.g., "AK B company") — this is the primary identifier.
+- A separate row labelled **"Contact"** shows the individual's name (first + last).
+- The old single "User" row showing only first + last is replaced by these two rows.
+
+**Fail:** The "User" row still shows only "first last"; no separate Company row exists.
+
+---
+
+### TC-22-D: PARTNER invoice detail page still shows "User" as a single row (no regression)
+**Steps:**
+1. Click a **PARTNER** invoice from the list.
+2. Look at the Invoice Details card.
+
+**Expected:** A single row labelled **"User"** showing the partner's name. No "Company" / "Contact" split — that split is for COMMERCIAL only.
+
+---
+
+### TC-22-E: Approve and Reject actions work for a COMMERCIAL invoice
+**Steps:**
+1. Open a COMMERCIAL invoice with status = PENDING.
+2. Click **Approve**.
+
+**Expected:**
+- Invoice status changes to APPROVED.
+- Toast: "Invoice approved — payout request created".
+
+3. Open a different COMMERCIAL invoice with status = PENDING.
+4. Click **Reject** → enter a reason → confirm.
+
+**Expected:**
+- Invoice status changes to REJECTED.
+- Rejection reason is stored and visible.
+- Toast: "Invoice rejected".
+
+**Fail:** Approve/reject actions fail or show an error for COMMERCIAL invoices (they should work identically to PARTNER).
+
+---
+
+## TEST-23: Invoice Detail — Quarterly Earnings Breakdown Table
+**Source:** PLAN_ADMIN Item 20 | **File:** `InvoiceReviewDetails.jsx`
+**Location:** Payout → Invoice Review → click any invoice
+
+### TC-23-A: "Earnings Breakdown" section is visible on the invoice detail page
+**Steps:**
+1. Navigate to Payout → Invoice Review.
+2. Click any invoice (COMMERCIAL or PARTNER).
+3. Look at the right column — below the Quarterly Statement section.
+
+**Expected:** A card titled **"Earnings Breakdown — Q[N] [YEAR]"** is visible.
+
+**Fail:** No earnings breakdown section exists anywhere on the page.
+
+---
+
+### TC-23-B: Breakdown table loads and shows correct columns
+**Pre-condition:** The server endpoint `GET /api/quarterly-statements/earnings-breakdown` returns data for this invoice's `userId`, `quarter`, `year`, `userType`.
+**Steps:**
+1. Open an invoice where earnings breakdown data exists.
+2. Wait for the breakdown card to load.
+
+**Expected:**
+- A table with columns: **Facility | Type | Amount Earned | Quarter | Year**
+- Each row shows one earnings line item (e.g., "Solar Park A | COMMERCIAL | $750.00 | Q1 | 2026").
+- A **Total row** at the bottom (bold) summing all Amount Earned values.
+- The total should match (or be close to) the invoice amount — compare visually.
+
+**Fail:** Columns are missing; no total row; values show as "$0.00" or "undefined" for a user with real earnings.
+
+---
+
+### TC-23-C: Breakdown total aligns with the invoice amount
+**Steps:**
+1. Note the invoice Amount from the Invoice Details card (left column).
+2. Note the Total from the Earnings Breakdown table (bottom row, right column).
+
+**Expected:** The two values are the same or very close. If they differ significantly, this is the discrepancy the admin needs to catch before approving.
+
+> Note: A mismatch here is data-driven, not a UI bug — but the admin must be able to see both values simultaneously to make that judgement. If the two values are visually clearly displayed in the same view, this test passes.
+
+---
+
+### TC-23-D: Loading skeleton shows while data is fetching
+**Steps:**
+1. Open an invoice detail page on a slow connection (DevTools → Network → throttle to "Slow 3G").
+2. Watch the Earnings Breakdown card.
+
+**Expected:** While the breakdown data is loading, 3 animated grey skeleton rows are visible in the card (not a blank card or a spinner-only state).
+
+---
+
+### TC-23-E: "No earnings breakdown available" message shows when no data is returned
+**Pre-condition:** Open an invoice where the server returns no breakdown data (e.g., a very old invoice, or a period with no facility activity).
+**Steps:**
+1. Open such an invoice.
+2. Wait for the breakdown card to finish loading.
+
+**Expected:** The card shows: **"No earnings breakdown available for this period."** in grey text. No table is rendered.
+
+**Fail:** Card shows a loading skeleton indefinitely; or an uncaught JS error occurs; or the table renders with empty/zeroed rows.
+
+---
+
+## SECTION 8 — SUMMARY CHECKLIST
+
+| # | Test Group | Source | Priority | Status |
+|---|---|---|---|---|
+| TEST-18 | Registration Pipeline — invitee company name + Unregistered badge | Item 16 | 🟠 HIGH | ☐ |
+| TEST-19 | Registration Pipeline — partner click routing + back navigation | Item 17 / ADMIN-03 | 🟠 HIGH | ☐ |
+| TEST-20 | Commercial user details — company identity strip + grid labels | ADMIN-02 | 🟡 MEDIUM | ☐ |
+| TEST-21 | Payout info strip — all personal fields restored (commercial + partner) | Item 18 | 🟠 HIGH | ☐ |
+| TEST-22 | Invoice Review — COMMERCIAL filter + company name in detail + approve/reject | Item 19 | 🟡 MEDIUM | ☐ |
+| TEST-23 | Invoice Detail — quarterly earnings breakdown table | Item 20 | 🟡 MEDIUM | ☐ |
+
+**New test cases in Section 8: 28**
+**Total test cases across all sections: 84**
+
+---
+
+*Section 8 added: March 20, 2026 | Source: March 18, 2026 DCarbon sprint meeting + PLAN_ADMIN Items 16–20*

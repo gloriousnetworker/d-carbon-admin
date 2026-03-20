@@ -1,7 +1,7 @@
 # DCarbon Server — Fix & Change Plan
-> Source: Meeting Notes — March 16, 2026
+> Source: Meeting Notes — March 16, 2026 + March 18, 2026
 > Scope: Backend API (`dcarbon-server`) only
-> Last updated: March 17, 2026
+> Last updated: March 20, 2026
 > **Database: fully migrated and in sync ✅**
 
 ---
@@ -411,17 +411,341 @@ Both migrations applied to `dcarbon-db` on March 17, 2026:
 
 ---
 
-## Admin App Integration — Completed (March 17, 2026)
+# March 18, 2026 Meeting — New Items
 
-All Phase 2 admin fixes have been implemented against the live server endpoints. See `ADMIN_IMPLEMENTATION_PLAN.md` for full details.
+> Source: DCarbon Project — 2026_03_18 19_56 WAT — Notes by Gemini
+> Added to plan: March 20, 2026
 
-| Admin Fix | Server Dependency | Admin File(s) Changed | Status |
-|---|---|---|---|
-| FIX-11 — Invoice discrepancy auto-flag | Server Item 7 (`hasDiscrepancy`, `partnerInvoiceAmount`, `systemCalculatedAmount`) | `CommercialPayoutDetails.jsx`, `PartnerCommissionPayoutDetails.jsx` | ✅ Done |
-| FIX-12 — REC approve/reject/adjust/submit per facility | Server Items 1 & 2 (`WregisStatus`, `/api/rec-generation/:id/*`) | *(new)* `FacilityRECHistory.jsx`, `CommercialDetails.jsx`, `ResidentialDetails.jsx` | ✅ Done |
-| FIX-13 — Three-report structure | Server Item 4 (`/api/reports/points`, `/api/reports/rec-generation`, `/api/reports/rec-sales`) | `Reporting.jsx` | ✅ Done |
-| FIX-13 — Partner Performance switched to dedicated endpoint | Server Item 10 (`GET /api/admin/partner-performance`) | `Reporting.jsx` | ✅ Done |
-| FIX-14 — WREGIS chunked export | Server Item 5 (`GET /api/rec-generation/export` XLSX) | `ManagementContent.jsx` | ✅ Done |
-| Wallet `userType` param | Server Item 8 (`?userType=COMMERCIAL/PARTNER`) | `CommercialPayoutDetails.jsx`, `PartnerCommissionPayoutDetails.jsx` | ✅ Done |
+## Status Legend
 
-*Updated: March 17, 2026 — all meeting items implemented, all admin Phase 2 fixes complete*
+| Symbol | Meaning |
+|---|---|
+| 🔴 CRITICAL | Server blocks the feature entirely — must be done first |
+| 🟠 HIGH | Broken functionality, visible to users |
+| 🟡 MEDIUM | Feature work / UX completeness |
+| ✅ DONE | Implemented |
+
+---
+
+## SERVER Items — March 18, 2026
+
+### ✅ Item 16 — Fix `getAllReferrals()` to Include Invitee Company Name 🟠 HIGH
+> **Status: IMPLEMENTED — March 20, 2026**
+
+**Meeting context:**
+During the registration pipeline demo, "AK" was shown as just their individual name instead of "AK B company". Awam Victor confirmed the pipeline uses `GET /api/admin/referrals` which pulls from `getAllReferrals()`. The fix to `getAllUsers()` (Item 16 from the March 16 plan) did not help here because the registration pipeline reads the *referral* records, not the user list.
+
+**Root cause confirmed (from schema inspection):**
+The `Referral` model stores the invited customer as `inviteeEmail` (a plain string, no FK to the `User` table). The `getAllReferrals()` query joins the `inviter` (the referring partner) but there is no join path to the invitee's registered `User` record.
+
+To get a commercial invitee's company name, the query must:
+1. Fetch referrals as today
+2. Collect all `inviteeEmail` values from the result
+3. Batch-lookup `User` records by those emails, including `commercialUser { companyName, ownerFullName }`
+4. Merge the result back onto each referral row as `inviteeUser: { companyName, ownerFullName, userType, id }`
+
+**Fields to add to each referral row in the response:**
+```
+inviteeUser: {
+  id            — User.id (null if not yet registered)
+  userType      — COMMERCIAL | RESIDENTIAL | PARTNER
+  companyName   — from commercialUser.companyName (null for residential/partner)
+  ownerFullName — from commercialUser.ownerFullName (null for residential/partner)
+  displayName   — companyName ?? ownerFullName ?? firstName+lastName (resolved display name)
+}
+```
+
+**Fix applied (`src/services/admin.service.ts` → `getAllReferrals()`):**
+After fetching referral records, all unique `inviteeEmail` values are batch-looked up in a single `prisma.user.findMany()` call. Each referral row now includes an `inviteeUser` object:
+```json
+"inviteeUser": {
+  "id": "...",
+  "email": "ak@example.com",
+  "userType": "COMMERCIAL",
+  "firstName": "AK",
+  "lastName": "Surname",
+  "companyName": "AK B company",
+  "ownerFullName": "AK Full Name",
+  "displayName": "AK B company"
+}
+```
+If the invitee has not registered yet, `inviteeUser` is `null` (the email was sent but the user hasn't signed up).
+
+**No schema migration required.**
+
+**What the Admin team can use now:**
+- Use `row.inviteeUser.displayName` as the primary label in the registration pipeline list
+- For COMMERCIAL rows: `companyName` (primary) + `ownerFullName` (secondary)
+- For unregistered invitees: `inviteeUser === null` → show `row.inviteeEmail` with an "Unregistered" badge
+
+---
+
+### ✅ Item 17 — Add PARTNER Support to Quarterly Statement Endpoint 🔴 CRITICAL
+> **Status: IMPLEMENTED — March 20, 2026**
+
+**Meeting context:**
+"The feature to 'submit invoice' was only built for the partner but should be available to commercial users as well." — this line is misleading. In practice the QA found that the PARTNER userType is **blocked** by the server. The `getQuarterlyStatement` controller explicitly validates `userType` against `["RESIDENTIAL", "COMMERCIAL"]` and returns a 400 for any PARTNER request. This means partners cannot get their quarterly earnings summary and cannot submit invoices via the structured flow.
+
+**Root cause:**
+```ts
+// quarterlyStatement.controller.ts line 21-22
+if (!["RESIDENTIAL", "COMMERCIAL"].includes(userType)) {
+  throw new ValidationError("userType must be either RESIDENTIAL or COMMERCIAL");
+}
+```
+
+And `getOrCreateUserQuarterlyStatement()` has no PARTNER branch — it would fall through with zero facilities and create a zero-value statement.
+
+**What partners earn:**
+Partners earn commissions (from `Commission` table where `userId = partner.userId`). They do NOT own facilities directly, so the WREGIS and REC generation aggregation does not apply to them. Their quarterly statement is:
+- `totalRecPayout` = sum of `Commission.amount` for the quarter (already computed for COMMERCIAL — same logic works for PARTNER)
+- `totalRecsGenerated` = 0 (partners don't generate RECs)
+- `totalRecsSold` = 0
+- `totalRecsBalance` = 0
+
+**Fix applied:**
+
+`src/controllers/quarterlyStatement.controller.ts`:
+- Validation now accepts `["RESIDENTIAL", "COMMERCIAL", "PARTNER"]`
+
+`src/services/quarterlyStatement.service.ts` → `getOrCreateUserQuarterlyStatement()`:
+- Added `UserTypeForStatement = "COMMERCIAL" | "RESIDENTIAL" | "PARTNER"` type
+- PARTNER branch: `facilityIds` stays `[]`; zero-statement short-circuit is skipped for PARTNER so the commission aggregation step always runs
+- REC generation aggregation (step 4) and REC sales aggregation (step 6) are both wrapped in `if (facilityIds.length > 0)` guards — PARTNER gets zeros for these, commission total is still captured in `totalRecPayout`
+
+**No schema migration required.**
+
+**What the Web App / Admin teams can use now:**
+```
+GET /api/quarterly-statements?userId=:id&quarter=1&year=2026&userType=PARTNER
+```
+Returns a quarterly statement for a PARTNER user with `totalRecPayout` = their commission earnings for that quarter. `totalRecsGenerated`, `totalRecsSold`, `totalRecsBalance` will be `0` — which is correct for partners.
+
+---
+
+### ✅ Item 18 — Quarterly Earnings Breakdown Endpoint (new) 🟡 MEDIUM
+> **Status: IMPLEMENTED — March 20, 2026**
+
+**Meeting context:**
+Chimdinma Kalu requested a revamp of the reporting page, specifically: "the submit invoice function should connect to the earning statement table. The earnings statement should display what is due to the user based on commission or bonus, using a table format with facility ID, type, amount earned, quarter, and year."
+
+**Current state:**
+`GET /api/quarterly-statements?userId=...&quarter=Q&year=Y&userType=T` returns **aggregate totals only** (one number for `totalRecPayout`, one for `totalRecsGenerated`, etc.). There is no line-by-line breakdown of what was earned per facility or per commission record.
+
+**New endpoint required:**
+```
+GET /api/quarterly-statements/earnings-breakdown?userId=:id&quarter=1&year=2026&userType=COMMERCIAL
+```
+
+**Response shape:**
+```json
+{
+  "status": "success",
+  "data": {
+    "userId": "...",
+    "quarter": 1,
+    "year": 2026,
+    "userType": "COMMERCIAL",
+    "totalDue": 1250.00,
+    "breakdown": [
+      {
+        "source": "COMMISSION",
+        "facilityId": "...",
+        "facilityType": "COMMERCIAL",
+        "facilityName": "Solar Park A",
+        "amount": 750.00,
+        "quarter": 1,
+        "year": 2026,
+        "commissionDate": "2026-02-15T..."
+      },
+      {
+        "source": "BONUS",
+        "facilityId": null,
+        "facilityType": null,
+        "facilityName": null,
+        "amount": 500.00,
+        "quarter": 1,
+        "year": 2026,
+        "commissionDate": "2026-03-01T..."
+      }
+    ]
+  }
+}
+```
+
+**What this unlocks for the frontend:**
+- The invoice submission screen can pre-populate the amount field with `totalDue`
+- The user sees exactly what they are invoicing for (per facility, per commission type)
+- Partners see their commission lines without facility data (facilityId null)
+
+**Fix applied:**
+
+`src/services/quarterlyStatement.service.ts` — new `getEarningsBreakdown()` method:
+- Queries `Commission` records for the user in the quarter date range
+- Queries `Bonus` records for the user in the quarter/year
+- Batch-lookups facility names from both `CommercialFacility` and `ResidentialFacility` in one round-trip
+- Returns `{ userId, quarter, year, totalDue, breakdown: [...rows] }`
+
+`src/controllers/quarterlyStatement.controller.ts` — new `getEarningsBreakdown` handler
+
+`src/routes/quarterlyStatement.routes.ts` — `GET /earnings-breakdown` declared before `/:id` routes to prevent path shadowing
+
+**No schema migration required.**
+
+**Endpoint:**
+```
+GET /api/quarterly-statements/earnings-breakdown?userId=:id&quarter=1&year=2026&userType=COMMERCIAL
+```
+
+**Response shape:**
+```json
+{
+  "status": "success",
+  "data": {
+    "userId": "...",
+    "quarter": 1,
+    "year": 2026,
+    "totalDue": 1250.00,
+    "breakdown": [
+      {
+        "id": "...",
+        "source": "COMMISSION",
+        "facilityId": "...",
+        "facilityType": "COMMERCIAL",
+        "facilityName": "Solar Park A",
+        "amount": 750.00,
+        "quarter": 1,
+        "year": 2026,
+        "date": "2026-02-15T..."
+      },
+      {
+        "id": "...",
+        "source": "BONUS",
+        "facilityId": null,
+        "facilityType": null,
+        "facilityName": null,
+        "amount": 500.00,
+        "quarter": 1,
+        "year": 2026,
+        "date": "2026-03-01T..."
+      }
+    ]
+  }
+}
+```
+Works for COMMERCIAL, RESIDENTIAL, and PARTNER. For PARTNER, `facilityType` on commission rows will be whatever type the referred facility is.
+
+---
+
+## Summary Table — March 18 Server Items
+
+| # | Item | Priority | Files | Status |
+|---|---|---|---|---|
+| 16 | `getAllReferrals()` — attach invitee company name | 🟠 HIGH | `admin.service.ts` | ✅ DONE |
+| 17 | Add PARTNER support to quarterly statement | 🔴 CRITICAL | `quarterlyStatement.controller.ts`, `quarterlyStatement.service.ts` | ✅ DONE |
+| 18 | Quarterly earnings breakdown endpoint | 🟡 MEDIUM | `quarterlyStatement.service.ts`, `quarterlyStatement.controller.ts`, `quarterlyStatement.routes.ts` | ✅ DONE |
+
+---
+
+## ADMIN Items — March 18, 2026
+
+> These are changes the DCARBON-ADMIN app needs to make. No server changes required for these.
+
+### ADMIN-05 | Registration Pipeline — Use Invitee Display Name from Referrals Response
+**Dependency: ✅ SERVER Item 16 (once done)**
+
+After Item 16 ships, the `GET /api/admin/referrals` response will include `inviteeUser.companyName` and `inviteeUser.displayName` on each row.
+
+**Action required:**
+- In the registration pipeline list, replace the current name display with `row.inviteeUser.displayName`
+- For COMMERCIAL rows: show `companyName` as primary, `ownerFullName` as secondary
+- For RESIDENTIAL / PARTNER rows: show `firstName + lastName` as before
+
+---
+
+### ADMIN-06 | Registration Pipeline — Payout & Statement Screens: Restore All User Details
+**No server dependency.**
+
+**Meeting context:**
+Chimdinma explicitly stated: "the intention was to add business details, not remove existing user details such as name and address." The payout screens for commercial partners had their personal details stripped. All previous data (name, address, phone) must be restored AND business name added.
+
+**Action required:**
+- On commercial payout and statement screens: show ALL of name, email, address, phone AND company name
+- On partner payout and statement screens: same — restore all personal fields, add company/org name
+- On residential payout screens: restore all personal detail rows (and address the extra padding issue — see WEB APP section)
+
+---
+
+## WEB APP Items — March 18, 2026
+
+> These are changes the DCarbon web app (customer-facing) needs to make. No server changes required for these.
+
+### WEB-01 | Residential Payout Screen — Remove "Amount Held" and "Total Commission" Display
+**No server dependency.**
+
+The server is correct — `GET /api/revenue/:userId?userType=RESIDENTIAL` returns the full wallet including `pendingPayout`. The frontend should not render `pendingPayout` or `totalCommission` on the residential payout screen. Only `availableBalance` and `pointBalance` should be shown.
+
+---
+
+### WEB-02 | Residential Payout Screen — Reduce Extra Padding on Detail Lines
+**No server dependency.**
+
+CSS/Tailwind fix — reduce `py-*` spacing on customer detail rows in the residential payout screen.
+
+---
+
+### WEB-03 | Commercial Statements — Restore All Personal Details + Add Business Name
+**Dependency: ✅ SERVER-03 already done.**
+
+Commercial statement and payout screens had existing fields stripped. Restore name, email, address, phone. Add company name and owner name from `GET /api/user/get-commercial-user/:userId`.
+
+---
+
+### WEB-04 | Partner Payout / Commission Statement — Restore All Details + Add Company Name
+**No server dependency for the display fix.**
+
+Same issue as WEB-03 but for partners. Restore all previously shown personal fields. Add company/org name from the partner profile endpoint.
+
+---
+
+### WEB-05 | Invoice Submission Screen — Pre-populate Amount from Earnings Breakdown
+**Dependency: ⏳ SERVER Item 18 (earnings breakdown endpoint).**
+
+Once `GET /api/quarterly-statements/earnings-breakdown` is available, the invoice submission screen should:
+1. Fetch the breakdown on mount (for the selected quarter/year)
+2. Pre-populate the `amount` field with `totalDue`
+3. Show the breakdown table below the form so users see what they're invoicing for
+
+---
+
+## Updated: What Frontend Teams Can Build Against
+
+### Web App
+
+| Feature | Server Endpoint | Status |
+|---|---|---|
+| Gate "Request Payout" for residential | `GET /api/payout-request/eligibility/:userId` | ✅ Ready |
+| Submit invoice with discrepancy detection | `POST /api/payout-request/request` + `partnerInvoiceAmount` | ✅ Ready |
+| Revenue wallet — no Held Amount for commercial/partner | `GET /api/revenue/:userId?userType=COMMERCIAL` | ✅ Ready |
+| Points report | `GET /api/reports/points` | ✅ Ready |
+| REC generation report | `GET /api/reports/rec-generation` | ✅ Ready |
+| REC sales entries report | `GET /api/reports/rec-sales` | ✅ Ready |
+| REC Sales Management overview | `GET /api/rec/summary` | ✅ Ready |
+| Invoice file upload (both modes) | `POST /api/quarterly-statements/invoices` | ✅ Ready |
+| Partner quarterly statement + invoice | `GET /api/quarterly-statements?userType=PARTNER` | ✅ Ready — Item 17 done |
+| Earnings breakdown for invoice screen | `GET /api/quarterly-statements/earnings-breakdown` | ✅ Ready — Item 18 done |
+
+### Admin App
+
+| Feature | Server Endpoint | Status |
+|---|---|---|
+| Registration pipeline — invitee company name | `GET /api/admin/referrals` → `inviteeUser.companyName` | ✅ Ready — Item 16 done |
+| WREGIS export (submitted records only) | `GET /api/rec-generation/export` | ✅ Ready |
+| WREGIS lifecycle management | `PATCH /api/rec-generation/:id/*` | ✅ Ready |
+| Partner performance report | `GET /api/admin/partner-performance` | ✅ Ready |
+| User list with company names | `GET /api/admin/get-all-users` | ✅ Ready |
+| Referrals — exclude INVITED by default | `GET /api/admin/referrals` | ✅ Ready |
+
+---
+
+*Updated: March 20, 2026 — All March 18 meeting items implemented. All server fixes complete. Admin and Web App teams are fully unblocked.*
