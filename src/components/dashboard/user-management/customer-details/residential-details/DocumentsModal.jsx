@@ -103,11 +103,18 @@ const getStatusColor = (status) => {
     case "PENDING": return "bg-[#FFF8E6] text-[#FFB200]";
     case "REJECTED": return "bg-[#FFEBEB] text-[#FF0000]";
     case "SUBMITTED": return "bg-[#E6F0FF] text-[#0062FF]";
-    case "Required": 
-    case "REQUIRED": 
+    case "WREGIS_SUBMITTED": return "bg-[#E8E0F0] text-[#7C3AED]";
+    case "REGULATOR_APPROVED": return "bg-[#D1FAE5] text-[#065F46]";
+    case "REGULATOR_REJECTED": return "bg-[#FEE2E2] text-[#991B1B]";
+    case "Required":
+    case "REQUIRED":
       return "bg-[#F2F2F2] text-gray-500";
     default: return "bg-gray-100 text-gray-500";
   }
+};
+
+const isInRegulatorTrack = (status) => {
+  return ["APPROVED", "WREGIS_SUBMITTED", "REGULATOR_APPROVED", "REGULATOR_REJECTED"].includes(status);
 };
 
 const StatusBadge = ({ status }) => {
@@ -318,10 +325,18 @@ export default function DocumentsModal({ facility, documents, onVerifyFacility, 
 
       const endpoint = `${CONFIG.API_BASE_URL}/api/admin/residential-facility/${facility.id}/document/${currentDocument.type}/status`;
       
+      const statusMap = {
+        "APPROVE": "APPROVED",
+        "REJECT": "REJECTED",
+        "WREGIS_SUBMIT": "WREGIS_SUBMITTED",
+        "REG_APPROVE": "REGULATOR_APPROVED",
+        "REG_REJECT": "REGULATOR_REJECTED",
+      };
+
       const requestBody = {
-        status: actionType === "APPROVE" ? "APPROVED" : "REJECTED",
-        ...(actionType === "REJECT" && { 
-          rejectionReason: rejectionReason || "No reason provided" 
+        status: statusMap[actionType] || "APPROVED",
+        ...((actionType === "REJECT" || actionType === "REG_REJECT") && {
+          rejectionReason: rejectionReason || "No reason provided"
         })
       };
 
@@ -413,19 +428,25 @@ export default function DocumentsModal({ facility, documents, onVerifyFacility, 
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {actionType === "APPROVE" ? "Approve Document" : "Reject Document"}
+              {actionType === "APPROVE" && "Approve Document"}
+              {actionType === "REJECT" && "Reject Document"}
+              {actionType === "WREGIS_SUBMIT" && "Submit to WREGIS"}
+              {actionType === "REG_APPROVE" && "Regulator Approved"}
+              {actionType === "REG_REJECT" && "Regulator Rejected"}
             </DialogTitle>
             <DialogDescription>
-              {actionType === "APPROVE" 
-                ? `Are you sure you want to approve ${currentDocument?.name}?`
-                : `Please provide a reason for rejecting ${currentDocument?.name}`}
+              {actionType === "APPROVE" && `Are you sure you want to internally approve ${currentDocument?.name}?`}
+              {actionType === "REJECT" && `Please provide a reason for rejecting ${currentDocument?.name}.`}
+              {actionType === "WREGIS_SUBMIT" && `Mark ${currentDocument?.name} as submitted to WREGIS for regulator review.`}
+              {actionType === "REG_APPROVE" && `Confirm the regulator has approved ${currentDocument?.name}.`}
+              {actionType === "REG_REJECT" && `Provide the regulator's rejection reason for ${currentDocument?.name}.`}
             </DialogDescription>
           </DialogHeader>
-          
-          {actionType === "REJECT" && (
+
+          {(actionType === "REJECT" || actionType === "REG_REJECT") && (
             <div className="py-4">
               <Input
-                placeholder="Enter rejection reason (required)"
+                placeholder={actionType === "REG_REJECT" ? "Enter regulator rejection reason" : "Enter rejection reason (required)"}
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
                 required
@@ -440,15 +461,25 @@ export default function DocumentsModal({ facility, documents, onVerifyFacility, 
             <Button 
               onClick={handleDocumentStatusChange}
               disabled={
-                approvingDoc === `${facility?.id}-${currentDocument?.type}` || 
-                (actionType === "REJECT" && !rejectionReason.trim())
+                approvingDoc === `${facility?.id}-${currentDocument?.type}` ||
+                ((actionType === "REJECT" || actionType === "REG_REJECT") && !rejectionReason.trim())
               }
-              className={actionType === "APPROVE" ? "bg-[#039994] hover:bg-[#02857f]" : "bg-red-500 hover:bg-red-600"}
+              className={
+                actionType === "REJECT" || actionType === "REG_REJECT"
+                  ? "bg-red-500 hover:bg-red-600"
+                  : actionType === "WREGIS_SUBMIT"
+                  ? "bg-purple-600 hover:bg-purple-700"
+                  : "bg-[#039994] hover:bg-[#02857f]"
+              }
             >
               {approvingDoc === `${facility?.id}-${currentDocument?.type}` ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : null}
-              {actionType === "APPROVE" ? "Approve" : "Reject"}
+              {actionType === "APPROVE" && "Approve"}
+              {actionType === "REJECT" && "Reject"}
+              {actionType === "WREGIS_SUBMIT" && "Submit to WREGIS"}
+              {actionType === "REG_APPROVE" && "Confirm Approved"}
+              {actionType === "REG_REJECT" && "Confirm Rejected"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -513,114 +544,118 @@ export default function DocumentsModal({ facility, documents, onVerifyFacility, 
           </div>
 
           <div>
-            <h5 className="text-md font-semibold text-[#039994] mb-3">Facility Documents</h5>
+            {/* Document summary bar */}
+            <div className="flex items-center justify-between mb-3">
+              <h5 className="text-md font-semibold text-[#039994]">Facility Documents</h5>
+              <div className="flex items-center gap-3 text-xs font-sfpro">
+                <span className="text-gray-500">
+                  {docList.filter(d => d.url).length}/{docList.length} uploaded
+                </span>
+                <span className="text-[#039994]">
+                  {docList.filter(d => isInRegulatorTrack(d.status)).length} approved
+                </span>
+                {docList.some(d => !d.url) && (
+                  <span className="text-amber-500">
+                    {docList.filter(d => !d.url).length} missing
+                  </span>
+                )}
+              </div>
+            </div>
+
             <div className="border rounded-lg overflow-hidden">
-              <div className="grid grid-cols-12 bg-gray-50 p-3 border-b text-sm">
-                <div className="col-span-5 font-medium">Document Name</div>
-                <div className="col-span-3 font-medium">File</div>
-                <div className="col-span-2 font-medium">Status</div>
-                <div className="col-span-2 font-medium">Actions</div>
+              <div className="grid grid-cols-12 bg-gray-50 p-3 border-b text-xs font-medium text-gray-600 uppercase tracking-wide">
+                <div className="col-span-3">Document</div>
+                <div className="col-span-2">File</div>
+                <div className="col-span-2">Internal Status</div>
+                <div className="col-span-2">Regulator Status</div>
+                <div className="col-span-3">Actions</div>
               </div>
               
               {docList.map((doc, index) => {
                 const docKey = `${facility.id}-${doc.type}`;
                 const isApproving = approvingDoc === docKey;
-                
+                const inRegTrack = isInRegulatorTrack(doc.status);
+
                 return (
-                  <div key={index} className="grid grid-cols-12 p-3 border-b last:border-b-0 items-center text-sm">
-                    <div className="col-span-5">
-                      <p className="font-medium">{doc.name}</p>
-                      {doc.status === "REJECTED" && doc.rejectionReason && (
-                        <p className="text-xs text-red-500 mt-1">Reason: {doc.rejectionReason}</p>
+                  <div key={index} className={`grid grid-cols-12 p-3 border-b last:border-b-0 items-center text-sm ${!doc.url ? "bg-amber-50/30" : ""}`}>
+                    <div className="col-span-3">
+                      <p className="font-medium text-xs">{doc.name}</p>
+                      {(doc.status === "REJECTED" || doc.status === "REGULATOR_REJECTED") && doc.rejectionReason && (
+                        <p className="text-[10px] text-red-500 mt-0.5 leading-tight">Reason: {doc.rejectionReason}</p>
+                      )}
+                      {!doc.url && (
+                        <p className="text-[10px] text-amber-500 mt-0.5">Not yet uploaded by user</p>
                       )}
                     </div>
-                    
-                    <div className="col-span-3">
+
+                    <div className="col-span-2">
                       {doc.url ? (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  className="h-6 w-6" 
-                                  onClick={() => openPdfModal(doc.url, doc)}
-                                  disabled={isApproving}
-                                >
-                                  <Eye className="h-4 w-4" />
+                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openPdfModal(doc.url, doc)} disabled={isApproving}>
+                                  <Eye className="h-3.5 w-3.5" />
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>
-                                <p>View document</p>
-                              </TooltipContent>
+                              <TooltipContent><p>View</p></TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  className="h-6 w-6" 
-                                  onClick={() => {
-                                    const link = document.createElement('a');
-                                    link.href = doc.url;
-                                    link.download = doc.name;
-                                    document.body.appendChild(link);
-                                    link.click();
-                                    document.body.removeChild(link);
-                                  }}
-                                  disabled={isApproving}
-                                >
-                                  <Download className="h-4 w-4" />
+                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
+                                  const link = document.createElement('a');
+                                  link.href = doc.url;
+                                  link.download = doc.name;
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                }} disabled={isApproving}>
+                                  <Download className="h-3.5 w-3.5" />
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Download document</p>
-                              </TooltipContent>
+                              <TooltipContent><p>Download</p></TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
                         </div>
                       ) : (
-                        <span className="text-sm text-gray-400">No document uploaded</span>
+                        <span className="text-[10px] text-gray-400">—</span>
                       )}
                     </div>
-                    
+
                     <div className="col-span-2">
-                      <span className={`text-xs font-semibold px-3 py-1 rounded-full ${getStatusColor(doc.status)}`}>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${getStatusColor(inRegTrack ? "APPROVED" : doc.status)}`}>
                         {isApproving ? (
-                          <span className="flex items-center gap-1">
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                            Processing...
-                          </span>
-                        ) : (
-                          doc.status
-                        )}
+                          <span className="flex items-center gap-1"><Loader2 className="h-2.5 w-2.5 animate-spin" /> ...</span>
+                        ) : inRegTrack ? "Approved" : (doc.status || "Not Uploaded")}
                       </span>
                     </div>
-                    
-                    <div className="col-span-2 flex gap-2">
-                      {doc.url && (doc.status === "SUBMITTED" || doc.status === "REJECTED") && (
+
+                    <div className="col-span-2">
+                      {inRegTrack ? (
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${getStatusColor(doc.status)}`}>
+                          {doc.status === "APPROVED" ? "Pending" : doc.status === "WREGIS_SUBMITTED" ? "Submitted" : doc.status === "REGULATOR_APPROVED" ? "Approved" : "Rejected"}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-gray-300">—</span>
+                      )}
+                    </div>
+
+                    <div className="col-span-3 flex flex-wrap gap-1">
+                      {doc.url && !inRegTrack && doc.status !== "APPROVED" && (
                         <>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="h-8 text-xs" 
-                            onClick={() => openStatusModal("APPROVE", doc)} 
-                            disabled={isApproving}
-                          >
-                            Approve
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="h-8 text-xs bg-red-50 text-red-600 hover:bg-red-100" 
-                            onClick={() => openStatusModal("REJECT", doc)}
-                            disabled={isApproving}
-                          >
-                            Reject
-                          </Button>
+                          <Button variant="outline" size="sm" className="h-6 text-[10px] px-2" onClick={() => openStatusModal("APPROVE", doc)} disabled={isApproving}>Approve</Button>
+                          <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 bg-red-50 text-red-600 hover:bg-red-100" onClick={() => openStatusModal("REJECT", doc)} disabled={isApproving}>Reject</Button>
+                        </>
+                      )}
+                      {doc.status === "APPROVED" && (
+                        <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 bg-purple-50 text-purple-700 hover:bg-purple-100" onClick={() => openStatusModal("WREGIS_SUBMIT", doc)} disabled={isApproving}>Submit to WREGIS</Button>
+                      )}
+                      {doc.status === "WREGIS_SUBMITTED" && (
+                        <>
+                          <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 bg-green-50 text-green-700 hover:bg-green-100" onClick={() => openStatusModal("REG_APPROVE", doc)} disabled={isApproving}>Reg. Approved</Button>
+                          <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 bg-red-50 text-red-600 hover:bg-red-100" onClick={() => openStatusModal("REG_REJECT", doc)} disabled={isApproving}>Reg. Rejected</Button>
                         </>
                       )}
                     </div>
