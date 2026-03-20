@@ -313,9 +313,9 @@ export default function CommercialPayoutDetails({ payoutDetails, onBack, onPayou
         <h1 className="font-sfpro text-[20px] font-[600] text-[#039994]">Commercial Payout Details</h1>
       </div>
 
-      {/* ── FIX-04 / Item-18: Compact user info strip — all personal details ── */}
+      {/* Company & Contact Information */}
       <div className="border border-gray-200 rounded-lg px-4 py-3 mb-5 bg-gray-50">
-        <div className="flex items-start justify-between gap-4 mb-2">
+        <div className="flex items-start justify-between gap-4 mb-3">
           <div>
             <p className="font-sfpro text-[15px] font-semibold text-[#1E1E1E]">
               {payoutDetails.companyName || `${payoutDetails.firstName || ''} ${payoutDetails.lastName || ''}`.trim() || '—'}
@@ -330,16 +330,29 @@ export default function CommercialPayoutDetails({ payoutDetails, onBack, onPayou
             {payoutDetails.userType || 'COMMERCIAL'}
           </span>
         </div>
-        <div className="flex flex-wrap gap-x-6 gap-y-1">
+        <div className="divide-y divide-gray-200">
           {(payoutDetails.businessAddress || payoutDetails.address) && (
-            <span className="font-sfpro text-xs text-[#626060]">{payoutDetails.businessAddress || payoutDetails.address}</span>
+            <div className="flex justify-between items-center py-1.5">
+              <span className="font-sfpro text-xs text-gray-500">Address</span>
+              <span className="font-sfpro text-xs text-[#1E1E1E] text-right max-w-[65%] truncate">{payoutDetails.businessAddress || payoutDetails.address}</span>
+            </div>
           )}
           {payoutDetails.email && (
-            <span className="font-sfpro text-xs text-[#626060]">{payoutDetails.email}</span>
+            <div className="flex justify-between items-center py-1.5">
+              <span className="font-sfpro text-xs text-gray-500">Email</span>
+              <span className="font-sfpro text-xs text-[#1E1E1E]">{payoutDetails.email}</span>
+            </div>
           )}
           {(payoutDetails.phoneNumber || payoutDetails.phone) && (
-            <span className="font-sfpro text-xs text-[#626060]">{payoutDetails.phoneNumber || payoutDetails.phone}</span>
+            <div className="flex justify-between items-center py-1.5">
+              <span className="font-sfpro text-xs text-gray-500">Phone</span>
+              <span className="font-sfpro text-xs text-[#1E1E1E]">{payoutDetails.phoneNumber || payoutDetails.phone}</span>
+            </div>
           )}
+          <div className="flex justify-between items-center py-1.5">
+            <span className="font-sfpro text-xs text-gray-500">User ID</span>
+            <span className="font-sfpro text-xs text-[#626060] truncate max-w-[55%] text-right">{payoutDetails.id || '—'}</span>
+          </div>
         </div>
       </div>
 
