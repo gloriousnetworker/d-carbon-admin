@@ -55,7 +55,17 @@ export default function CommercialDetails({ customer, onBack }) {
       if (res.ok) {
         const json = await res.json();
         if (json.status === "success" && json.data) {
-          setCustomerDetails(prev => ({ ...prev, ...json.data }));
+          const d = json.data;
+          // Flatten nested commercialUser fields to top level
+          const commercial = d.commercialUser || {};
+          setCustomerDetails(prev => ({
+            ...prev,
+            ...d,
+            companyName: commercial.companyName || d.companyName || prev?.companyName,
+            ownerFullName: commercial.ownerFullName || d.ownerFullName || prev?.ownerFullName,
+            companyAddress: commercial.companyAddress || d.companyAddress || prev?.companyAddress,
+            companyPhone: commercial.phoneNumber || d.phoneNumber || prev?.phoneNumber,
+          }));
         }
       }
     } catch {
@@ -643,13 +653,11 @@ export default function CommercialDetails({ customer, onBack }) {
       <div className="border border-gray-200 rounded-lg px-4 py-3 mb-4 bg-white flex items-start justify-between w-full max-w-7xl">
         <div>
           <p className="text-base font-bold text-[#1E1E1E] font-sfpro leading-tight">
-            {customer?.companyName || customer?.name || "—"}
+            {customerDetails?.companyName || customer?.companyName || "—"}
           </p>
-          {(customer?.ownerFullName || (customer?.firstName && customer?.lastName)) && (
-            <p className="text-xs text-gray-400 font-sfpro mt-0.5">
-              Contact: {customer.ownerFullName || `${customer.firstName || ""} ${customer.lastName || ""}`.trim()}
-            </p>
-          )}
+          <p className="text-xs text-gray-400 font-sfpro mt-0.5">
+            Contact: {customerDetails?.ownerFullName || customer?.ownerFullName || `${customer?.firstName || ""} ${customer?.lastName || ""}`.trim() || "—"}
+          </p>
         </div>
         <span className="text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2.5 py-0.5 font-sfpro flex-shrink-0 ml-4">
           COMMERCIAL
@@ -698,16 +706,14 @@ export default function CommercialDetails({ customer, onBack }) {
             </div>
             <div className="space-y-1">
               <p className={labelClass}>Company Name</p>
-              <p className="font-medium">{customer?.companyName || customer?.name || "Not specified"}</p>
+              <p className="font-medium">{customerDetails?.companyName || customer?.companyName || "Not specified"}</p>
             </div>
-            {(customer?.ownerFullName || (customer?.firstName && customer?.lastName)) && (
-              <div className="space-y-1">
-                <p className={labelClass}>Owner / Contact</p>
-                <p className="font-medium">
-                  {customer.ownerFullName || `${customer.firstName || ""} ${customer.lastName || ""}`.trim()}
-                </p>
+            <div className="space-y-1">
+              <p className={labelClass}>Owner / Contact</p>
+              <p className="font-medium">
+                {customerDetails?.ownerFullName || customer?.ownerFullName || `${customer?.firstName || ""} ${customer?.lastName || ""}`.trim() || "Not specified"}
+              </p>
               </div>
-            )}
             <div className="space-y-1">
               <p className={labelClass}>Customer Type</p>
               <p className="font-medium">{customer?.userType || "Not specified"}</p>

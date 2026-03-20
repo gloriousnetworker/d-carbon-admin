@@ -91,7 +91,7 @@ export default function PartnerCommissionPayout() {
 
       while (hasMore) {
         const response = await fetch(
-          `${CONFIG.API_BASE_URL}/api/user/get-all-users?page=${currentPage}&limit=50`,
+          `${CONFIG.API_BASE_URL}/api/admin/get-all-users?page=${currentPage}&limit=50`,
           {
             method: 'GET',
             headers: {
@@ -126,10 +126,14 @@ export default function PartnerCommissionPayout() {
           
           return {
             id: user.id || '-',
-            name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : '-',
+            name: user.companyName || (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : '-'),
+            companyName: user.companyName || '',
+            ownerFullName: user.ownerFullName || '',
             firstName: user.firstName || '-',
             lastName: user.lastName || '-',
             email: user.email || '-',
+            phoneNumber: user.phoneNumber || '',
+            address: user.address || '',
             userType: user.userType || '-',
             date: user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-GB').replace(/\//g, '-') : '-',
             status: user.isActive ? "Completed" : "Pending",

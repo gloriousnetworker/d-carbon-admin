@@ -200,7 +200,9 @@ export default function PartnerDetails({ partner, onBack, onCustomerSelect }) {
   const docs = partnerDetails.documentation || partnerDetails.user?.documentation;
   const agreements = agreementData || partnerDetails.agreements || partnerDetails.user?.agreements;
   const referralCode = partnerDetails.referralCode || partnerDetails.user?.referralCode || partnerDetails.userDetails?.referralCode;
-  const partnerName = partnerDetails.name || `${partnerDetails.firstName || ""} ${partnerDetails.lastName || ""}`.trim() || "Partner";
+  const businessName = partnerDetails.companyName || partner?.companyName || "";
+  const personalName = partnerDetails.ownerFullName || `${partnerDetails.firstName || ""} ${partnerDetails.lastName || ""}`.trim() || "";
+  const partnerName = businessName || personalName || "Partner";
   const partnerEmail = partnerDetails.email || partnerDetails.displayEmail || "";
 
 
@@ -244,6 +246,9 @@ export default function PartnerDetails({ partner, onBack, onCustomerSelect }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-[17px] font-semibold text-[#1E1E1E] font-sfpro leading-tight">{partnerName}</h1>
+            {businessName && personalName && businessName !== personalName && (
+              <span className="text-xs text-gray-400 font-sfpro">({personalName})</span>
+            )}
             <span className="px-2 py-0.5 bg-[#039994]/10 text-[#039994] rounded-full text-xs font-sfpro font-medium">
               {formatPartnerType(partnerDetails.partnerType)}
             </span>
@@ -355,7 +360,8 @@ export default function PartnerDetails({ partner, onBack, onCustomerSelect }) {
           <div className="border border-gray-200 rounded-xl p-5">
             <h3 className="text-sm font-semibold text-[#039994] font-sfpro mb-4">Contact Information</h3>
             <div className="grid grid-cols-2 gap-x-4 gap-y-4">
-              <InfoField label="Business Name" value={partnerDetails.name} icon={Building2} />
+              <InfoField label="Business Name" value={businessName || "Not specified"} icon={Building2} />
+              <InfoField label="Contact Person" value={personalName || "Not specified"} icon={User} />
               <InfoField label="Partner Type" value={formatPartnerType(partnerDetails.partnerType)} />
               <InfoField label="First Name" value={partnerDetails.firstName || partnerDetails.userDetails?.firstName} icon={User} />
               <InfoField label="Last Name" value={partnerDetails.lastName || partnerDetails.userDetails?.lastName} />

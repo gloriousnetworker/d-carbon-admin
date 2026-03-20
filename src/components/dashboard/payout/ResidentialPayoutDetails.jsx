@@ -174,7 +174,7 @@ export default function ResidentialPayoutDetails({ payoutDetails, onBack, onPayo
         </div>
       </div>
 
-      <div className="bg-[#E8F5F4] rounded-lg p-6 border border-[#C1E8E5] mb-6">
+      <div className="bg-[#E8F5F4] rounded-lg px-4 py-3 border border-[#C1E8E5] mb-6">
         <div className="space-y-4">
           <div className="flex justify-between items-center py-3 border-b">
             <span className="font-sfpro text-[14px] text-[#1E1E1E]">User ID</span>
@@ -214,7 +214,7 @@ export default function ResidentialPayoutDetails({ payoutDetails, onBack, onPayo
             <Wallet className="h-4 w-4 text-[#039994]" />
             <h4 className="font-sfpro text-[14px] font-semibold text-[#1E1E1E]">Revenue Wallet</h4>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <span className="font-sfpro text-xs text-[#626060] block">Total Earnings</span>
               <span className="font-sfpro text-sm font-semibold text-[#1E1E1E]">{formatCurrency(walletData.totalEarnings)}</span>
@@ -222,14 +222,6 @@ export default function ResidentialPayoutDetails({ payoutDetails, onBack, onPayo
             <div>
               <span className="font-sfpro text-xs text-[#626060] block">Available Balance</span>
               <span className="font-sfpro text-sm font-semibold text-[#039994]">{formatCurrency(walletData.availableBalance)}</span>
-            </div>
-            <div>
-              <span className="font-sfpro text-xs text-[#626060] block">Held Amount</span>
-              <span className="font-sfpro text-sm font-semibold text-[#FFB200]">{formatCurrency(walletData.heldAmount)}</span>
-            </div>
-            <div>
-              <span className="font-sfpro text-xs text-[#626060] block">Total Commission</span>
-              <span className="font-sfpro text-sm font-semibold text-[#1E1E1E]">{formatCurrency(walletData.totalCommission)}</span>
             </div>
           </div>
         </div>
