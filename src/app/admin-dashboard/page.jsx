@@ -16,6 +16,7 @@ import DashboardNotifications from '@/components/dashboard/Notifications';
 import LogoutModal from '@/components/dashboard/Logout';
 import MyAccount from '@/components/dashboard/account/MyAccount';
 import AgreementManagement from '@/components/dashboard/agreement/AgreementManagement';
+import DocumentConfiguration from '@/components/dashboard/agreement/DocumentConfiguration';
 import UserSupport from '@/components/dashboard/user-support/UserSupport';
 import UserManagement from '@/components/dashboard/user-management/UserManagement';
 import Faq from '@/components/dashboard/faq/Faq';
@@ -26,7 +27,7 @@ import SystemJobs from '@/components/dashboard/system/SystemJobs';
 const VALID_SECTIONS = [
   'overview', 'userManagement', 'recSalesManagement', 'resiGroupManagement',
   'commissionStructure', 'payoutProcessing', 'reporting', 'myAccount',
-  'agreementManagement', 'userSupport', 'notifications', 'helpCenter',
+  'agreementManagement', 'documentConfiguration', 'userSupport', 'notifications', 'helpCenter',
   'contactSupport', 'faq', 'feedback', 'registrationPipeline', 'systemJobs',
 ];
 
@@ -40,6 +41,7 @@ const SECTION_COMPONENTS = {
   reporting: Reporting,
   myAccount: MyAccount,
   agreementManagement: AgreementManagement,
+  documentConfiguration: DocumentConfiguration,
   userSupport: UserSupport,
   notifications: DashboardNotifications,
   helpCenter: DashboardHelpCentre,
@@ -60,6 +62,7 @@ const sectionDisplayMap = {
   reporting: 'Reporting',
   myAccount: 'My Account',
   agreementManagement: 'Agreement Management',
+  documentConfiguration: 'Document Configuration',
   userSupport: 'User Support',
   notifications: 'Notification',
   helpCenter: 'Help Centre (FAQs)',
