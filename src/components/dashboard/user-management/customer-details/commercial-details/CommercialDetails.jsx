@@ -25,7 +25,14 @@ export default function CommercialDetails({ customer, onBack }) {
   const [wregisForm, setWregisForm] = useState({
     wregisEligibilityDate: "",
     wregisId: "",
-    rpsId: ""
+    rpsId: "",
+    eiaPlantId: "",
+    commercialOperationDate: "",
+    systemCapacity: "",
+    energyStorageCapacity: "",
+    hasOnSiteLoad: false,
+    hasNetMetering: false,
+    interconnectedUtilityId: "",
   });
   const [updatingWregis, setUpdatingWregis] = useState(false);
   const [uploadingAck, setUploadingAck] = useState(null);
@@ -228,7 +235,14 @@ export default function CommercialDetails({ customer, onBack }) {
     setWregisForm({
       wregisEligibilityDate: facility.wregisEligibilityDate ? facility.wregisEligibilityDate.split('T')[0] : "",
       wregisId: facility.wregisId || "",
-      rpsId: facility.rpsId || ""
+      rpsId: facility.rpsId || "",
+      eiaPlantId: facility.eiaPlantId || "",
+      commercialOperationDate: facility.commercialOperationDate ? facility.commercialOperationDate.split('T')[0] : "",
+      systemCapacity: facility.systemCapacity ?? "",
+      energyStorageCapacity: facility.energyStorageCapacity ?? "",
+      hasOnSiteLoad: facility.hasOnSiteLoad ?? false,
+      hasNetMetering: facility.hasNetMetering ?? false,
+      interconnectedUtilityId: facility.interconnectedUtilityId || "",
     });
     setWregisModalOpen(true);
   };
@@ -237,9 +251,9 @@ export default function CommercialDetails({ customer, onBack }) {
     setWregisModalOpen(false);
     setCurrentFacility(null);
     setWregisForm({
-      wregisEligibilityDate: "",
-      wregisId: "",
-      rpsId: ""
+      wregisEligibilityDate: "", wregisId: "", rpsId: "", eiaPlantId: "",
+      commercialOperationDate: "", systemCapacity: "", energyStorageCapacity: "",
+      hasOnSiteLoad: false, hasNetMetering: false, interconnectedUtilityId: "",
     });
   };
 
@@ -306,7 +320,14 @@ export default function CommercialDetails({ customer, onBack }) {
       const body = {
         wregisEligibilityDate: wregisForm.wregisEligibilityDate ? `${wregisForm.wregisEligibilityDate}T00:00:00Z` : null,
         wregisId: wregisForm.wregisId || null,
-        rpsId: wregisForm.rpsId || null
+        rpsId: wregisForm.rpsId || null,
+        eiaPlantId: wregisForm.eiaPlantId || null,
+        commercialOperationDate: wregisForm.commercialOperationDate ? `${wregisForm.commercialOperationDate}T00:00:00Z` : null,
+        systemCapacity: wregisForm.systemCapacity !== "" ? parseFloat(wregisForm.systemCapacity) : null,
+        energyStorageCapacity: wregisForm.energyStorageCapacity !== "" ? parseFloat(wregisForm.energyStorageCapacity) : null,
+        hasOnSiteLoad: wregisForm.hasOnSiteLoad,
+        hasNetMetering: wregisForm.hasNetMetering,
+        interconnectedUtilityId: wregisForm.interconnectedUtilityId || null,
       };
 
       const response = await fetch(endpoint, {
@@ -571,42 +592,113 @@ export default function CommercialDetails({ customer, onBack }) {
       </Dialog>
 
       <Dialog open={wregisModalOpen} onOpenChange={closeWregisModal}>
-        <DialogContent>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Update WREGIS Information</DialogTitle>
+            <DialogTitle>WREGIS & Regulator Details</DialogTitle>
             <DialogDescription>
-              Update WREGIS details for {currentFacility?.facilityName}
+              {currentFacility?.facilityName}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div>
-              <label className={labelClass}>WREGIS Eligibility Date</label>
-              <Input
-                type="date"
-                value={wregisForm.wregisEligibilityDate}
-                onChange={(e) => setWregisForm({...wregisForm, wregisEligibilityDate: e.target.value})}
-                className={inputClass}
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 font-sfpro mb-1">WREGIS ID</label>
+                <Input
+                  type="text"
+                  value={wregisForm.wregisId}
+                  onChange={(e) => setWregisForm({...wregisForm, wregisId: e.target.value})}
+                  placeholder="—"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 font-sfpro mb-1">RPS ID</label>
+                <Input
+                  type="text"
+                  value={wregisForm.rpsId}
+                  onChange={(e) => setWregisForm({...wregisForm, rpsId: e.target.value})}
+                  placeholder="—"
+                />
+              </div>
             </div>
-            <div>
-              <label className={labelClass}>WREGIS ID</label>
-              <Input
-                type="text"
-                value={wregisForm.wregisId}
-                onChange={(e) => setWregisForm({...wregisForm, wregisId: e.target.value})}
-                className={inputClass}
-                placeholder="Enter WREGIS ID"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 font-sfpro mb-1">WREGIS Eligibility Date</label>
+                <Input
+                  type="date"
+                  value={wregisForm.wregisEligibilityDate}
+                  onChange={(e) => setWregisForm({...wregisForm, wregisEligibilityDate: e.target.value})}
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 font-sfpro mb-1">Commercial Operation Date</label>
+                <Input
+                  type="date"
+                  value={wregisForm.commercialOperationDate}
+                  onChange={(e) => setWregisForm({...wregisForm, commercialOperationDate: e.target.value})}
+                />
+              </div>
             </div>
-            <div>
-              <label className={labelClass}>RPS ID</label>
-              <Input
-                type="text"
-                value={wregisForm.rpsId}
-                onChange={(e) => setWregisForm({...wregisForm, rpsId: e.target.value})}
-                className={inputClass}
-                placeholder="Enter RPS ID"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 font-sfpro mb-1">System Capacity (kW AC)</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={wregisForm.systemCapacity}
+                  onChange={(e) => setWregisForm({...wregisForm, systemCapacity: e.target.value})}
+                  placeholder="0.0"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 font-sfpro mb-1">Energy Storage (kW)</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={wregisForm.energyStorageCapacity}
+                  onChange={(e) => setWregisForm({...wregisForm, energyStorageCapacity: e.target.value})}
+                  placeholder="0.0"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 font-sfpro mb-1">EIA Plant ID</label>
+                <Input
+                  type="text"
+                  value={wregisForm.eiaPlantId}
+                  onChange={(e) => setWregisForm({...wregisForm, eiaPlantId: e.target.value})}
+                  placeholder="—"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 font-sfpro mb-1">Interconnected Utility ID</label>
+                <Input
+                  type="text"
+                  value={wregisForm.interconnectedUtilityId}
+                  onChange={(e) => setWregisForm({...wregisForm, interconnectedUtilityId: e.target.value})}
+                  placeholder="—"
+                />
+              </div>
+            </div>
+            <div className="flex gap-6 pt-1">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={wregisForm.hasNetMetering}
+                  onChange={(e) => setWregisForm({...wregisForm, hasNetMetering: e.target.checked})}
+                  className="h-4 w-4 rounded border-gray-300 text-[#039994] focus:ring-[#039994]"
+                />
+                <span className="text-xs font-sfpro text-gray-700">Net Metering</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={wregisForm.hasOnSiteLoad}
+                  onChange={(e) => setWregisForm({...wregisForm, hasOnSiteLoad: e.target.checked})}
+                  className="h-4 w-4 rounded border-gray-300 text-[#039994] focus:ring-[#039994]"
+                />
+                <span className="text-xs font-sfpro text-gray-700">On-Site Load</span>
+              </label>
             </div>
           </div>
           <DialogFooter>
@@ -621,7 +713,7 @@ export default function CommercialDetails({ customer, onBack }) {
               {updatingWregis ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : null}
-              {updatingWregis ? "Updating..." : "Update"}
+              {updatingWregis ? "Updating..." : "Save Details"}
             </Button>
           </DialogFooter>
         </DialogContent>
