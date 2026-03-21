@@ -315,7 +315,7 @@ export default function CommercialDetails({ customer, onBack }) {
       const authToken = localStorage.getItem('authToken');
       if (!authToken) throw new Error('No authentication token found');
 
-      const endpoint = `${CONFIG.API_BASE_URL}/api/admin/update-wregis-info/${currentFacility.id}`;
+      const endpoint = `${CONFIG.API_BASE_URL}/api/admin/commercial-facility/${currentFacility.id}/wregis-details`;
 
       const body = {
         wregisEligibilityDate: wregisForm.wregisEligibilityDate ? `${wregisForm.wregisEligibilityDate}T00:00:00Z` : null,
