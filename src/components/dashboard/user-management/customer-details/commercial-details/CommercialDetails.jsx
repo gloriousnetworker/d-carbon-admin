@@ -513,30 +513,32 @@ export default function CommercialDetails({ customer, onBack }) {
             )}
           </Button>
 
-          {docCount > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDownloadDocPackage(facility);
-              }}
-              disabled={downloadingDocs === facility.id}
-              className="text-[#039994] border-[#039994] hover:bg-[#03999410]"
-            >
-              {downloadingDocs === facility.id ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                  Downloading...
-                </>
-              ) : (
-                <>
-                  <Package className="h-4 w-4 mr-1" />
-                  Download Docs ({docCount}/12)
-                </>
-              )}
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (docCount === 0) {
+                toast.error("No documents uploaded yet for this facility.");
+                return;
+              }
+              handleDownloadDocPackage(facility);
+            }}
+            disabled={downloadingDocs === facility.id}
+            className="text-[#039994] border-[#039994] hover:bg-[#03999410]"
+          >
+            {downloadingDocs === facility.id ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                Downloading...
+              </>
+            ) : (
+              <>
+                <Package className="h-4 w-4 mr-1" />
+                Download Docs ({docCount}/12)
+              </>
+            )}
+          </Button>
 
           <Button
             variant="outline"

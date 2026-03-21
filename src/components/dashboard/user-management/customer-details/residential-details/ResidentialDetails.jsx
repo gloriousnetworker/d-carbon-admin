@@ -436,7 +436,14 @@ export default function ResidentialDetails({ customer, onBack }) {
 
   const FacilityCard = ({ facility }) => {
     const hasAckDocument = facilityDocuments[facility.id]?.acknowledgementOfStationServiceUrl;
-    
+    const docs = facilityDocuments[facility.id] || {};
+    const docCount = [
+      docs.wregisAssignmentUrl, docs.financeAgreementUrl, docs.solarInstallationContractUrl,
+      docs.interconnectionAgreementUrl, docs.ptoLetterUrl, docs.singleLineDiagramUrl,
+      docs.sitePlanUrl, docs.panelInverterDatasheetUrl, docs.revenueMeterDataUrl,
+      docs.utilityMeterPhotoUrl, docs.assignmentOfRegistrationRightUrl, docs.acknowledgementOfStationServiceUrl,
+    ].filter(Boolean).length;
+
     return (
       <div 
         className="border border-gray-200 rounded-lg p-6 mb-4 bg-white hover:bg-gray-50 cursor-pointer transition-colors"
@@ -502,6 +509,10 @@ export default function ResidentialDetails({ customer, onBack }) {
             size="sm"
             onClick={(e) => {
               e.stopPropagation();
+              if (docCount === 0) {
+                toast.error("No documents uploaded yet for this facility.");
+                return;
+              }
               handleDownloadDocPackage(facility);
             }}
             disabled={downloadingDocs === facility.id}
@@ -515,7 +526,7 @@ export default function ResidentialDetails({ customer, onBack }) {
             ) : (
               <>
                 <Package className="h-4 w-4 mr-1" />
-                Download Docs
+                Download Docs ({docCount}/12)
               </>
             )}
           </Button>
