@@ -155,22 +155,13 @@ export default function ResidentialPayoutDetails({ payoutDetails, onBack, onPayo
 
   return (
     <div className="p-4">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center mb-6">
         <div className="flex items-center gap-3">
-          <ChevronLeft 
-            className="h-5 w-5 text-[#039994] cursor-pointer" 
+          <ChevronLeft
+            className="h-5 w-5 text-[#039994] cursor-pointer"
             onClick={onBack}
           />
           <h1 className="font-sfpro text-[20px] font-[600] text-[#039994]">Residential Payout Details</h1>
-        </div>
-        
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="font-sfpro text-[14px] text-[#1E1E1E]">User ID:</span>
-            <span className="font-sfpro text-[14px] text-[#626060]">
-              {payoutDetails.id}
-            </span>
-          </div>
         </div>
       </div>
 
