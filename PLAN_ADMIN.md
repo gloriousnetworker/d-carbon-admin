@@ -467,3 +467,233 @@ Chimdinma requested that the earning statement should show what is due to the us
 ---
 
 *Updated: March 20, 2026 — All server fixes complete. All admin items fully unblocked.*
+
+---
+
+---
+
+# March 21, 2026 — 🚨 SERVER ACTION REQUIRED: Facility Verification Blocked by Server-Side Document Status Check
+
+> Identified: March 21, 2026
+> Status: **PENDING SERVER FIX**
+> Affects: Residential facility verification + Commercial facility verification
+
+## Problem
+
+The admin can now see the "Verify Facility" button (frontend fixed — see sections below), but clicking it still fails with this server error toast:
+
+> **"All required documents must be approved before verification"**
+
+The server's verify endpoints are running their own document status check and rejecting the request because they require `status === "APPROVED"` strictly. Documents that have progressed to `WREGIS_SUBMITTED` or `REGULATOR_APPROVED` (which are **downstream** of internal approval) are being treated as "not approved."
+
+## Endpoints affected
+
+- `PUT /api/admin/residential-facility/:id/verify`
+- `PUT /api/admin/commercial-facility/:id/verify`
+
+## Required server fix
+
+In both verify endpoint handlers, update the document status check from:
+
+```js
+// Current (blocking verification)
+doc.status === "APPROVED"
+```
+
+To:
+
+```js
+// Required fix — accept any status that has cleared internal review
+["APPROVED", "WREGIS_SUBMITTED", "REGULATOR_APPROVED"].includes(doc.status)
+```
+
+**Why:** Once a document is internally approved (`APPROVED`), the admin may then submit it to WREGIS (`WREGIS_SUBMITTED`) or it may receive regulator approval (`REGULATOR_APPROVED`). All three states confirm the document has passed the internal admin review. Only `REGULATOR_REJECTED` should block verification — it means the document was sent to WREGIS and came back rejected and needs re-attention before the facility should be verified.
+
+## How the error surfaces on the frontend
+
+```
+Admin clicks "Verify Facility"
+  → PUT /api/admin/[residential|commercial]-facility/:id/verify
+  → Server returns 4xx with { message: "All required documents must be approved before verification" }
+  → Frontend: throw new Error(errorData.message)
+  → toast.error(err.message)   ← this is what the admin sees
+```
+
+Frontend code references:
+- `residential-details/ResidentialDetails.jsx` lines 251–253
+- `commercial-details/CommercialDetails.jsx` lines 275–277
+
+## Frontend status: ✅ Already fixed
+The `canVerifyFacility` condition in both DocumentsModal files now correctly accepts `WREGIS_SUBMITTED` and `REGULATOR_APPROVED`. The button shows at the right time. Only the server validation remains.
+
+---
+
+# March 21, 2026 — Bug Fix: Commercial Facility Verify Button Missing
+
+> Fixed: March 21, 2026
+> File: `src/components/dashboard/user-management/customer-details/commercial-details/DocumentsModal.jsx`
+
+---
+
+## Bug Description
+
+**Reported:** Admin can no longer see the "Verify Facility" button on a commercial facility even after all documents have been approved.
+
+**Root cause (3 compounding issues):**
+
+### Issue 1 — `every()` ran across ALL documents with no mandatory/optional distinction
+```js
+// BEFORE (broken)
+const allDocumentsApproved = documents.every(doc => doc.status === "APPROVED");
+```
+The commercial `documents` array had 12 entries with no `mandatory` flag. Any document whose status was `null` (never uploaded), `"PENDING"`, or `"SUBMITTED"` would cause `every()` to return `false` and hide the button — even if all required docs were approved.
+
+### Issue 2 — Newly added document caused immediate regression
+`"Utility Interconnection Agreement"` was added to the frontend documents array using field `facility.interconnectionAgreementStatus`. Existing commercial facilities in the database do not have this field populated — it returns `null`. `null === "APPROVED"` is `false`, so the button disappeared for every existing facility the moment this document type was added.
+
+### Issue 3 — WREGIS-track statuses not counted as "past approval"
+If a document had progressed to `"WREGIS_SUBMITTED"` or `"REGULATOR_APPROVED"` (downstream of internal approval), the old `=== "APPROVED"` check still failed, blocking verification even though the document had already cleared the internal review step.
+
+### Why residential worked but commercial didn't
+The residential `DocumentsModal.jsx` already used the correct pattern:
+```js
+const mandatoryDocsApproved = docList
+  .filter(doc => doc.mandatory)   // only mandatory docs gated verification
+  .every(doc => doc.status === "APPROVED");
+```
+Commercial was missing the `mandatory` distinction entirely.
+
+---
+
+## Fix Applied
+
+**File:** `src/components/dashboard/user-management/customer-details/commercial-details/DocumentsModal.jsx`
+**Lines changed:** ~102–118
+
+1. Added `mandatory: true / false` to every document entry in the `documents` array:
+
+| Document | Mandatory |
+|---|---|
+| WREGIS Assignment | ✅ true |
+| Finance Agreement | ❌ false |
+| Solar Installation Contract | ✅ true |
+| Utility Interconnection Agreement | ❌ false |
+| Utility PTO Letter | ✅ true |
+| Single Line Diagram | ✅ true |
+| Installation Site Plan | ✅ true |
+| Panel/Inverter Datasheet | ❌ false |
+| Revenue Meter Datasheet | ❌ false |
+| Utility Meter Photo | ✅ true |
+| Assignment of Registration Right | ✅ true |
+| Acknowledgement of Station Service | ✅ true |
+
+2. Replaced `allDocumentsApproved` with a proper `mandatoryDocsApproved` check that also accepts WREGIS-track statuses:
+
+```js
+// AFTER (fixed)
+const docPassesVerification = (status) =>
+  ["APPROVED", "WREGIS_SUBMITTED", "REGULATOR_APPROVED"].includes(status);
+
+const mandatoryDocsApproved = documents
+  .filter(doc => doc.mandatory)
+  .every(doc => docPassesVerification(doc.status));
+
+const canVerifyFacility = mandatoryDocsApproved && facility.status !== "VERIFIED";
+```
+
+---
+
+## What was NOT changed
+- The button itself (`{canVerifyFacility && <Button>Verify Facility</Button>}`) — unchanged
+- The `onVerifyFacility` prop wiring in `CommercialDetails.jsx` — unchanged
+- The `handleVerifyFacility` function and API call (`PUT /api/admin/commercial-facility/:id/verify`) — unchanged
+- The residential `DocumentsModal.jsx` — unaffected (was already correct)
+- All other components — no changes required
+
+---
+
+## ⚠️ Action Required — Confirm mandatory flags with the team
+The `mandatory` classification above mirrors the residential document requirements. Confirm with Awam Victor / Chimdinma Kalu whether "Utility Interconnection Agreement" should ever be mandatory for commercial facility verification. If yes, change its flag to `mandatory: true` in `commercial-details/DocumentsModal.jsx` line ~106.
+
+---
+
+*Fix logged: March 21, 2026*
+
+---
+
+---
+
+# March 21, 2026 — Bug Fix: Verify Facility Button Missing (Residential + Commercial)
+
+> Fixed: March 21, 2026
+> Files:
+> - `src/components/dashboard/user-management/customer-details/residential-details/DocumentsModal.jsx`
+> - `src/components/dashboard/user-management/customer-details/commercial-details/DocumentsModal.jsx`
+
+---
+
+## Bug Description
+
+**Reported:** Admin cannot see the "Verify Facility" button on a residential facility even when the document summary bar shows all 11 documents as approved (11/11).
+
+**Root cause — UI counter and verification condition were out of sync:**
+
+The document summary bar counts documents as "approved" using `isInRegulatorTrack()`:
+```js
+// Line 554 — residential DocumentsModal
+{docList.filter(d => isInRegulatorTrack(d.status)).length} approved
+```
+
+`isInRegulatorTrack` accepts: `APPROVED`, `WREGIS_SUBMITTED`, `REGULATOR_APPROVED`, `REGULATOR_REJECTED`
+
+But the verification condition used a strict check:
+```js
+// BEFORE (broken) — line 178
+const mandatoryDocsApproved = docList
+  .filter(doc => doc.mandatory)
+  .every(doc => doc.status === "APPROVED");  // ← strict equality
+```
+
+So when an admin approves a document and then clicks **"Submit to WREGIS"** on it, the status changes from `"APPROVED"` to `"WREGIS_SUBMITTED"`. The counter still shows it as approved, the row badge still shows "Approved" — but the verification condition fails because `"WREGIS_SUBMITTED" !== "APPROVED"`. The button disappears with no explanation.
+
+**Scenario that triggers the bug:**
+1. Admin approves all 11 documents → button appears ✅
+2. Admin clicks "Submit to WREGIS" on any doc → status → `WREGIS_SUBMITTED`
+3. UI shows "11 approved" and "Approved" badge → but button is gone ❌
+
+---
+
+## Fix Applied
+
+**Same fix applied to both residential and commercial.**
+
+```js
+// AFTER (fixed)
+const docPassesVerification = (status) =>
+  ["APPROVED", "WREGIS_SUBMITTED", "REGULATOR_APPROVED"].includes(status);
+
+const mandatoryDocsApproved = docList
+  .filter(doc => doc.mandatory)
+  .every(doc => docPassesVerification(doc.status));
+
+const canVerifyFacility = mandatoryDocsApproved && facility.status !== "VERIFIED";
+```
+
+**Logic:**
+- `APPROVED` → passes ✅ (internally approved, not yet sent to WREGIS)
+- `WREGIS_SUBMITTED` → passes ✅ (was internally approved, now submitted to WREGIS)
+- `REGULATOR_APPROVED` → passes ✅ (approved at every level)
+- `REGULATOR_REJECTED` → does NOT pass ❌ (regulator rejected — needs admin attention before facility can be verified)
+- `PENDING`, `SUBMITTED`, `REQUIRED`, `null` → do NOT pass ❌
+
+This is now consistent with what the document summary bar and the Internal Status badge column already show to the admin.
+
+---
+
+## What was NOT changed
+- The document approval/reject/WREGIS submit action buttons — unchanged
+- The `handleVerifyFacility` functions and API calls — unchanged
+- The document summary counter logic — unchanged (it was already correct)
+- All other components — no changes required
+
+*Fix logged: March 21, 2026*

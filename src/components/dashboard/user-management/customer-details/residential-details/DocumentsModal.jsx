@@ -175,9 +175,15 @@ export default function DocumentsModal({ facility, documents, onVerifyFacility, 
     };
   });
 
+  // A mandatory doc passes verification if it has been internally approved (APPROVED)
+  // or has already moved further into the WREGIS track (WREGIS_SUBMITTED / REGULATOR_APPROVED).
+  // REGULATOR_REJECTED does NOT pass — the doc was rejected by the regulator and needs attention.
+  const docPassesVerification = (status) =>
+    ["APPROVED", "WREGIS_SUBMITTED", "REGULATOR_APPROVED"].includes(status);
+
   const mandatoryDocsApproved = docList
     .filter(doc => doc.mandatory)
-    .every(doc => doc.status === "APPROVED");
+    .every(doc => docPassesVerification(doc.status));
 
   const canVerifyFacility = mandatoryDocsApproved && facility.status !== "VERIFIED";
 
