@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import {
-  ChevronUp, ChevronDown, Loader2, Save, Plus, Trash2,
+  ChevronUp, ChevronDown, Loader2, Save, Plus, Trash2, Upload, ExternalLink,
   FileText, CheckCircle, Shield, Download, AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -54,6 +54,7 @@ export default function DocumentConfiguration() {
   const [saving, setSaving] = useState(null);
   const [showNewForm, setShowNewForm] = useState(false);
   const [creatingNew, setCreatingNew] = useState(false);
+  const [uploadingTemplate, setUploadingTemplate] = useState(null);
   const [newDoc, setNewDoc] = useState({
     docKey: "", docName: "", required: true, adminOnly: false,
     downloadable: false, workflow: "REGISTRATION", description: "",
@@ -64,6 +65,46 @@ export default function DocumentConfiguration() {
     Authorization: `Bearer ${localStorage.getItem("authToken")}`,
     "Content-Type": "application/json",
   });
+
+  const handleTemplateUpload = async (docKey, file) => {
+    if (!file) return;
+    setUploadingTemplate(docKey);
+    try {
+      const authToken = localStorage.getItem("authToken");
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const uploadRes = await fetch(
+        `${CONFIG.API_BASE_URL}/api/file-storage/upload/template-${docKey}`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${authToken}` },
+          body: formData,
+        }
+      );
+
+      if (!uploadRes.ok) {
+        throw new Error("Upload failed");
+      }
+
+      const uploadJson = await uploadRes.json();
+      const templateUrl = uploadJson.data?.url || uploadJson.url || uploadJson.data;
+
+      if (!templateUrl) throw new Error("No URL returned from upload");
+
+      // Update the edit state with the URL
+      setEditState((prev) => ({
+        ...prev,
+        [docKey]: { ...prev[docKey], templateUrl },
+      }));
+
+      toast.success("Template uploaded — click Save to persist");
+    } catch (err) {
+      toast.error(err.message || "Failed to upload template");
+    } finally {
+      setUploadingTemplate(null);
+    }
+  };
 
   const fetchDocuments = useCallback(async () => {
     try {
@@ -142,6 +183,7 @@ export default function DocumentConfiguration() {
             conditionField: cond.field,
             conditionOp: cond.op,
             conditionValue: cond.value,
+            templateUrl: doc.templateUrl || "",
           },
         }));
       }
@@ -200,6 +242,7 @@ export default function DocumentConfiguration() {
           description: edit.description,
           conditions,
           sortOrder: doc.sortOrder || 0,
+          templateUrl: edit.templateUrl || null,
         };
 
         if (existingId) {
@@ -585,6 +628,53 @@ export default function DocumentConfiguration() {
                         <span className="text-xs text-gray-600 font-sfpro">Downloadable Template</span>
                       </label>
                     </div>
+
+                    {/* Template Upload */}
+                    {edit.downloadable && (
+                      <div className="mb-3 p-3 bg-blue-50/50 border border-blue-100 rounded-lg">
+                        <label className="text-xs text-gray-500 font-sfpro mb-2 block">Example Template Document</label>
+                        {edit.templateUrl ? (
+                          <div className="flex items-center gap-2">
+                            <a
+                              href={edit.templateUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs text-[#039994] hover:underline font-sfpro"
+                            >
+                              <ExternalLink className="h-3 w-3" /> View uploaded template
+                            </a>
+                            <span className="text-gray-300">|</span>
+                            <label className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-[#039994] cursor-pointer font-sfpro">
+                              <Upload className="h-3 w-3" /> Replace
+                              <input
+                                type="file"
+                                className="hidden"
+                                accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                                onChange={(e) => handleTemplateUpload(doc.docKey, e.target.files?.[0])}
+                              />
+                            </label>
+                          </div>
+                        ) : (
+                          <label className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-dashed border-blue-300 text-xs font-sfpro cursor-pointer hover:bg-blue-100/50 transition-colors ${uploadingTemplate === doc.docKey ? "opacity-50 pointer-events-none" : "text-blue-600"}`}>
+                            {uploadingTemplate === doc.docKey ? (
+                              <><Loader2 className="h-3 w-3 animate-spin" /> Uploading...</>
+                            ) : (
+                              <><Upload className="h-3 w-3" /> Upload example template</>
+                            )}
+                            <input
+                              type="file"
+                              className="hidden"
+                              accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                              onChange={(e) => handleTemplateUpload(doc.docKey, e.target.files?.[0])}
+                              disabled={uploadingTemplate === doc.docKey}
+                            />
+                          </label>
+                        )}
+                        <p className="text-[10px] text-gray-400 font-sfpro mt-1">
+                          Users will see a "Download Example" link to reference this document.
+                        </p>
+                      </div>
+                    )}
 
                     {/* Actions */}
                     <div className="flex items-center justify-between">
