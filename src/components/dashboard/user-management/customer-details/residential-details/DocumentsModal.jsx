@@ -369,9 +369,14 @@ export default function DocumentsModal({ facility, documents, onVerifyFacility, 
       await fetchFacilityDocuments(facility.id);
       
       if (data.status === 'success' || response.ok) {
-        const successMessage = actionType === "APPROVE" 
-          ? `${currentDocument.name} approved successfully` 
-          : `${currentDocument.name} rejected successfully`;
+        const actionMessages = {
+          APPROVE: `${currentDocument.name} approved successfully`,
+          REJECT: `${currentDocument.name} rejected successfully`,
+          WREGIS_SUBMIT: `${currentDocument.name} submitted to WREGIS`,
+          REG_APPROVE: `${currentDocument.name} marked as regulator approved`,
+          REG_REJECT: `${currentDocument.name} marked as regulator rejected`,
+        };
+        const successMessage = actionMessages[actionType] || `${currentDocument.name} updated successfully`;
         
         if (window.toast && typeof window.toast.success === 'function') {
           window.toast.success(successMessage);

@@ -335,8 +335,8 @@ export default function DocumentsModal({ facility, onVerifyFacility, verifyingFa
 
         const updatedFacility = {
           ...facility,
-          [statusFieldMap[currentDocument.type]]: actionType === "APPROVE" ? "APPROVED" : "REJECTED",
-          ...(actionType === "REJECT" && {
+          [statusFieldMap[currentDocument.type]]: statusMap[actionType],
+          ...((actionType === "REJECT" || actionType === "REG_REJECT") && {
             [rejectionFieldMap[currentDocument.type]]: rejectionReason || "No reason provided"
           })
         };
