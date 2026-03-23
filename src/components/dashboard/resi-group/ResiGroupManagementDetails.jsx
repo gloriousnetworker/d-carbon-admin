@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Filter, X, Edit, Check, Trash2 } from "lucid
 import ResidentGroupDetailsFilterByModal from "./ResidentGroupDetailsFilterByModal"
 import toast from "react-hot-toast"
 import * as styles from "./styles"
+import CONFIG from "@/lib/config"
 
 export default function ResidentGroupDetails({ 
   group: initialGroup,
@@ -19,6 +20,8 @@ export default function ResidentGroupDetails({
   const [filters, setFilters] = useState({})
   const [isEditingWregis, setIsEditingWregis] = useState(false)
   const [wregisInput, setWregisInput] = useState(initialGroup.wregisGroupId || '')
+  const [currentPage, setCurrentPage] = useState(1)
+  const PAGE_SIZE = 10
 
   // Fetch detailed group information when component mounts
   useEffect(() => {
@@ -168,6 +171,12 @@ export default function ResidentGroupDetails({
     })
   }) || []
 
+  const totalPages = Math.max(1, Math.ceil(filteredFacilities.length / PAGE_SIZE))
+  const paginatedFacilities = filteredFacilities.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  )
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {loading && (
@@ -306,7 +315,7 @@ export default function ResidentGroupDetails({
               </tr>
             </thead>
             <tbody>
-              {filteredFacilities.map((facility) => (
+              {paginatedFacilities.map((facility) => (
                 <tr key={facility.id} className="border-t border-gray-100 hover:bg-gray-50 transition-colors duration-100">
                   <td className="py-3 px-4">
                     <input 
@@ -331,27 +340,31 @@ export default function ResidentGroupDetails({
         </div>
 
         {/* Pagination */}
-        <div className="flex justify-between items-center px-4 py-3 border-t border-gray-200">
-          <div className="flex items-center gap-2">
-            <button className="p-1 text-gray-400" disabled>
+        {totalPages > 1 && (
+          <div className="flex justify-between items-center px-4 py-3 border-t border-gray-200">
+            <button
+              className={`flex items-center gap-1 text-sm ${currentPage <= 1 ? "text-gray-300 cursor-not-allowed" : "text-gray-600 hover:text-gray-800"}`}
+              disabled={currentPage <= 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            >
               <ChevronLeft className="h-4 w-4" />
+              Previous
             </button>
-            <span className="text-sm text-gray-600">Previous</span>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <span className="px-3 py-1 bg-teal-500 text-white rounded text-sm">1</span>
-            <span className="text-sm text-gray-600">of</span>
-            <span className="text-sm text-gray-600">4</span>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Next</span>
-            <button className="p-1 text-gray-600 hover:text-gray-800">
+
+            <span className="text-sm text-gray-600 font-sfpro">
+              Page {currentPage} of {totalPages} ({filteredFacilities.length} facilities)
+            </span>
+
+            <button
+              className={`flex items-center gap-1 text-sm ${currentPage >= totalPages ? "text-gray-300 cursor-not-allowed" : "text-gray-600 hover:text-gray-800"}`}
+              disabled={currentPage >= totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            >
+              Next
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Filter Modal */}

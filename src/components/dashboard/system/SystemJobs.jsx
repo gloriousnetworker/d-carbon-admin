@@ -12,9 +12,10 @@ export default function SystemJobs() {
   const [loading, setLoading] = useState(false)
   const [triggering, setTriggering] = useState(null)
   const [modalJob, setModalJob] = useState(null)
-  const [bonusParams, setBonusParams] = useState({
+  const [jobParams, setJobParams] = useState({
     year: new Date().getFullYear(),
     quarter: Math.ceil((new Date().getMonth() + 1) / 3),
+    month: new Date().getMonth() + 1,
   })
 
   const getAuthToken = () => localStorage.getItem("authToken")
@@ -113,8 +114,10 @@ export default function SystemJobs() {
     {
       id: "monthly-rec",
       label: "Monthly REC Aggregation",
-      description: "Aggregates facility REC data for the current month",
+      description: "Aggregates facility REC data for a specific month and year",
       endpoint: "/api/monthly-rec-data/start",
+      hasParams: true,
+      paramType: "month-year",
     },
     {
       id: "historical",
@@ -127,9 +130,10 @@ export default function SystemJobs() {
   const handleRunClick = (job) => {
     if (job.hasParams) {
       setModalJob(job.id)
-      setBonusParams({
+      setJobParams({
         year: new Date().getFullYear(),
         quarter: Math.ceil((new Date().getMonth() + 1) / 3),
+        month: new Date().getMonth() + 1,
       })
     } else {
       triggerJob(job.id)
@@ -137,7 +141,12 @@ export default function SystemJobs() {
   }
 
   const handleModalSubmit = () => {
-    triggerJob(modalJob, { year: bonusParams.year, quarter: bonusParams.quarter })
+    const job = jobs.find((j) => j.id === modalJob)
+    if (job?.paramType === "month-year") {
+      triggerJob(modalJob, { month: jobParams.month, year: jobParams.year })
+    } else {
+      triggerJob(modalJob, { year: jobParams.year, quarter: jobParams.quarter })
+    }
   }
 
   return (
@@ -228,7 +237,7 @@ export default function SystemJobs() {
           <div className="bg-white rounded-xl p-6 w-full max-w-sm mx-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-sfpro text-base font-semibold text-[#1E1E1E]">
-                {modalJob === "commission" ? "Commission Calculation" : "Partner Bonus Calculation"}
+                {jobs.find((j) => j.id === modalJob)?.label || "Job Parameters"}
               </h3>
               <button onClick={() => setModalJob(null)} className="text-gray-400 hover:text-gray-600">
                 <X className="h-4 w-4" />
@@ -240,26 +249,50 @@ export default function SystemJobs() {
                 <label className="block text-xs font-medium text-[#626060] mb-1 font-sfpro">Year</label>
                 <input
                   type="number"
-                  value={bonusParams.year}
-                  onChange={(e) => setBonusParams((p) => ({ ...p, year: parseInt(e.target.value) }))}
+                  value={jobParams.year}
+                  onChange={(e) => setJobParams((p) => ({ ...p, year: parseInt(e.target.value) }))}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro"
                   min="2020"
                   max="2030"
                 />
               </div>
-              <div>
-                <label className="block text-xs font-medium text-[#626060] mb-1 font-sfpro">Quarter</label>
-                <select
-                  value={bonusParams.quarter}
-                  onChange={(e) => setBonusParams((p) => ({ ...p, quarter: parseInt(e.target.value) }))}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro"
-                >
-                  <option value={1}>Q1 (Jan - Mar)</option>
-                  <option value={2}>Q2 (Apr - Jun)</option>
-                  <option value={3}>Q3 (Jul - Sep)</option>
-                  <option value={4}>Q4 (Oct - Dec)</option>
-                </select>
-              </div>
+              {jobs.find((j) => j.id === modalJob)?.paramType === "month-year" ? (
+                <div>
+                  <label className="block text-xs font-medium text-[#626060] mb-1 font-sfpro">Month</label>
+                  <select
+                    value={jobParams.month}
+                    onChange={(e) => setJobParams((p) => ({ ...p, month: parseInt(e.target.value) }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro"
+                  >
+                    <option value={1}>January</option>
+                    <option value={2}>February</option>
+                    <option value={3}>March</option>
+                    <option value={4}>April</option>
+                    <option value={5}>May</option>
+                    <option value={6}>June</option>
+                    <option value={7}>July</option>
+                    <option value={8}>August</option>
+                    <option value={9}>September</option>
+                    <option value={10}>October</option>
+                    <option value={11}>November</option>
+                    <option value={12}>December</option>
+                  </select>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-medium text-[#626060] mb-1 font-sfpro">Quarter</label>
+                  <select
+                    value={jobParams.quarter}
+                    onChange={(e) => setJobParams((p) => ({ ...p, quarter: parseInt(e.target.value) }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro"
+                  >
+                    <option value={1}>Q1 (Jan - Mar)</option>
+                    <option value={2}>Q2 (Apr - Jun)</option>
+                    <option value={3}>Q3 (Jul - Sep)</option>
+                    <option value={4}>Q4 (Oct - Dec)</option>
+                  </select>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end gap-2 mt-5">
