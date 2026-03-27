@@ -160,8 +160,8 @@ export default function CommercialDetails({ customer, onBack }) {
   // Derive registration progress from real data points
   const getRegistrationSteps = () => {
     const status = (customerDetails?.status || customer?.status || "Invited").toLowerCase();
-    const hasAgreement = !!(customerDetails?.agreementSigned || customerDetails?.agreements?.termsAccepted || customerDetails?.agreement);
-    const hasUtilityAuth = !!(customerDetails?.utilityAuthorization || customerDetails?.utilityAuthStatus === "AUTHORIZED" || customerDetails?.utility);
+    const hasAgreement = !!customerDetails?.agreements?.termsAccepted;
+    const hasUtilityAuth = !!(customerDetails?.utilityAuth?.length > 0 && customerDetails?.utilityAuth?.some(u => u.status === "AUTHORIZED" || u.status === "authorized"));
     const hasFacility = facilities.length > 0;
     const allDocsApproved = hasFacility && facilities.some(f => f.status === "APPROVED" || f.status === "VERIFIED");
     const facilityVerified = hasFacility && facilities.some(f => f.status === "VERIFIED");

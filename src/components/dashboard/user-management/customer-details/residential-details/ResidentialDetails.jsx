@@ -123,14 +123,22 @@ export default function ResidentialDetails({ customer, onBack }) {
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
       const data = await response.json();
-      if (data.status === 'success' && data.data) {
-        setFacilityDocuments(prev => ({
-          ...prev,
-          [facilityId]: {
-            ...data.data,
-            solarInstallationContractStatus: data.data.solarInstallationContractStatus || (data.data.solarInstallationContractUrl ? "SUBMITTED" : "REQUIRED")
-          }
-        }));
+      if (data.status === 'success') {
+        if (data.data) {
+          setFacilityDocuments(prev => ({
+            ...prev,
+            [facilityId]: {
+              ...data.data,
+              solarInstallationContractStatus: data.data.solarInstallationContractStatus || (data.data.solarInstallationContractUrl ? "SUBMITTED" : "REQUIRED")
+            }
+          }));
+        } else {
+          // No documents uploaded yet — valid empty state
+          setFacilityDocuments(prev => ({
+            ...prev,
+            [facilityId]: null
+          }));
+        }
       } else {
         throw new Error(data.message || 'Failed to fetch facility documents');
       }
@@ -795,8 +803,8 @@ export default function ResidentialDetails({ customer, onBack }) {
       {/* ─── Registration Progress ───────────────────────────── */}
       {(() => {
         const status = (customerDetails?.status || customer?.status || "Invited").toLowerCase();
-        const hasAgreement = !!(customerDetails?.agreementSigned || customerDetails?.agreements?.termsAccepted || customerDetails?.agreement);
-        const hasUtilityAuth = !!(customerDetails?.utilityAuthorization || customerDetails?.utilityAuthStatus === "AUTHORIZED" || customerDetails?.utility);
+        const hasAgreement = !!customerDetails?.agreements?.termsAccepted;
+        const hasUtilityAuth = !!(customerDetails?.utilityAuth?.length > 0 && customerDetails?.utilityAuth?.some(u => u.status === "AUTHORIZED" || u.status === "authorized"));
         const hasFacility = facilities.length > 0;
         const facilityVerified = hasFacility && facilities.some(f => f.status === "VERIFIED" || f.status === "APPROVED");
         const isActive = status === "active";
