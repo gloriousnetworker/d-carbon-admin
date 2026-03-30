@@ -866,6 +866,14 @@ export default function ResidentialDetails({ customer, onBack }) {
               <p className="font-medium">{customer?.name || "Not specified"}</p>
             </div>
             <div className="space-y-1">
+              <p className="text-sm text-gray-500">Email</p>
+              <p className="font-medium">{customer?.email || customerDetails?.email || "Not specified"}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-gray-500">Phone</p>
+              <p className="font-medium">{customer?.phoneNumber || customerDetails?.phoneNumber || "Not specified"}</p>
+            </div>
+            <div className="space-y-1">
               <p className="text-sm text-gray-500">Customer Type</p>
               <p className="font-medium">Residential</p>
             </div>
