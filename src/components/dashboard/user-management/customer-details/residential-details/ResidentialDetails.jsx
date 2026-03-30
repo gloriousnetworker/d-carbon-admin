@@ -804,7 +804,7 @@ export default function ResidentialDetails({ customer, onBack }) {
       {(() => {
         const status = (customerDetails?.status || customer?.status || "Invited").toLowerCase();
         const hasAgreement = !!customerDetails?.agreements?.termsAccepted;
-        const hasUtilityAuth = !!(customerDetails?.utilityAuth?.some(u => u.status === "AUTHORIZED" || u.status === "authorized" || u.status === "completed"));
+        const hasUtilityAuth = !!(customerDetails?.utilityAuth?.length > 0 && customerDetails?.utilityAuth?.some(u => ["completed", "AUTHORIZED", "authorized"].includes(u.status)));
         const hasFacility = facilities.length > 0;
         const facilityVerified = hasFacility && facilities.some(f => f.status === "VERIFIED" || f.status === "APPROVED");
         const isActive = status === "active";

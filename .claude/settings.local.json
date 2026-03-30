@@ -17,7 +17,11 @@
       "Bash(rm -f src/components/modals/OperatorSignatureModal.jsx)",
       "Bash(rm -f src/components/modals/EmailModal.jsx)",
       "Bash(rm -rf src/components/email-verification)",
-      "Bash(rm -rf \"src/app/\\(auth\\)/register/email-verification\")"
+      "Bash(rm -rf \"src/app/\\(auth\\)/register/email-verification\")",
+      "Bash(ls /home/chimdi/Project/d-carbon-admin/src/app/'\\(auth\\)')",
+      "Bash(grep -E \"\\\\.\\(jsx|js\\)$\")",
+      "Bash(grep -r localStorage.setItem.*loginResponse /home/chimdi/Project/d-carbon-admin/src --include=*.jsx --include=*.js)",
+      "Bash(grep -r \"role.*ADMIN\\\\|ADMIN.*role\" /home/chimdi/Project/d-carbon-admin/src --include=*.jsx --include=*.js)"
     ]
   }
 }

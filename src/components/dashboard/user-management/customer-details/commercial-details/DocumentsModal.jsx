@@ -123,12 +123,11 @@ export default function DocumentsModal({ facility, onVerifyFacility, verifyingFa
     { name: "Acknowledgement of Station Service", url: facility.acknowledgementOfStationServiceUrl, status: facility.acknowledgementOfStationServiceStatus, type: "acknowledgementOfStationService", rejectionReason: facility.acknowledgementOfStationServiceRejectionReason, mandatory: true  },
   ];
 
-  // A mandatory document passes verification if it has been internally approved (APPROVED)
-  // or has already progressed further into the WREGIS track (WREGIS_SUBMITTED / REGULATOR_APPROVED).
+  // A mandatory document passes verification only after regulator approval.
+  // Internal approval (APPROVED) and WREGIS submission are intermediate steps — not sufficient for verification.
   // Optional documents (Finance Agreement, Interconnection Agreement, Panel Datasheet, Revenue Datasheet)
   // are displayed but never block facility verification.
-  const docPassesVerification = (status) =>
-    ["APPROVED", "WREGIS_SUBMITTED", "REGULATOR_APPROVED"].includes(status);
+  const docPassesVerification = (status) => status === "REGULATOR_APPROVED";
 
   const mandatoryDocsApproved = documents
     .filter(doc => doc.mandatory)

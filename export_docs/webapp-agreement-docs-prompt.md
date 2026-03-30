@@ -1,6 +1,6 @@
 **Project:** dcarbon-webapp
-**Branch:** `phillip-fix2`
-**Server:** `phillip-fix3` deployed at `https://api.dev.dcarbon.solutions`
+**Branch:** `refactor-fix`
+**Server:** `refactor-fix` deployed at `https://api.dev.dcarbon.solutions`
 **Priority:** P0 — Go-live blockers
 
 ## Context
@@ -238,4 +238,4 @@ W-AGR-1 (agreements) → W-DOC-1 (document config)
 
 W-AGR-1 is simpler and more visible to users. W-DOC-1 is more complex due to conditions logic.
 
-Build-verify after each. Commit and push to `phillip-fix2`.
+Build-verify after each. Commit and push to `refactor-fix`.
