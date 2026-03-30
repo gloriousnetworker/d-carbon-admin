@@ -161,7 +161,7 @@ export default function CommercialDetails({ customer, onBack }) {
   const getRegistrationSteps = () => {
     const status = (customerDetails?.status || customer?.status || "Invited").toLowerCase();
     const hasAgreement = !!customerDetails?.agreements?.termsAccepted;
-    const hasUtilityAuth = !!(customerDetails?.utilityAuth?.length > 0 && customerDetails?.utilityAuth?.some(u => u.status === "AUTHORIZED" || u.status === "authorized"));
+    const hasUtilityAuth = !!(customerDetails?.utilityAuth?.some(u => u.status === "AUTHORIZED" || u.status === "authorized" || u.status === "completed"));
     const hasFacility = facilities.length > 0;
     const allDocsApproved = hasFacility && facilities.some(f => f.status === "APPROVED" || f.status === "VERIFIED");
     const facilityVerified = hasFacility && facilities.some(f => f.status === "VERIFIED");
