@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Eye, Download, Loader2, CheckCircle, AlertTriangle } from "lucide-react";
+import React, { useState, useRef } from "react";
+import { Eye, Download, Upload, Loader2, CheckCircle, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { toast } from "react-hot-toast";
@@ -98,6 +98,78 @@ export default function DocumentsModal({ facility, onVerifyFacility, verifyingFa
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [actionType, setActionType] = useState("");
+  const [uploadingDoc, setUploadingDoc] = useState(null);
+  const fileInputRef = useRef(null);
+  const [uploadTargetDoc, setUploadTargetDoc] = useState(null);
+
+  // Map doc types to their upload endpoint paths
+  const docUploadEndpoints = {
+    wregisAssignment: "update-wregis-assignment",
+    financeAgreement: "update-facility-financial-agreement",
+    solarInstallationContract: "update-commercial-solar-installation-contract",
+    interconnectionAgreement: "update-commercial-interconnection-agreement",
+    ptoLetter: "update-commercial-pto-letter",
+    singleLineDiagram: "update-commercial-single-line-diagram",
+    sitePlan: "update-facility-site-plan",
+    panelInverterDatasheet: "update-facility-inverter-datasheet",
+    revenueMeterData: "update-facility-revenue-meter-data",
+    utilityMeterPhoto: "update-commercial-utility-meter-photo",
+    assignmentOfRegistrationRight: "update-facility-assignment-of-registration-right",
+    acknowledgementOfStationService: "update-acknowledgement-of-station-service",
+  };
+
+  const handleUploadClick = (doc) => {
+    setUploadTargetDoc(doc);
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelected = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !uploadTargetDoc) return;
+
+    const endpoint = docUploadEndpoints[uploadTargetDoc.type];
+    if (!endpoint) {
+      toast.error("Upload not supported for this document type");
+      return;
+    }
+
+    setUploadingDoc(`${facility.id}-${uploadTargetDoc.type}`);
+
+    try {
+      const authToken = localStorage.getItem('authToken');
+      if (!authToken) throw new Error('No authentication token found');
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch(
+        `${CONFIG.API_BASE_URL}/api/facility/${endpoint}/${facility.id}`,
+        {
+          method: 'PUT',
+          headers: { 'Authorization': `Bearer ${authToken}` },
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Upload failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      toast.success(`${uploadTargetDoc.name} uploaded successfully`);
+
+      if (data.data && updateFacilityFromResponse) {
+        updateFacilityFromResponse(data.data);
+      }
+    } catch (error) {
+      toast.error(error.message || "Failed to upload document");
+    } finally {
+      setUploadingDoc(null);
+      setUploadTargetDoc(null);
+      e.target.value = '';
+    }
+  };
 
   if (!facility) {
     return (
@@ -632,6 +704,23 @@ export default function DocumentsModal({ facility, onVerifyFacility, verifyingFa
 
                   {/* Actions */}
                   <div className="col-span-3 flex flex-wrap gap-1">
+                    {/* Upload button — for docs not yet uploaded or rejected */}
+                    {(!doc.url || doc.status === "REJECTED" || doc.status === "REGULATOR_REJECTED") && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs px-3 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                        onClick={() => handleUploadClick(doc)}
+                        disabled={uploadingDoc === `${facility.id}-${doc.type}`}
+                      >
+                        {uploadingDoc === `${facility.id}-${doc.type}` ? (
+                          <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                        ) : (
+                          <Upload className="h-3 w-3 mr-1" />
+                        )}
+                        Upload
+                      </Button>
+                    )}
                     {/* Internal approve/reject — only for uploaded docs not yet internally approved */}
                     {doc.url && !inRegTrack && doc.status !== "APPROVED" && (
                       <>
@@ -676,6 +765,14 @@ export default function DocumentsModal({ facility, onVerifyFacility, verifyingFa
           </div>
         )}
       </div>
+      {/* Hidden file input for document uploads */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileSelected}
+        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+        className="hidden"
+      />
     </>
   );
 }
