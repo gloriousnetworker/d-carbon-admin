@@ -87,7 +87,14 @@ export default function CustomerManagement() {
       const data = await response.json();
       if (data.data?.users) {
         const PARTNER_TYPES = new Set(["PARTNER", "SALES_AGENT", "INSTALLER", "FINANCE_COMPANY"]);
-        const customers = data.data.users.filter(u => !PARTNER_TYPES.has(u.userType));
+        const filtered = data.data.users.filter(u => !PARTNER_TYPES.has(u.userType));
+        // Deduplicate by user ID to prevent duplicate rows
+        const seen = new Set();
+        const customers = filtered.filter(u => {
+          if (seen.has(u.id)) return false;
+          seen.add(u.id);
+          return true;
+        });
         setCustomers(customers);
         setFilteredCustomers(customers);
         setTotalPages(data.data.metadata.totalPages);
