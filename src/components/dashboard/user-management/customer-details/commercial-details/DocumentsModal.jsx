@@ -99,6 +99,15 @@ export default function DocumentsModal({ facility, onVerifyFacility, verifyingFa
   const [rejectionReason, setRejectionReason] = useState("");
   const [actionType, setActionType] = useState("");
 
+  if (!facility) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+        <p className="text-lg font-medium">No documents available</p>
+        <p className="text-sm mt-1">This facility has not yet uploaded any documents.</p>
+      </div>
+    );
+  }
+
   const documents = [
     { name: "WREGIS Assignment",                  url: facility.wregisAssignmentUrl,               status: facility.wregisAssignmentStatus,               type: "wregisAssignment",               rejectionReason: facility.wregisAssignmentRejectionReason,               mandatory: true  },
     { name: "Finance Agreement",                  url: facility.financeAgreementUrl,               status: facility.financeAgreementStatus,               type: "financeAgreement",               rejectionReason: facility.financeAgreementRejectionReason,               mandatory: false },

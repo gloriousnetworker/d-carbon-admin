@@ -162,6 +162,15 @@ export default function DocumentsModal({ facility, documents, onVerifyFacility, 
   const [rejectionReason, setRejectionReason] = useState("");
   const [actionType, setActionType] = useState("");
 
+  if (!facility || !documents) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+        <p className="text-lg font-medium">No documents available</p>
+        <p className="text-sm mt-1">This facility has not yet uploaded any documents.</p>
+      </div>
+    );
+  }
+
   const docList = Object.keys(DOCUMENT_TYPES).map(key => {
     const docType = DOCUMENT_TYPES[key];
     const status = documents[docType.statusField] || (documents[docType.urlField] ? "SUBMITTED" : "REQUIRED");

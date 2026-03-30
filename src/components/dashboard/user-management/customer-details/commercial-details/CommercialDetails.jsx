@@ -169,13 +169,13 @@ export default function CommercialDetails({ customer, onBack }) {
     const isTerminated = status === "terminated" || status === "inactive";
 
     const steps = [
-      { label: "Registered", done: status !== "invited", current: status === "registered" && !hasAgreement },
-      { label: "Agreement Signed", done: hasAgreement, current: !hasAgreement && status === "registered" },
-      { label: "Utility Authorized", done: hasUtilityAuth, current: hasAgreement && !hasUtilityAuth },
-      { label: "Docs Uploaded", done: hasFacility, current: hasUtilityAuth && !hasFacility },
-      { label: "Docs Approved", done: allDocsApproved, current: hasFacility && !allDocsApproved },
-      { label: "Facility Verified", done: facilityVerified, current: allDocsApproved && !facilityVerified },
-      { label: "Active", done: isActive && facilityVerified, current: isActive },
+      { label: "Registered", done: status !== "invited", current: status === "registered" && !hasAgreement, tooltip: "User created an account" },
+      { label: "Agreement Signed", done: hasAgreement, current: !hasAgreement && status === "registered", tooltip: "User accepted DCarbon terms & service agreements (separate from utility authorization)" },
+      { label: "Utility Authorized", done: hasUtilityAuth, current: hasAgreement && !hasUtilityAuth, tooltip: "User authorized their utility account via utilityapi.com — this is distinct from signing agreements" },
+      { label: "Docs Uploaded", done: hasFacility, current: hasUtilityAuth && !hasFacility, tooltip: "User uploaded required facility documents" },
+      { label: "Docs Approved", done: allDocsApproved, current: hasFacility && !allDocsApproved, tooltip: "Admin internally approved all mandatory facility documents" },
+      { label: "Facility Verified", done: facilityVerified, current: allDocsApproved && !facilityVerified, tooltip: "Admin verified the facility after document approval" },
+      { label: "Active", done: isActive && facilityVerified, current: isActive, tooltip: "Facility is active and generating RECs" },
     ];
 
     return { steps, isTerminated };
@@ -800,8 +800,8 @@ export default function CommercialDetails({ customer, onBack }) {
             const isCurrent = !isTerminated && step.current;
             return (
               <React.Fragment key={step.label}>
-                <div className="flex flex-col items-center flex-shrink-0">
-                  <div className={`h-3.5 w-3.5 rounded-full border-2 transition-colors ${
+                <div className="flex flex-col items-center flex-shrink-0" title={step.tooltip}>
+                  <div className={`h-3.5 w-3.5 rounded-full border-2 transition-colors cursor-help ${
                     isDone ? "bg-[#039994] border-[#039994]" : "bg-white border-gray-300"
                   } ${isCurrent ? "ring-2 ring-[#039994]/30" : ""}`} />
                   <span className={`text-[10px] mt-1 font-sfpro whitespace-nowrap ${
@@ -826,12 +826,34 @@ export default function CommercialDetails({ customer, onBack }) {
               <span className="text-xs font-medium text-right truncate max-w-[60%]">{customer?.id || "—"}</span>
             </div>
             <div className="flex justify-between items-start gap-2">
-              <span className="text-xs text-gray-500 font-sfpro shrink-0">Name</span>
+              <span className="text-xs text-gray-500 font-sfpro shrink-0">Owner / Contact</span>
               <span className="text-xs font-medium text-right truncate max-w-[60%]">{customerDetails?.ownerFullName || customer?.ownerFullName || `${customer?.firstName || ""} ${customer?.lastName || ""}`.trim() || "—"}</span>
             </div>
             <div className="flex justify-between items-start gap-2">
               <span className="text-xs text-gray-500 font-sfpro shrink-0">Email</span>
               <span className="text-xs font-medium text-right truncate max-w-[60%]">{customer?.email || "—"}</span>
+            </div>
+            <div className="flex justify-between items-start gap-2">
+              <span className="text-xs text-gray-500 font-sfpro shrink-0">Phone</span>
+              <span className="text-xs font-medium text-right truncate max-w-[60%]">{customerDetails?.companyPhone || customerDetails?.phoneNumber || customer?.phoneNumber || "—"}</span>
+            </div>
+            <div className="flex justify-between items-start gap-2">
+              <span className="text-xs text-gray-500 font-sfpro shrink-0">Company Name</span>
+              <span className="text-xs font-medium text-right truncate max-w-[60%]">{customerDetails?.companyName || customer?.companyName || "—"}</span>
+            </div>
+            <div className="flex justify-between items-start gap-2">
+              <span className="text-xs text-gray-500 font-sfpro shrink-0">Company Address</span>
+              <span className="text-xs font-medium text-right truncate max-w-[60%]">{customerDetails?.companyAddress || customer?.companyAddress || customer?.address || "—"}</span>
+            </div>
+            {(customerDetails?.companyWebsite || customer?.companyWebsite) && (
+              <div className="flex justify-between items-start gap-2">
+                <span className="text-xs text-gray-500 font-sfpro shrink-0">Website</span>
+                <span className="text-xs font-medium text-right truncate max-w-[60%]">{customerDetails?.companyWebsite || customer?.companyWebsite}</span>
+              </div>
+            )}
+            <div className="flex justify-between items-start gap-2">
+              <span className="text-xs text-gray-500 font-sfpro shrink-0">Entity Type</span>
+              <span className="text-xs font-medium capitalize">{customerDetails?.entityType || customer?.entityType || "—"}</span>
             </div>
             <div className="flex justify-between items-start gap-2">
               <span className="text-xs text-gray-500 font-sfpro shrink-0">Customer Type</span>
@@ -846,10 +868,6 @@ export default function CommercialDetails({ customer, onBack }) {
               <span className="text-xs font-medium text-right truncate max-w-[60%]">{customer?.financeCompany || "—"}</span>
             </div>
             <div className="flex justify-between items-start gap-2">
-              <span className="text-xs text-gray-500 font-sfpro shrink-0">Address</span>
-              <span className="text-xs font-medium text-right truncate max-w-[60%]">{customer?.address || "—"}</span>
-            </div>
-            <div className="flex justify-between items-start gap-2">
               <span className="text-xs text-gray-500 font-sfpro shrink-0">Date Registered</span>
               <span className="text-xs font-medium">{formatDate(customer?.date)}</span>
             </div>
@@ -860,9 +878,9 @@ export default function CommercialDetails({ customer, onBack }) {
           </div>
         </div>
 
-        <div className="border border-gray-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-[#039994] mb-4">System Information</h3>
-          <div className="grid grid-cols-2 gap-y-4 gap-x-6">
+        <div className="border border-gray-200 rounded-lg p-4 overflow-hidden">
+          <h3 className="text-lg font-semibold text-[#039994] mb-3">System Information</h3>
+          <div className="grid grid-cols-2 gap-y-3 gap-x-6 mb-3">
             <div className="space-y-1">
               <p className={labelClass}>Total Facilities</p>
               <p className="font-medium">{facilities.length}</p>
@@ -872,6 +890,30 @@ export default function CommercialDetails({ customer, onBack }) {
               <p className="font-medium">{facilities.filter(f => f.status === 'VERIFIED' || f.status === 'ACTIVE').length}</p>
             </div>
           </div>
+          {facilities.length > 0 && (
+            <div className="space-y-2">
+              <p className={`${labelClass} border-t pt-2`}>Facility Variables</p>
+              {facilities.map(f => (
+                <div key={f.id} className="bg-gray-50 rounded-md p-2 text-xs space-y-1">
+                  <p className="font-semibold text-[#039994] truncate">{f.facilityName}</p>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
+                    <span className="text-gray-500">Capacity</span>
+                    <span className="font-medium">{f.systemCapacity ? `${f.systemCapacity} kW` : "—"}</span>
+                    <span className="text-gray-500">WREGIS ID</span>
+                    <span className="font-medium truncate">{f.wregisId || "—"}</span>
+                    <span className="text-gray-500">RPS ID</span>
+                    <span className="font-medium truncate">{f.rpsId || "—"}</span>
+                    <span className="text-gray-500">COD</span>
+                    <span className="font-medium">{f.commercialOperationDate ? formatDate(f.commercialOperationDate) : "—"}</span>
+                    <span className="text-gray-500">Total RECs</span>
+                    <span className="font-medium">{f.totalRecs ?? "—"}</span>
+                    <span className="text-gray-500">Utility</span>
+                    <span className="font-medium truncate">{f.utilityProvider || "—"}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
