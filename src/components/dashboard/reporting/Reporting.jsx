@@ -125,6 +125,7 @@ export default function ReportsDashboard() {
     "REC Generation",
     "Residential Redemption",
     "Partner Performance",
+    "Partner Customers",
     "WREGIS Generation Report",
     "Points Report",
     "REC Generation Report",
@@ -287,6 +288,115 @@ export default function ReportsDashboard() {
           setAllData([])
           setFilteredData([])
         }
+
+      // Partner Customers — individual customers referred by each partner, enriched with live profile data
+      } else if (type === "Partner Customers") {
+        const authToken = localStorage.getItem("authToken")
+        // Step 1: fetch all partners
+        const partnersRes = await fetch(`${CONFIG.API_BASE_URL}/api/admin/partner-performance?page=1&limit=200`, {
+          headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+        })
+        if (!partnersRes.ok) { setAllData([]); setFilteredData([]); return }
+        const partnersJson = await partnersRes.json()
+        const partners = partnersJson.status === "success"
+          ? Array.isArray(partnersJson.data) ? partnersJson.data : partnersJson.data?.partners || partnersJson.data?.data || []
+          : []
+
+        // Step 2: fetch referrals for each partner in parallel (only those with referrals)
+        const activePartners = partners.filter((p) => (p.totalReferrals ?? 0) > 0 && (p.id || p.userId))
+        const referralResults = await Promise.allSettled(
+          activePartners.map((p) => {
+            const uid = p.id || p.userId
+            return fetch(`${CONFIG.API_BASE_URL}/api/user/get-users-referrals/${uid}`, {
+              headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+            }).then((r) => r.ok ? r.json() : null)
+          })
+        )
+
+        // Step 3: enrich + flatten
+        const allRows = []
+        for (let i = 0; i < activePartners.length; i++) {
+          const partner = activePartners[i]
+          const result = referralResults[i]
+          if (result.status !== "fulfilled" || !result.value) continue
+          const json = result.value
+          let rawRefs = json.status === "success"
+            ? Array.isArray(json.data) ? json.data : json.data?.referrals ?? []
+            : []
+
+          // Enrich missing name/type/phone from registered User profile
+          const needsEnrichment = rawRefs.filter(
+            (r) => r.inviteeEmail && ((!r.firstName && !r.name) || !r.phoneNumber || (!r.userType && !r.customerType))
+          )
+          if (needsEnrichment.length) {
+            const profileResults = await Promise.allSettled(
+              needsEnrichment.map((r) =>
+                fetch(`${CONFIG.API_BASE_URL}/api/user/${encodeURIComponent(r.inviteeEmail.trim())}`, {
+                  headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+                }).then((res) => res.ok ? res.json() : null)
+              )
+            )
+            const profileMap = new Map()
+            needsEnrichment.forEach((r, idx) => {
+              const pr = profileResults[idx]
+              if (pr.status === "fulfilled" && pr.value?.status === "success") {
+                const d = pr.value.data
+                const nested = d?.user || d?.userDetails || d || {}
+                profileMap.set(r.inviteeEmail.toLowerCase(), {
+                  firstName: d?.firstName || nested?.firstName || null,
+                  lastName: d?.lastName || nested?.lastName || null,
+                  userType: d?.userType || nested?.userType || null,
+                  phoneNumber: d?.phoneNumber || nested?.phoneNumber || null,
+                })
+              }
+            })
+            rawRefs = rawRefs.map((ref) => {
+              if (!ref.inviteeEmail) return ref
+              const profile = profileMap.get(ref.inviteeEmail.toLowerCase())
+              if (!profile) return ref
+              return {
+                ...ref,
+                firstName: profile.firstName || ref.name?.split(" ")[0] || null,
+                lastName: profile.lastName || ref.name?.split(" ").slice(1).join(" ") || null,
+                userType: profile.userType || ref.customerType || null,
+                phoneNumber: profile.phoneNumber || ref.phoneNumber || null,
+              }
+            })
+          }
+
+          // Deduplicate by inviteeEmail
+          const seen = new Map()
+          for (const ref of rawRefs) {
+            const key = ref.inviteeEmail?.toLowerCase() ?? ref.id
+            if (!seen.has(key)) {
+              seen.set(key, { ...ref })
+            } else {
+              const merged = { ...seen.get(key) }
+              for (const [k, v] of Object.entries(ref)) {
+                if (merged[k] === null || merged[k] === undefined || merged[k] === "") merged[k] = v
+              }
+              seen.set(key, merged)
+            }
+          }
+
+          for (const ref of seen.values()) {
+            const name = ref.firstName
+              ? `${ref.firstName} ${ref.lastName || ""}`.trim()
+              : ref.name || "—"
+            allRows.push({
+              id: ref.id || `${partner.id}-${ref.inviteeEmail}`,
+              _partnerName: partner.companyName || partner.email || "—",
+              _customerName: name,
+              _email: ref.email || ref.inviteeEmail || "—",
+              _customerType: ref.userType || ref.customerType || ref.role || "—",
+              _phone: ref.phoneNumber || "—",
+              _status: ref.status || "—",
+              _date: ref.createdAt ? formatDate(ref.createdAt) : "—",
+            })
+          }
+        }
+        setAllData(allRows)
+        setFilteredData(allRows)
 
       } else if (type === "WREGIS Generation Report") {
         const authToken = localStorage.getItem("authToken")
@@ -469,7 +579,13 @@ export default function ReportsDashboard() {
 
   const handleExport = () => {
     if (!filteredData.length) return
-    const exportRows = filteredData.map(({ id, _raw, _type, _wregisStatus, ...rest }) => rest)
+    const cols = getColumns()
+    const exportRows = reportType === "Partner Customers"
+      ? filteredData.map((item) => Object.fromEntries(cols.map((c) => [c, item[{
+          "Partner": "_partnerName", "Customer Name": "_customerName", "Email": "_email",
+          "Customer Type": "_customerType", "Phone": "_phone", "Status": "_status", "Referred Date": "_date",
+        }[c]] ?? "—"])))
+      : filteredData.map(({ id, _raw, _type, _wregisStatus, ...rest }) => rest)
     const headers = Object.keys(exportRows[0] || {})
     const csv = [
       headers.join(","),
@@ -535,6 +651,9 @@ export default function ReportsDashboard() {
     if (reportType === "Partner Performance") {
       return ["Company Name", "Partner Type", "Total Referrals", "Total Facilities", "RECs Generated", "Date Joined"]
     }
+    if (reportType === "Partner Customers") {
+      return ["Partner", "Customer Name", "Email", "Customer Type", "Phone", "Status", "Referred Date"]
+    }
     if (reportType === "WREGIS Generation Report") {
       return ["Generator ID", "Reporting Unit ID", "Vintage", "Start Date", "End Date", "Total MWh"]
     }
@@ -588,6 +707,19 @@ export default function ReportsDashboard() {
           {labelMap[s] || s || "—"}
         </span>
       )
+    }
+    // Partner Customers columns map to underscore-prefixed internal keys
+    if (reportType === "Partner Customers") {
+      const pcMap = {
+        "Partner": "_partnerName",
+        "Customer Name": "_customerName",
+        "Email": "_email",
+        "Customer Type": "_customerType",
+        "Phone": "_phone",
+        "Status": "_status",
+        "Referred Date": "_date",
+      }
+      return item[pcMap[col]] ?? "—"
     }
     const keyMap = {
       "Generator ID": "generatorId",
