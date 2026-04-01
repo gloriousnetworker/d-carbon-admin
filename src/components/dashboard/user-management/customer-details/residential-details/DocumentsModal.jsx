@@ -178,7 +178,7 @@ export default function DocumentsModal({ facility, documents, onVerifyFacility, 
     ptoLetter: "update-commercial-pto-letter",
     singleLineDiagram: "update-commercial-single-line-diagram",
     sitePlan: "update-facility-site-plan",
-    panelInverterDatasheet: "update-facility-inverter-datasheet",
+    panelInverterDatasheet: "residential-docs/panel-inverter-datasheet",
     revenueMeterData: "update-facility-revenue-meter-data",
     utilityMeterPhoto: "update-commercial-utility-meter-photo",
     assignmentOfRegistrationRight: "update-assignment-of-registration-right",
@@ -188,6 +188,7 @@ export default function DocumentsModal({ facility, documents, onVerifyFacility, 
   // Full URL overrides for endpoints that don't live under /api/facility/
   const docUploadFullUrls = {
     acknowledgementOfStationService: `${CONFIG.API_BASE_URL}/api/admin/residential-docs/acknowledgement-of-station-service`,
+    panelInverterDatasheet: `${CONFIG.API_BASE_URL}/api/residential-facility/residential-docs/panel-inverter-datasheet`,
   };
 
   // Map doc types to the multer field name the backend expects (must match uploadToGCS first arg)
