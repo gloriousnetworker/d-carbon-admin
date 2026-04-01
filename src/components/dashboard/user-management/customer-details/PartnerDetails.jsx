@@ -118,6 +118,9 @@ export default function PartnerDetails({ customer, onBack }) {
     try {
       const authToken = localStorage.getItem("authToken");
       if (!authToken) return;
+
+      // Primary: referred-users endpoint
+      let rawReferrals = null;
       const res = await fetch(
         `${CONFIG.API_BASE_URL}/api/user/referred-users/${userId}`,
         { headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" } }
@@ -125,14 +128,56 @@ export default function PartnerDetails({ customer, onBack }) {
       if (res.ok) {
         const data = await res.json();
         if (data.status === "success") {
-          setReferredUsers(Array.isArray(data.data) ? data.data : []);
-          return;
+          rawReferrals = Array.isArray(data.data) ? data.data : [];
         }
       }
-      // Fallback: use referrals embedded in the admin customer response
-      if (partnerData?.referrals) {
-        setReferredUsers(partnerData.referrals);
+      if (!rawReferrals) rawReferrals = partnerData?.referrals ?? [];
+
+      // Enrich missing fields using get-all-users?email=X — same source as Customer Management
+      const needsEnrichment = rawReferrals.filter(
+        (r) => {
+          const email = r.inviteeEmail || r.email;
+          return email && (!r.firstName && !r.name || !r.phoneNumber || !r.userType && !r.customerType);
+        }
+      );
+      if (needsEnrichment.length) {
+        const enrichResults = await Promise.allSettled(
+          needsEnrichment.map((r) => {
+            const email = (r.inviteeEmail || r.email || "").trim();
+            return fetch(
+              `${CONFIG.API_BASE_URL}/api/admin/get-all-users?email=${encodeURIComponent(email)}&limit=1`,
+              { headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" } }
+            ).then((res) => res.ok ? res.json() : null);
+          })
+        );
+        const profileMap = new Map();
+        needsEnrichment.forEach((r, i) => {
+          const result = enrichResults[i];
+          if (result.status === "fulfilled" && result.value?.data?.users?.length) {
+            const u = result.value.data.users[0];
+            const key = (r.inviteeEmail || r.email || "").toLowerCase();
+            profileMap.set(key, u);
+          }
+        });
+        rawReferrals = rawReferrals.map((ref) => {
+          const key = (ref.inviteeEmail || ref.email || "").toLowerCase();
+          const u = profileMap.get(key);
+          if (!u) return ref;
+          return {
+            ...ref,
+            firstName: u.firstName || ref.firstName || null,
+            lastName: u.lastName || ref.lastName || null,
+            name: u.name || ref.name || null,
+            userType: u.userType || ref.userType || ref.customerType || null,
+            role: u.role || ref.role || null,
+            phoneNumber: u.phoneNumber || ref.phoneNumber || null,
+            status: u.status || ref.status || null,
+            createdAt: u.createdAt || ref.createdAt || null,
+          };
+        });
       }
+
+      setReferredUsers(rawReferrals);
     } catch (err) {
       console.error("Error fetching referrals:", err);
       setReferralError(err.message);
@@ -326,7 +371,8 @@ export default function PartnerDetails({ customer, onBack }) {
               <table className="w-full border-y text-sm">
                 <thead className="bg-gray-50">
                   <tr>
-                    {["Name", "Email", "User Type", "Phone", "Status", "Date Joined"].map((h) => (
+                    <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">S/N</th>
+                    {["Name", "Email", "Customer Type", "Role", "Phone Number", "Status", "Date Registered"].map((h) => (
                       <th key={h} className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">{h}</th>
                     ))}
                   </tr>
@@ -337,12 +383,15 @@ export default function PartnerDetails({ customer, onBack }) {
                       ? `${referral.firstName} ${referral.lastName || ""}`.trim()
                       : referral.name || "—";
                     const email = referral.email || referral.inviteeEmail || "—";
-                    const type = referral.userType || referral.customerType || referral.role || "—";
+                    const customerType = referral.userType || referral.customerType || "—";
+                    const role = referral.role || referral.partnerType || "—";
                     return (
                       <tr key={referral.id || i} className="border-t border-gray-100 hover:bg-gray-50 transition-colors duration-100">
-                        <td className="py-3 px-4 font-sfpro text-[#1E1E1E]">{name}</td>
+                        <td className="py-3 px-4 font-sfpro text-[#626060]">{i + 1}</td>
+                        <td className="py-3 px-4 font-sfpro text-[#1E1E1E] font-medium">{name}</td>
                         <td className="py-3 px-4 font-sfpro text-[#1E1E1E]">{email}</td>
-                        <td className="py-3 px-4 font-sfpro text-[#1E1E1E]">{formatUserType(type)}</td>
+                        <td className="py-3 px-4 font-sfpro text-[#1E1E1E]">{customerType}</td>
+                        <td className="py-3 px-4 font-sfpro text-[#1E1E1E]">{role}</td>
                         <td className="py-3 px-4 font-sfpro text-[#1E1E1E]">{referral.phoneNumber || "—"}</td>
                         <td className="py-3 px-4">
                           <StatusBadge status={referral.status} />

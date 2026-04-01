@@ -384,6 +384,7 @@ export default function ReportsDashboard() {
             _customerName: name,
             _email: user.email || email,
             _customerType: user.userType || "—",
+            _role: user.role || user.partnerType || "—",
             _phone: user.phoneNumber || "—",
             _status: user.status || "—",
             _date: user.createdAt ? formatDate(user.createdAt) : "—",
@@ -576,8 +577,9 @@ export default function ReportsDashboard() {
     const cols = getColumns()
     const exportRows = reportType === "Partner Customers"
       ? filteredData.map((item) => Object.fromEntries(cols.map((c) => [c, item[{
-          "Partner": "_partnerName", "Customer Name": "_customerName", "Email": "_email",
-          "Customer Type": "_customerType", "Phone": "_phone", "Status": "_status", "Referred Date": "_date",
+          "Partner": "_partnerName", "Name": "_customerName", "Email": "_email",
+          "Customer Type": "_customerType", "Role": "_role", "Phone Number": "_phone",
+          "Status": "_status", "Date Registered": "_date",
         }[c]] ?? "—"])))
       : filteredData.map(({ id, _raw, _type, _wregisStatus, ...rest }) => rest)
     const headers = Object.keys(exportRows[0] || {})
@@ -646,7 +648,7 @@ export default function ReportsDashboard() {
       return ["Company Name", "Partner Type", "Total Referrals", "Total Facilities", "RECs Generated", "Date Joined"]
     }
     if (reportType === "Partner Customers") {
-      return ["Partner", "Customer Name", "Email", "Customer Type", "Phone", "Status", "Referred Date"]
+      return ["Partner", "Name", "Email", "Customer Type", "Role", "Phone Number", "Status", "Date Registered"]
     }
     if (reportType === "WREGIS Generation Report") {
       return ["Generator ID", "Reporting Unit ID", "Vintage", "Start Date", "End Date", "Total MWh"]
@@ -706,12 +708,13 @@ export default function ReportsDashboard() {
     if (reportType === "Partner Customers") {
       const pcMap = {
         "Partner": "_partnerName",
-        "Customer Name": "_customerName",
+        "Name": "_customerName",
         "Email": "_email",
         "Customer Type": "_customerType",
-        "Phone": "_phone",
+        "Role": "_role",
+        "Phone Number": "_phone",
         "Status": "_status",
-        "Referred Date": "_date",
+        "Date Registered": "_date",
       }
       return item[pcMap[col]] ?? "—"
     }
