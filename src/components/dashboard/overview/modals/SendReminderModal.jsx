@@ -1,3 +1,4 @@
+import CONFIG from '@/lib/config';
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { FiX } from 'react-icons/fi';
@@ -89,7 +90,7 @@ const SendReminderModal = ({ isOpen, onClose, initialEmail = '' }) => {
       };
 
       const response = await axios.post(
-        'https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/user/referral-reminders',
+        `${CONFIG.API_BASE_URL}/api/user/referral-reminders`,
         body,
         {
           headers: {
@@ -123,8 +124,8 @@ const SendReminderModal = ({ isOpen, onClose, initialEmail = '' }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-      <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-[#F04438] hover:text-red-600"

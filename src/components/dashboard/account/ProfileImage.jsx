@@ -1,16 +1,28 @@
-// app/components/ProfileImage.js
 'use client';
+import CONFIG from '@/lib/config';
 
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import Image from "next/image";
-import { useProfile } from "../../contexts/ProfileContext";
 
 const ProfileImage = () => {
   const defaultProfilePic = "/dashboard_images/profileImage.png";
   const fileInputRef = useRef(null);
   const [isLoading, setIsLoading] = useState(false);
-  const { profile, updateProfile } = useProfile();
+  const [profilePicture, setProfilePicture] = useState(defaultProfilePic);
+  const [userId, setUserId] = useState(null);
+  const [authToken, setAuthToken] = useState(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const id = localStorage.getItem("userId");
+      const token = localStorage.getItem("authToken");
+      if (id && token) {
+        setUserId(id);
+        setAuthToken(token);
+      }
+    }
+  }, []);
 
   const handleImageClick = () => {
     fileInputRef.current?.click();
@@ -20,7 +32,6 @@ const ProfileImage = () => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validate file
     if (!file.type.match("image.*")) {
       toast.error("Please select an image file");
       return;
@@ -30,9 +41,6 @@ const ProfileImage = () => {
       toast.error("Image size should be less than 5MB");
       return;
     }
-
-    const userId = localStorage.getItem("userId");
-    const authToken = localStorage.getItem("authToken");
 
     if (!userId || !authToken) {
       toast.error("Authentication required");
@@ -45,7 +53,7 @@ const ProfileImage = () => {
     try {
       setIsLoading(true);
       const response = await fetch(
-        `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/user/upload-profile-picture/${userId}`,
+        `${CONFIG.API_BASE_URL}/api/admin/upload-profile-picture/${userId}`,
         {
           method: "POST",
           headers: {
@@ -62,7 +70,10 @@ const ProfileImage = () => {
       }
 
       toast.success("Profile picture updated successfully");
-      await updateProfile(); // Refresh profile data
+      
+      if (data.data && data.data.profilePicture) {
+        setProfilePicture(data.data.profilePicture);
+      }
     } catch (error) {
       console.error("Upload error:", error);
       toast.error(error.message || "Error uploading image");
@@ -86,7 +97,7 @@ const ProfileImage = () => {
           </div>
         )}
         <Image
-          src={profile.picture || defaultProfilePic}
+          src={profilePicture}
           alt="Profile"
           width={128}
           height={128}

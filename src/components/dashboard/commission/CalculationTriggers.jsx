@@ -150,7 +150,7 @@ const CalculationTriggers = () => {
   };
 
   const SalesAgentModal = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-lg p-6 max-w-md w-full">
         <h3 className="text-lg font-semibold mb-4 text-gray-900">Trigger Sales Agent Bonus</h3>
         
@@ -179,7 +179,7 @@ const CalculationTriggers = () => {
   );
 
   const BonusModal = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-lg p-6 max-w-md w-full">
         <h3 className="text-lg font-semibold mb-4 text-gray-900">Trigger Bonus Calculation</h3>
         

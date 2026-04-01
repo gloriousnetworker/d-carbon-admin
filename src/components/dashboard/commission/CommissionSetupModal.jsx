@@ -1,4 +1,5 @@
 "use client";
+import CONFIG from '@/lib/config';
 import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 
@@ -19,7 +20,6 @@ const CommissionSetupModal = ({
     installerShare: "",
     salesAgentShare: "",
     financeShare: "",
-    label: "",
     notes: "",
   });
   
@@ -45,7 +45,6 @@ const CommissionSetupModal = ({
         installerShare: editingCommission.installerShare || "",
         salesAgentShare: editingCommission.salesAgentShare || "",
         financeShare: editingCommission.financeShare || "",
-        label: editingCommission.label || "",
         notes: editingCommission.notes || "",
       });
 
@@ -77,7 +76,7 @@ const CommissionSetupModal = ({
     try {
       const authToken = localStorage.getItem("authToken");
       const response = await fetch(
-        `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-structure`,
+        `${CONFIG.API_BASE_URL}/api/commission-structure`,
         {
           headers: { Authorization: `Bearer ${authToken}` },
         }
@@ -227,7 +226,7 @@ const CommissionSetupModal = ({
   const createCommissionStructure = async (payload) => {
     const authToken = localStorage.getItem("authToken");
     
-    const response = await fetch("https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-structure", {
+    const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-structure`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -242,7 +241,7 @@ const CommissionSetupModal = ({
   const updateCommissionStructure = async (id, payload) => {
     const authToken = localStorage.getItem("authToken");
     
-    const response = await fetch(`https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-structure/${id}`, {
+    const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-structure/${id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -267,7 +266,6 @@ const CommissionSetupModal = ({
       const basePayload = {
         propertyType: "RESIDENTIAL",
         tierId: formData.tierId,
-        label: formData.label || "",
         notes: formData.notes || "",
       };
 
@@ -286,7 +284,6 @@ const CommissionSetupModal = ({
         salesAgentShare: null,
         financeShare: null,
         dcarbonShare: null,
-        label: basePayload.label,
         notes: basePayload.notes,
       };
 
@@ -383,7 +380,6 @@ const CommissionSetupModal = ({
     const basePayload = {
       propertyType: formData.propertyType,
       tierId: formData.tierId,
-      label: formData.label || "",
       notes: formData.notes || "",
     };
 
@@ -481,7 +477,7 @@ const CommissionSetupModal = ({
 
   const deleteCommissionStructure = async (id) => {
     const authToken = localStorage.getItem("authToken");
-    const response = await fetch(`https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-structure/${id}`, {
+    const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-structure/${id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${authToken}` },
     });
@@ -520,7 +516,6 @@ const CommissionSetupModal = ({
       let basePayload = {
         propertyType: formData.propertyType,
         tierId: formData.tierId,
-        label: formData.label || "",
         notes: formData.notes || "",
       };
 
@@ -863,7 +858,7 @@ const CommissionSetupModal = ({
   );
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
@@ -932,20 +927,6 @@ const CommissionSetupModal = ({
                     </option>
                   ))}
                 </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Label (e.g., "2 - 3 megawatt", "5.1+ MW")
-                </label>
-                <input
-                  type="text"
-                  name="label"
-                  value={formData.label}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  placeholder="Enter range label"
-                />
               </div>
 
               <div>

@@ -1,291 +1,714 @@
 "use client";
+import CONFIG from '@/lib/config';
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, Pencil, Trash2, Eye, Loader2, Mail, Phone, MapPin, Calendar, User } from "lucide-react";
+import {
+  ChevronLeft, Pencil, Trash2, Eye, Loader2, Mail, Phone,
+  MapPin, Calendar, User, Hash, Users, FileText, CheckCircle2,
+  XCircle, Clock, ExternalLink, Copy, Check,
+  Building2, ShieldCheck, Download
+} from "lucide-react";
 import EditPartnerModal from "./partnerManagementModal/EditPartnerModal";
 import { useToast } from "@/components/ui/use-toast";
+import { exportToExcel, exportToCSV } from "@/lib/exportUtils";
+import * as styles from "../styles";
 
-export default function PartnerDetails({ partner, onBack }) {
+
+// Enriches referral records that are missing name/type/phone by fetching the
+// registered User profile for each inviteeEmail. Runs in parallel and merges
+// results back. Also deduplicates by inviteeEmail using a merge strategy so
+// partners who invited the same address twice don't produce two rows.
+async function enrichReferralsWithUserProfiles(rawReferrals, authToken) {
+  const needsEnrichment = rawReferrals.filter(
+    (r) => r.inviteeEmail && (
+      (!r.firstName && !r.name) || !r.phoneNumber || (!r.userType && !r.customerType)
+    )
+  );
+  if (!needsEnrichment.length) return rawReferrals;
+
+  const profiles = await Promise.allSettled(
+    needsEnrichment.map((r) =>
+      fetch(`${CONFIG.API_BASE_URL}/api/user/${encodeURIComponent(r.inviteeEmail.trim())}`, {
+        headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+      }).then((res) => (res.ok ? res.json() : null))
+    )
+  );
+
+  const profileMap = new Map();
+  needsEnrichment.forEach((r, i) => {
+    const result = profiles[i];
+    if (result.status === "fulfilled" && result.value?.status === "success") {
+      const d = result.value.data;
+      const nested = d?.user || d?.userDetails || d || {};
+      profileMap.set(r.inviteeEmail.toLowerCase(), {
+        firstName: d?.firstName || nested?.firstName || null,
+        lastName: d?.lastName || nested?.lastName || null,
+        userType: d?.userType || nested?.userType || null,
+        phoneNumber: d?.phoneNumber || nested?.phoneNumber || null,
+      });
+    }
+  });
+
+  const enriched = rawReferrals.map((ref) => {
+    if (!ref.inviteeEmail) return ref;
+    const profile = profileMap.get(ref.inviteeEmail.toLowerCase());
+    if (!profile) return ref;
+    return {
+      ...ref,
+      firstName: profile.firstName || ref.name?.split(" ")[0] || null,
+      lastName: profile.lastName || ref.name?.split(" ").slice(1).join(" ") || null,
+      userType: profile.userType || ref.customerType || null,
+      phoneNumber: profile.phoneNumber || ref.phoneNumber || null,
+    };
+  });
+
+  // Deduplicate by inviteeEmail — merge strategy: fill missing fields from duplicates
+  const seen = new Map();
+  for (const ref of enriched) {
+    const key = ref.inviteeEmail?.toLowerCase() ?? ref.id;
+    if (!seen.has(key)) {
+      seen.set(key, { ...ref });
+    } else {
+      const existing = seen.get(key);
+      const merged = { ...existing };
+      for (const [k, v] of Object.entries(ref)) {
+        if (merged[k] === null || merged[k] === undefined || merged[k] === "") {
+          merged[k] = v;
+        }
+      }
+      seen.set(key, merged);
+    }
+  }
+  return Array.from(seen.values());
+}
+
+const PARTNER_PROGRESS = [
+  { key: "invited", label: "Invited" },
+  { key: "registered", label: "Registered" },
+  { key: "agreement", label: "Agreement Signed" },
+  { key: "customers", label: "Customers Referred" },
+  { key: "active", label: "Active" },
+];
+
+function InfoField({ label, value, icon: Icon, fullWidth = false }) {
+  return (
+    <div className={fullWidth ? "col-span-2" : ""}>
+      <div className="text-xs text-gray-500 font-sfpro mb-0.5">{label}</div>
+      <div className="text-sm font-sfpro text-[#1E1E1E] flex items-center gap-1">
+        {Icon && <Icon className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />}
+        <span className="truncate">{value || "N/A"}</span>
+      </div>
+    </div>
+  );
+}
+
+export default function PartnerDetails({ partner, onBack, onCustomerSelect }) {
+  const [activeTab, setActiveTab] = useState("profile");
   const [showEditModal, setShowEditModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [referralsLoading, setReferralsLoading] = useState(false);
   const [partnerDetails, setPartnerDetails] = useState(null);
-  const [userDetails, setUserDetails] = useState(null);
+  const [agreementData, setAgreementData] = useState(null);
+  const [referrals, setReferrals] = useState([]);
+  const [copied, setCopied] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchPartnerDetails = async () => {
-      try {
-        setLoading(true);
-        const authToken = localStorage.getItem("authToken");
-        
-        if (!authToken) {
-          throw new Error("No authentication token found");
-        }
+  const fetchPartnerDetails = useCallback(async () => {
+    try {
+      setLoading(true);
+      const authToken = localStorage.getItem("authToken");
+      if (!authToken) throw new Error("No authentication token found");
+      if (!partner?.email) throw new Error("Partner data is incomplete");
 
-        if (!partner || !partner.email) {
-          throw new Error("Partner data is incomplete");
-        }
+      const encodedEmail = encodeURIComponent(partner.email.trim());
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/user/${encodedEmail}`, {
+        headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+      });
 
-        const partnerEmail = partner.email.trim();
-        if (!partnerEmail.includes("@") || !partnerEmail.includes(".")) {
-          throw new Error("Invalid email format");
-        }
-
-        const encodedEmail = encodeURIComponent(partnerEmail);
-        const apiUrl = `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/admin/customer/${encodedEmail}`;
-
-        const response = await fetch(apiUrl, {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-            "Content-Type": "application/json",
-          },
-        });
-        
-        if (!response.ok) {
-          let errorDetails = {};
-          try {
-            errorDetails = await response.json();
-          } catch (e) {
-            console.warn("Couldn't parse error response", e);
-          }
-          
-          throw new Error(
-            errorDetails.message || 
-            `Server responded with status ${response.status}`
-          );
-        }
-
+      if (response.ok) {
         const data = await response.json();
-
-        if (!data || data.status !== "success") {
-          throw new Error(data?.message || "Invalid response format");
+        if (data.status === "success" && data.data) {
+          const d = data.data;
+          const partnerRel = d.partner || {};
+          setPartnerDetails({
+            ...partner,
+            ...d,
+            // Preserve partner business name from either source
+            companyName: partner.companyName || partnerRel.name || d.companyName || '',
+            partnerType: partner.partnerType || d.partnerType,
+            address: partner.address || partnerRel.address || d.address || '',
+            phoneNumber: partner.phoneNumber || partnerRel.phoneNumber || d.phoneNumber || '',
+          });
+          return;
         }
-
-        // Combine partner data with user details
-        setPartnerDetails({
-          ...partner,
-          ...data.data,
-          // Preserve the original partner type
-          partnerType: partner.partnerType,
-          // Preserve the address from partner if not in user details
-          address: partner.address || data.data.address
-        });
-        setUserDetails(data.data);
-      } catch (error) {
-        console.error("Fetch error details:", error);
-        
-        toast({
-          variant: "destructive",
-          title: "Loading Failed",
-          description: `Could not load partner details: ${error.message}`,
-        });
-      } finally {
-        setLoading(false);
       }
-    };
+      // Fallback to data already passed in
+      setPartnerDetails(partner);
+    } catch (error) {
+      console.error("Error fetching partner details:", error);
+      setPartnerDetails(partner);
+    } finally {
+      setLoading(false);
+    }
+  }, [partner]);
 
+  const fetchAgreement = useCallback(async () => {
+    const userId = partnerDetails?.id || partnerDetails?.userId || partner?.id || partner?.userId;
+    if (!userId) return;
+    try {
+      const authToken = localStorage.getItem("authToken");
+      const res = await fetch(`${CONFIG.API_BASE_URL}/api/user/agreement/${userId}`, {
+        headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.status === "success" && json.data) {
+          setAgreementData(json.data);
+        }
+      }
+    } catch {
+      // Non-critical — fall back to embedded agreements
+    }
+  }, [partnerDetails, partner]);
+
+  const fetchReferrals = useCallback(async () => {
+    const userId = partnerDetails?.id || partnerDetails?.userId || partner?.id || partner?.userId;
+    const email = partnerDetails?.email || partner?.email;
+    if (!userId && !email) return;
+    try {
+      setReferralsLoading(true);
+      const authToken = localStorage.getItem("authToken");
+      let rawReferrals = null;
+
+      // Primary: get referrals by inviter userId
+      if (userId) {
+        const res = await fetch(
+          `${CONFIG.API_BASE_URL}/api/user/get-users-referrals/${userId}`,
+          { headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" } }
+        );
+        if (res.ok) {
+          const json = await res.json();
+          if (json.status === "success") {
+            rawReferrals = Array.isArray(json.data) ? json.data : (json.data?.referrals ?? []);
+          }
+        }
+      }
+
+      // Fallback: customer endpoint by email
+      if (!rawReferrals && email) {
+        const res = await fetch(
+          `${CONFIG.API_BASE_URL}/api/admin/customer/${encodeURIComponent(email.trim())}`,
+          { headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" } }
+        );
+        if (res.ok) {
+          const json = await res.json();
+          if (json.status === "success" && json.data) {
+            rawReferrals = Array.isArray(json.data.referrals) ? json.data.referrals : [];
+          }
+        }
+      }
+
+      // Last resort: embedded data
+      if (!rawReferrals) rawReferrals = partnerDetails?.referrals ?? [];
+
+      const enriched = await enrichReferralsWithUserProfiles(rawReferrals, authToken);
+      setReferrals(enriched);
+    } catch (err) {
+      console.error("Error fetching referrals:", err);
+      setReferrals(partnerDetails?.referrals ?? []);
+    } finally {
+      setReferralsLoading(false);
+    }
+  }, [partnerDetails, partner]);
+
+  useEffect(() => {
     fetchPartnerDetails();
-  }, [partner, toast]);
+  }, [fetchPartnerDetails]);
+
+  useEffect(() => {
+    if (partnerDetails) {
+      fetchReferrals();
+      fetchAgreement();
+    }
+  }, [partnerDetails]);
+
+  const copyToClipboard = (text) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   const formatPartnerType = (type) => {
     if (!type) return "N/A";
-    return type
-      .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
+    return type.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
   };
 
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    }).replace(/\//g, '-');
+    return new Date(dateString)
+      .toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })
+      .replace(/\//g, "-");
+  };
+
+  const getPartnerStatusStyle = (status) => {
+    switch (status) {
+      case "Active": return "bg-green-100 text-green-700";
+      case "Invited": return "bg-amber-100 text-amber-700";
+      case "Registered": return "bg-blue-100 text-blue-700";
+      case "Terminated": return "bg-red-100 text-red-700";
+      default: return "bg-gray-100 text-gray-600";
+    }
+  };
+
+  const getReferralStatusStyle = (status) => {
+    if (!status) return "bg-gray-100 text-gray-600";
+    const s = status.toUpperCase();
+    if (s === "ACCEPTED" || s === "ACTIVE") return "bg-green-100 text-green-700";
+    if (s === "PENDING") return "bg-amber-100 text-amber-700";
+    if (s === "EXPIRED") return "bg-red-100 text-red-600";
+    return "bg-gray-100 text-gray-600";
   };
 
   if (loading) {
     return (
-      <div className="w-full flex justify-center items-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-teal-500" />
+      <div className="w-full flex flex-col justify-center items-center h-64 gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-[#039994]" />
+        <p className="text-sm text-gray-500 font-sfpro">Loading partner details…</p>
       </div>
     );
   }
 
   if (!partnerDetails) {
     return (
-      <div className="w-full text-center py-10">
-        <div className="space-y-4">
-          <p className="font-medium">Failed to load partner details</p>
-          <p className="text-sm text-gray-500">
-            Email used: {partner?.email || "No email provided"}
-          </p>
-          
-          <div className="flex justify-center gap-4 mt-6">
-            <Button variant="outline" onClick={onBack}>
-              Go Back
-            </Button>
-          </div>
-        </div>
+      <div className="w-full text-center py-12 space-y-4">
+        <p className="font-medium font-sfpro text-[#1E1E1E]">Failed to load partner details</p>
+        <p className="text-sm text-gray-500 font-sfpro">Email: {partner?.email || "N/A"}</p>
+        <Button variant="outline" className="font-sfpro" onClick={onBack}>Go Back</Button>
       </div>
     );
   }
 
+  const docs = partnerDetails.documentation || partnerDetails.user?.documentation;
+  const agreements = agreementData || partnerDetails.agreements || partnerDetails.user?.agreements;
+  const referralCode = partnerDetails.referralCode || partnerDetails.user?.referralCode || partnerDetails.userDetails?.referralCode;
+  const businessName = partnerDetails.companyName || partner?.companyName || "";
+  const personalName = partnerDetails.ownerFullName || `${partnerDetails.firstName || ""} ${partnerDetails.lastName || ""}`.trim() || "";
+  const partnerName = businessName || personalName || "Partner";
+  const partnerEmail = partnerDetails.email || partnerDetails.displayEmail || "";
+
+
+  const TABS = [
+    { id: "profile", label: "Profile", icon: User },
+    { id: "customers", label: "Customers", icon: Users },
+    { id: "agreement", label: "Partner Agreement", icon: FileText },
+  ];
+
   return (
     <div className="w-full">
-      <div className="flex items-center mb-6">
-        <Button variant="ghost" onClick={onBack} className="flex items-center gap-1">
+      {/* ─── Top navigation ─────────────────────────────────── */}
+      <div className="flex items-center justify-between mb-6">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-1.5 text-sm font-sfpro text-gray-600 hover:text-[#039994] transition-colors"
+        >
           <ChevronLeft className="h-4 w-4" />
           Back to Partners
-        </Button>
-      </div>
-
-      <div className="flex justify-end gap-3 mb-6">
-        <Button 
-          variant="outline"
-          className="bg-gray-900 text-white hover:bg-gray-800 flex items-center gap-2"
-          onClick={() => setShowEditModal(true)}
-        >
-          <Pencil className="h-4 w-4" />
-          Edit Partner Details
-        </Button>
-        <Button variant="ghost" className="text-red-500">
-          <Trash2 className="h-5 w-5" />
-        </Button>
+        </button>
         <div className="flex items-center gap-2">
-          <span>Activate System</span>
-          <div className="w-10 h-5 bg-gray-200 rounded-full relative">
-            <div className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-all duration-300 ${
-              partnerDetails.isActive ? "left-5 bg-green-500" : "left-1"
-            }`}></div>
+          <Button
+            variant="outline"
+            className="gap-2 text-sm font-sfpro"
+            onClick={() => setShowEditModal(true)}
+          >
+            <Pencil className="h-4 w-4" />
+            Edit
+          </Button>
+          <Button variant="ghost" className="text-red-500 hover:bg-red-50" title="Delete partner">
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      {/* ─── Identity banner ────────────────────────────────── */}
+      <div className="flex items-center gap-4 mb-5 p-5 bg-[#069B960D] border border-[#039994]/25 rounded-xl">
+        <div className="h-14 w-14 rounded-full bg-[#039994] flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
+          {partnerName.charAt(0).toUpperCase()}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-[17px] font-semibold text-[#1E1E1E] font-sfpro leading-tight">{partnerName}</h1>
+            {businessName && personalName && businessName !== personalName && (
+              <span className="text-xs text-gray-400 font-sfpro">({personalName})</span>
+            )}
+            <span className="px-2 py-0.5 bg-[#039994]/10 text-[#039994] rounded-full text-xs font-sfpro font-medium">
+              {formatPartnerType(partnerDetails.partnerType)}
+            </span>
+            <span className={`px-2 py-0.5 rounded-full text-xs font-sfpro font-medium ${getPartnerStatusStyle(partnerDetails.status)}`}>
+              {partnerDetails.status || "N/A"}
+            </span>
+          </div>
+          <p className="text-sm text-gray-500 font-sfpro mt-0.5 truncate">{partnerEmail}</p>
+          {referralCode && (
+            <button
+              onClick={() => copyToClipboard(referralCode)}
+              className="mt-1 flex items-center gap-1.5 text-xs text-[#039994] font-sfpro hover:underline group"
+            >
+              <Hash className="h-3 w-3" />
+              Agent Code:&nbsp;<span className="font-mono font-semibold">{referralCode}</span>
+              {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3 opacity-60 group-hover:opacity-100" />}
+            </button>
+          )}
+        </div>
+        <div className="text-right flex-shrink-0">
+          <div className="text-xs text-gray-400 font-sfpro">Registered</div>
+          <div className="text-sm font-medium font-sfpro text-[#1E1E1E]">{formatDate(partnerDetails.createdAt)}</div>
+          <div className="mt-1 text-xs text-gray-400 font-sfpro">
+            Agreement: <span className={agreements?.termsAccepted ? "text-green-600 font-medium" : "text-amber-600 font-medium"}>
+              {agreements?.termsAccepted ? "Signed" : "Pending"}
+            </span>
           </div>
         </div>
       </div>
 
-      <div className="mb-4">
-        <div className="font-medium mb-1">Program Progress</div>
-        <div className="w-full h-2 bg-black rounded-full mb-1"></div>
-        <div className="flex justify-between text-xs">
-          <span>Invitation sent</span>
-          <span style={{ color: "#FFB200" }}>Documents Pending</span>
-          <span style={{ color: "#7CABDE" }}>Documents Rejected</span>
-          <span style={{ color: "#056C69" }}>Registration Complete</span>
-          <span style={{ color: "#00B4AE" }}>Active</span>
-          <span style={{ color: "#FF0000" }}>Terminated</span>
-        </div>
-      </div>
+      {/* ─── Registration progress ───────────────────────────── */}
+      {(() => {
+        const status = (partnerDetails.status || partnerDetails.user?.status || "").toLowerCase();
+        const hasAgreement = !!(agreements?.termsAccepted || agreements?.signature || partnerDetails.agreementSigned);
+        const hasCustomers = referrals.length > 0;
+        const isTerminated = status === "terminated" || status === "inactive";
+        const isActive = status === "active" || status === "approved" || partnerDetails.isActive === true;
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <div className="border border-[#039994] rounded-md p-6 bg-[#069B960D]">
-          <div className="grid grid-cols-2 gap-y-4">
-            <div>
-              <div className="text-sm font-medium">Name</div>
-              <div className="flex items-center gap-1">
-                <User className="h-4 w-4 text-gray-500" />
-                {partnerDetails.name || "N/A"}
-              </div>
-            </div>
-            <div>
-              <div className="text-sm font-medium">Partner Type</div>
-              <div>{formatPartnerType(partnerDetails.partnerType)}</div>
-            </div>
-            <div>
-              <div className="text-sm font-medium">Email Address</div>
-              <div className="flex items-center gap-1">
-                <Mail className="h-4 w-4 text-gray-500" />
-                {partnerDetails.email || "N/A"}
-              </div>
-            </div>
-            <div>
-              <div className="text-sm font-medium">Phone number</div>
-              <div className="flex items-center gap-1">
-                <Phone className="h-4 w-4 text-gray-500" />
-                {partnerDetails.phoneNumber || "N/A"}
-              </div>
-            </div>
-            <div>
-              <div className="text-sm font-medium">Address</div>
-              <div className="flex items-center gap-1">
-                <MapPin className="h-4 w-4 text-gray-500" />
-                {partnerDetails.address || "N/A"}
-              </div>
-            </div>
-            <div>
-              <div className="text-sm font-medium">Date Registered</div>
-              <div className="flex items-center gap-1">
-                <Calendar className="h-4 w-4 text-gray-500" />
-                {formatDate(partnerDetails.createdAt)}
-              </div>
-            </div>
-            {userDetails?.firstName && (
-              <div>
-                <div className="text-sm font-medium">First Name</div>
-                <div>{userDetails.firstName}</div>
-              </div>
-            )}
-            {userDetails?.lastName && (
-              <div>
-                <div className="text-sm font-medium">Last Name</div>
-                <div>{userDetails.lastName}</div>
-              </div>
-            )}
-          </div>
-        </div>
+        // Derive current stage from real data — each step is independently checked
+        let currentStage = 0; // invited (always true if we have the partner)
+        if (status !== "invited" && status !== "pending" && status !== "") currentStage = 1; // registered
+        if (hasAgreement) currentStage = Math.max(currentStage, 2); // agreement signed
+        if (hasCustomers) currentStage = Math.max(currentStage, 3); // customers referred
+        // Active: partner has completed all steps (agreement + customers) and is active in system
+        if (isActive && hasAgreement) currentStage = 4; // active
 
-        <div>
-          <h3 className="text-[#039994] font-medium mb-4">User Agreement e-signature</h3>
-          
-          <div className="space-y-3">
-            {partnerDetails.agreements ? (
-              <>
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-between bg-gray-100 text-gray-800"
-                  onClick={() => window.open(partnerDetails.agreements.signature, "_blank")}
-                >
-                  View User Agreement
-                  <Eye className="h-4 w-4" />
-                </Button>
-                
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-between bg-gray-100 text-gray-800"
-                  onClick={() => window.open(partnerDetails.agreements.signature, "_blank")}
-                >
-                  View E-Signature
-                  <Eye className="h-4 w-4" />
-                </Button>
-              </>
-            ) : (
-              <p className="text-sm text-gray-500">No agreement documents available</p>
-            )}
-          </div>
-
-          {partnerDetails.referrals?.length > 0 && (
-            <div className="mt-6">
-              <h3 className="text-[#039994] font-medium mb-4">Referrals</h3>
-              <div className="space-y-2">
-                {partnerDetails.referrals.map((referral) => (
-                  <div key={referral.id} className="border p-3 rounded-md">
-                    <div className="flex justify-between">
-                      <span className="font-medium">{referral.name}</span>
-                      <span className="text-sm capitalize">{referral.status.toLowerCase()}</span>
+        return (
+          <div className="mb-5 px-5 py-4 border border-gray-200 rounded-xl bg-white">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-xs font-medium font-sfpro text-gray-500 uppercase tracking-wide">Registration Progress</div>
+              {isTerminated && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-sfpro font-medium bg-red-100 text-red-600">
+                  <XCircle className="h-3 w-3" /> Terminated
+                </span>
+              )}
+            </div>
+            <div className="flex items-center">
+              {PARTNER_PROGRESS.map((stage, i, arr) => {
+                const isDone = !isTerminated && i <= currentStage;
+                const isCurrent = !isTerminated && i === currentStage;
+                return (
+                  <React.Fragment key={stage.key}>
+                    <div className="flex flex-col items-center flex-shrink-0">
+                      <div className={`h-3.5 w-3.5 rounded-full border-2 transition-colors ${
+                        isDone ? "bg-[#039994] border-[#039994]" : "bg-white border-gray-300"
+                      } ${isCurrent ? "ring-2 ring-[#039994]/30" : ""}`} />
+                      <span className={`text-xs mt-1 font-sfpro whitespace-nowrap ${
+                        isDone ? "text-[#039994] font-medium" : "text-gray-400"
+                      }`}>{stage.label}</span>
                     </div>
-                    <div className="text-sm text-gray-600">{referral.inviteeEmail}</div>
-                    <div className="text-sm text-gray-600">{referral.phoneNumber}</div>
-                  </div>
-                ))}
+                    {i < arr.length - 1 && (
+                      <div className={`flex-1 h-0.5 mx-1 mb-4 transition-colors ${isDone && i < currentStage ? "bg-[#039994]" : "bg-gray-200"}`} />
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ─── Tabs ───────────────────────────────────────────── */}
+      <div className="border-b border-gray-200 mb-6">
+        <div className="flex">
+          {TABS.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-5 py-3 text-sm font-sfpro border-b-2 transition-colors ${
+                  activeTab === tab.id
+                    ? "border-[#039994] text-[#039994] font-medium"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ─── Tab: Profile ────────────────────────────────────── */}
+      {activeTab === "profile" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {/* Contact information */}
+          <div className="border border-gray-200 rounded-xl p-5">
+            <h3 className="text-sm font-semibold text-[#039994] font-sfpro mb-4">Contact Information</h3>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-4">
+              <InfoField label="Partner Type" value={formatPartnerType(partnerDetails.partnerType)} icon={Building2} />
+              <InfoField label="Email Address" value={partnerEmail} icon={Mail} />
+              <InfoField label="Phone Number" value={partnerDetails.phoneNumber} icon={Phone} />
+              <InfoField label="Date Joined" value={partnerDetails.createdAt ? new Date(partnerDetails.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "N/A"} icon={Calendar} />
+              <InfoField label="Address" value={partnerDetails.address} icon={MapPin} fullWidth />
+            </div>
+          </div>
+
+          {/* Account details */}
+          <div className="space-y-5">
+            <div className="border border-gray-200 rounded-xl p-5">
+              <h3 className="text-sm font-semibold text-[#039994] font-sfpro mb-4">Account Details</h3>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-4">
+                <div>
+                  <div className="text-xs text-gray-500 font-sfpro mb-1">Agent / Referral Code</div>
+                  {referralCode ? (
+                    <button
+                      onClick={() => copyToClipboard(referralCode)}
+                      className="flex items-center gap-1 text-sm font-mono font-semibold text-[#039994] hover:underline"
+                    >
+                      {referralCode}
+                      {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3 opacity-60" />}
+                    </button>
+                  ) : (
+                    <span className="text-sm text-gray-400 font-sfpro">Not assigned</span>
+                  )}
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500 font-sfpro mb-1">Account Status</div>
+                  <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-sfpro font-medium ${
+                    partnerDetails.isActive !== false ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+                  }`}>
+                    {partnerDetails.isActive !== false ? "Active" : "Inactive"}
+                  </span>
+                </div>
+                <InfoField label="User Type" value={partnerDetails.userType || "PARTNER"} icon={ShieldCheck} />
+                <InfoField label="Date Registered" value={formatDate(partnerDetails.createdAt)} icon={Calendar} />
               </div>
+            </div>
+
+            {/* Agreement */}
+            <div className="border border-gray-200 rounded-xl p-5">
+              <h3 className="text-sm font-semibold text-[#039994] font-sfpro mb-4">User Agreement</h3>
+              {agreements ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <div className="text-sm font-sfpro font-medium text-[#1E1E1E]">Terms Accepted</div>
+                      <div className="text-xs text-gray-500 font-sfpro mt-0.5">
+                        {agreements.termsAccepted ? "Yes — agreement on file" : "Not yet accepted"}
+                      </div>
+                    </div>
+                    {agreements.termsAccepted && (
+                      <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
+                    )}
+                  </div>
+                  {agreements.signature && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full gap-2 font-sfpro text-sm justify-center"
+                      onClick={() => window.open(agreements.signature, "_blank")}
+                    >
+                      <Eye className="h-4 w-4" />
+                      View E-Signature
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400 font-sfpro">No agreement on file</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Tab: Customers ──────────────────────────────────── */}
+      {activeTab === "customers" && (
+        <div>
+          {referralsLoading ? (
+            <div className="flex flex-col justify-center items-center h-48 gap-3">
+              <Loader2 className="h-6 w-6 animate-spin text-[#039994]" />
+              <p className="text-sm text-gray-500 font-sfpro">Loading customers…</p>
+            </div>
+          ) : referrals.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Users className="h-12 w-12 text-gray-200 mb-3" />
+              <p className="text-sm font-sfpro text-gray-500">No customers referred by this partner yet</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-sm font-sfpro text-gray-500">{referrals.length} customer{referrals.length !== 1 ? "s" : ""}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 text-sm font-sfpro"
+                  onClick={() => {
+                    const rows = referrals.map(ref => ({
+                      name: ref.firstName ? `${ref.firstName} ${ref.lastName || ""}`.trim() : ref.name || "N/A",
+                      email: ref.email || ref.inviteeEmail || "N/A",
+                      userType: ref.userType || ref.customerType || ref.role || "N/A",
+                      phoneNumber: ref.phoneNumber || "N/A",
+                      status: ref.status || "N/A",
+                      dateRegistered: ref.createdAt ? new Date(ref.createdAt).toLocaleDateString() : "N/A",
+                    }))
+                    const columns = [
+                      { header: "Name", key: "name", width: 24 },
+                      { header: "Email", key: "email", width: 28 },
+                      { header: "Type", key: "userType", width: 14 },
+                      { header: "Phone", key: "phoneNumber", width: 16 },
+                      { header: "Status", key: "status", width: 12 },
+                      { header: "Date Registered", key: "dateRegistered", width: 16 },
+                    ]
+                    const partnerName = (partnerDetails?.user?.firstName || partnerDetails?.name || "partner").replace(/[^a-zA-Z0-9]/g, "_")
+                    exportToExcel(rows, columns, `${partnerName}_customers_${new Date().toISOString().slice(0, 10)}`, "Customers")
+                  }}
+                >
+                  <Download className="h-4 w-4" />
+                  Export Customers
+                </Button>
+              </div>
+              <table className="w-full">
+                <thead>
+                  <tr className="border-y text-sm">
+                    <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Name</th>
+                    <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Email</th>
+                    <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Type</th>
+                    <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Phone</th>
+                    <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Status</th>
+                    <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {referrals.map((ref, idx) => {
+                    const name = ref.firstName
+                      ? `${ref.firstName} ${ref.lastName || ""}`.trim()
+                      : ref.name || "N/A";
+                    const email = ref.email || ref.inviteeEmail || "N/A";
+                    const type = ref.userType || ref.customerType || ref.role || "N/A";
+                    const phone = ref.phoneNumber || "N/A";
+                    const status = ref.status || "N/A";
+                    const isClickable = !!onCustomerSelect && (type === "COMMERCIAL" || type === "RESIDENTIAL");
+                    return (
+                      <tr
+                        key={ref.id || idx}
+                        className={`border-b transition-colors duration-100 ${isClickable ? "hover:bg-[#03999410] cursor-pointer" : "hover:bg-gray-50"}`}
+                        onClick={isClickable ? () => onCustomerSelect(ref) : undefined}
+                      >
+                        <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E] font-medium">
+                          {name}
+                          {isClickable && (
+                            <ExternalLink className="inline ml-1.5 h-3 w-3 text-[#039994] opacity-60" />
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E]">{email}</td>
+                        <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E]">{type}</td>
+                        <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E]">{phone}</td>
+                        <td className="py-3 px-4">
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-sfpro font-medium ${getReferralStatusStyle(status)}`}>
+                            {status}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E]">{formatDate(ref.createdAt)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
-      </div>
+      )}
 
-      <EditPartnerModal 
-        isOpen={showEditModal} 
-        onClose={() => setShowEditModal(false)} 
+      {/* ─── Tab: Partner Agreement ────────────────────────────── */}
+      {activeTab === "agreement" && (
+        <div className="space-y-4">
+          <div className="border border-gray-200 rounded-xl p-5">
+            <h3 className="text-sm font-semibold text-[#039994] font-sfpro mb-4">Partner Agreement</h3>
+            {agreements ? (
+              <div className="space-y-4">
+                {/* Agreement status card */}
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <div className={`h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                      agreements.termsAccepted ? "bg-green-100" : "bg-amber-50"
+                    }`}>
+                      {agreements.termsAccepted
+                        ? <CheckCircle2 className="h-4 w-4 text-green-600" />
+                        : <Clock className="h-4 w-4 text-amber-500" />
+                      }
+                    </div>
+                    <div>
+                      <div className="text-sm font-sfpro font-medium text-[#1E1E1E]">Terms & Conditions</div>
+                      <div className="text-xs text-gray-500 font-sfpro mt-0.5">
+                        {agreements.termsAccepted ? "Accepted and signed" : "Pending acceptance"}
+                      </div>
+                    </div>
+                  </div>
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-sfpro font-medium ${
+                    agreements.termsAccepted ? "bg-green-100 text-green-700" : "bg-amber-50 text-amber-700"
+                  }`}>
+                    {agreements.termsAccepted ? "Signed" : "Pending"}
+                  </span>
+                </div>
+
+                {/* E-Signature */}
+                {agreements.signature && (
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0 bg-[#03999415]">
+                        <FileText className="h-4 w-4 text-[#039994]" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-sfpro font-medium text-[#1E1E1E]">E-Signature</div>
+                        <div className="text-xs text-gray-500 font-sfpro mt-0.5">Signed agreement on file</div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => window.open(agreements.signature, "_blank")}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-[#039994] text-[#039994] hover:bg-[#039994] hover:text-white rounded-lg text-xs font-sfpro font-medium transition-colors"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      View Signature
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <FileText className="h-10 w-10 text-gray-200 mb-3" />
+                <p className="text-sm font-sfpro text-gray-500">No partner agreement on file</p>
+                <p className="text-xs font-sfpro text-gray-400 mt-1">The partner has not yet signed their agreement</p>
+              </div>
+            )}
+          </div>
+
+          {/* Note about customer documents */}
+          <div className="border border-gray-200 rounded-xl p-5">
+            <h3 className="text-sm font-semibold text-[#039994] font-sfpro mb-2">Customer Documents</h3>
+            <p className="text-xs text-gray-500 font-sfpro">
+              Partners do not upload documents themselves. Facility documents (interconnection agreements, meter photos, etc.)
+              are uploaded by their customers during registration. To view customer documents, go to the
+              <button onClick={() => setActiveTab("customers")} className="text-[#039994] font-medium hover:underline mx-1">
+                Customers tab
+              </button>
+              and select a customer.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <EditPartnerModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
         partner={partnerDetails}
       />
     </div>

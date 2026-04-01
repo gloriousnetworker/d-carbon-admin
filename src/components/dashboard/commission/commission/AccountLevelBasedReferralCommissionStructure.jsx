@@ -13,7 +13,7 @@ const AccountLevelBasedCommissionStructure = ({ onSetupStructure, refreshData })
   const fetchTiers = async () => {
     try {
       const authToken = localStorage.getItem('authToken');
-      const response = await fetch('https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-tier', {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-tier`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -45,7 +45,7 @@ const AccountLevelBasedCommissionStructure = ({ onSetupStructure, refreshData })
   const fetchSalesAgentData = async () => {
     try {
       const authToken = localStorage.getItem('authToken');
-      const response = await fetch('https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-structure/sales-agent-account-level', {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-structure/sales-agent-account-level`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

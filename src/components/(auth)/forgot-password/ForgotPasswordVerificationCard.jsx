@@ -1,6 +1,8 @@
 'use client';
+import CONFIG from '@/lib/config';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import Loader from '../../../components/loader/Loader';
 import toast, { Toaster } from 'react-hot-toast';
@@ -21,6 +23,7 @@ const styles = {
 };
 
 export default function ForgotPasswordCard() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
 
@@ -32,14 +35,14 @@ export default function ForgotPasswordCard() {
     setLoading(true);
     try {
       await axios.post(
-        'https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/auth/forgot-password',
+        `${CONFIG.API_BASE_URL}/api/auth/forgot-password`,
         { email },
         { headers: { 'Content-Type': 'application/json' } }
       );
       toast.success('An OTP verification code has been sent to your email');
       localStorage.setItem('forgotEmail', email);
       setTimeout(() => {
-        window.location.href = '/reset-password';
+        router.push('/reset-password');
       }, 1500);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Something went wrong');

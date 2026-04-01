@@ -1,4 +1,5 @@
 "use client";
+import CONFIG from '@/lib/config';
 
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,7 @@ export default function UtilityProviderRequests({ onBack }) {
       const authToken = localStorage.getItem("authToken");
       if (!authToken) throw new Error("Authentication token not found");
       
-      const response = await fetch("https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/admin/utility-provider-requests", {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/admin/utility-provider-requests`, {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${authToken}`,
@@ -50,7 +51,7 @@ export default function UtilityProviderRequests({ onBack }) {
       const authToken = localStorage.getItem("authToken");
       if (!authToken) throw new Error("Authentication token not found");
       
-      const response = await fetch(`https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/admin/utility-provider-requests/${requestId}/approve`, {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/admin/utility-provider-requests/${requestId}/approve`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${authToken}`,
@@ -78,7 +79,7 @@ export default function UtilityProviderRequests({ onBack }) {
       const authToken = localStorage.getItem("authToken");
       if (!authToken) throw new Error("Authentication token not found");
       
-      const response = await fetch(`https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/admin/utility-provider-requests/${requestId}/reject`, {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/admin/utility-provider-requests/${requestId}/reject`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${authToken}`,

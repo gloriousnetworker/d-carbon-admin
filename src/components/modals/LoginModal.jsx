@@ -1,11 +1,14 @@
 'use client';
+import CONFIG from '@/lib/config';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import Loader from '../../components/loader/Loader';
 import toast from 'react-hot-toast';
 
 export default function LoginModal({ isOpen, onClose, onLoginSuccess, redirectPath }) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -14,13 +17,10 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess, redirectPa
     setLoading(true);
     try {
       const response = await axios.post(
-        'https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/auth/login',
+        `${CONFIG.API_BASE_URL}/api/auth/login`,
         { email, password },
         { headers: { 'Content-Type': 'application/json' } }
       );
-
-      // Store the full response for debugging
-      localStorage.setItem('loginResponse', JSON.stringify(response.data));
 
       const { user, token, requiresTwoFactor, tempToken } = response.data.data;
 
@@ -30,7 +30,7 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess, redirectPa
         localStorage.setItem('tempToken', tempToken);
         localStorage.setItem('userId', user.id);
         toast.success(response.data.message || '2FA verification required');
-        window.location.href = '/login/two-factor-authentication';
+        router.push('/login/two-factor-authentication');
         return;
       }
 

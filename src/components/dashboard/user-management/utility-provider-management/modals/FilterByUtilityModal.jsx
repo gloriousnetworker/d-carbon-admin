@@ -14,9 +14,9 @@ export default function FilterByUtilityModal({ isOpen, onClose, filterValues, on
   };
   
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-lg">
-        <h2 className="text-xl font-medium mb-4">Filter Utility Providers</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-lg">
+        <h2 className="text-[18px] font-[600] font-sfpro text-[#1E1E1E] leading-tight mb-4">Filter Utility Providers</h2>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

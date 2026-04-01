@@ -1,4 +1,5 @@
 "use client";
+import CONFIG from '@/lib/config';
 import React, { useState } from "react";
 import { toast } from "react-hot-toast";
 
@@ -35,7 +36,7 @@ const ManageTiersModal = ({ onClose, onSuccess, tiers: initialTiers }) => {
     
     const authToken = localStorage.getItem("authToken");
     try {
-      const response = await fetch(`https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-tier/${id}`, {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-tier/${id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${authToken}`,
@@ -68,7 +69,7 @@ const ManageTiersModal = ({ onClose, onSuccess, tiers: initialTiers }) => {
     try {
       let response;
       if (editingTier) {
-        response = await fetch(`https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-tier/${editingTier.id}`, {
+        response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-tier/${editingTier.id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -77,7 +78,7 @@ const ManageTiersModal = ({ onClose, onSuccess, tiers: initialTiers }) => {
           body: JSON.stringify(payload),
         });
       } else {
-        response = await fetch("https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-tier", {
+        response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-tier`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -128,7 +129,7 @@ const ManageTiersModal = ({ onClose, onSuccess, tiers: initialTiers }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">

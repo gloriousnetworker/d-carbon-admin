@@ -1,120 +1,103 @@
 import React, { useState, useEffect } from "react";
 import { ChevronDown } from "lucide-react";
+import CONFIG from "../../../../lib/config";
 
 export default function CustomerVisualizationCard() {
   const [partnerType, setPartnerType] = useState("Partner");
   const [timeFrame, setTimeFrame] = useState("Yearly");
-  const [year, setYear] = useState("2025");
+  const [year, setYear] = useState(new Date().getFullYear().toString());
   const [showPartnerDropdown, setShowPartnerDropdown] = useState(false);
   const [showTimeFrameDropdown, setShowTimeFrameDropdown] = useState(false);
   const [showYearDropdown, setShowYearDropdown] = useState(false);
-  const [customerData, setCustomerData] = useState({});
+  const [partnerData, setPartnerData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const partnerOptions = ["Partner", "Master Partner TPO", "Customer/Solar Owner", "Sales Agent"];
   const timeFrameOptions = ["Yearly", "Monthly", "Quarterly"];
-  const yearOptions = ["2025", "2024", "2023"];
+  const yearOptions = Array.from({ length: 5 }, (_, i) => (new Date().getFullYear() - i).toString());
 
-  const mockData = {
-    Partner: {
-      Jan: { below500k: 50, between500kAnd2_5m: 15, above2_5m: 10 },
-      Feb: { below500k: 60, between500kAnd2_5m: 10, above2_5m: 5 },
-      Mar: { below500k: 55, between500kAnd2_5m: 15, above2_5m: 10 },
-      Apr: { below500k: 45, between500kAnd2_5m: 20, above2_5m: 15 },
-      May: { below500k: 60, between500kAnd2_5m: 10, above2_5m: 5 },
-      Jun: { below500k: 55, between500kAnd2_5m: 15, above2_5m: 10 },
-      Jul: { below500k: 45, between500kAnd2_5m: 20, above2_5m: 15 },
-      Aug: { below500k: 60, between500kAnd2_5m: 10, above2_5m: 5 },
-      Sep: { below500k: 55, between500kAnd2_5m: 15, above2_5m: 10 },
-      Oct: { below500k: 45, between500kAnd2_5m: 20, above2_5m: 15 },
-      Nov: { below500k: 60, between500kAnd2_5m: 10, above2_5m: 5 },
-      Dec: { below500k: 55, between500kAnd2_5m: 15, above2_5m: 10 }
-    },
-    "Master Partner TPO": {
-      Jan: { below500k: 40, between500kAnd2_5m: 20, above2_5m: 15 },
-      Feb: { below500k: 45, between500kAnd2_5m: 15, above2_5m: 10 },
-      Mar: { below500k: 50, between500kAnd2_5m: 10, above2_5m: 15 },
-      Apr: { below500k: 55, between500kAnd2_5m: 15, above2_5m: 10 },
-      May: { below500k: 45, between500kAnd2_5m: 20, above2_5m: 15 },
-      Jun: { below500k: 50, between500kAnd2_5m: 15, above2_5m: 10 },
-      Jul: { below500k: 55, between500kAnd2_5m: 10, above2_5m: 15 },
-      Aug: { below500k: 45, between500kAnd2_5m: 15, above2_5m: 20 },
-      Sep: { below500k: 50, between500kAnd2_5m: 15, above2_5m: 10 },
-      Oct: { below500k: 55, between500kAnd2_5m: 20, above2_5m: 5 },
-      Nov: { below500k: 45, between500kAnd2_5m: 15, above2_5m: 20 },
-      Dec: { below500k: 50, between500kAnd2_5m: 10, above2_5m: 15 }
-    },
-    "Customer/Solar Owner": {
-      Jan: { below500k: 30, between500kAnd2_5m: 25, above2_5m: 20 },
-      Feb: { below500k: 35, between500kAnd2_5m: 20, above2_5m: 15 },
-      Mar: { below500k: 40, between500kAnd2_5m: 15, above2_5m: 20 },
-      Apr: { below500k: 45, between500kAnd2_5m: 20, above2_5m: 15 },
-      May: { below500k: 35, between500kAnd2_5m: 25, above2_5m: 20 },
-      Jun: { below500k: 40, between500kAnd2_5m: 20, above2_5m: 15 },
-      Jul: { below500k: 45, between500kAnd2_5m: 15, above2_5m: 20 },
-      Aug: { below500k: 35, between500kAnd2_5m: 20, above2_5m: 25 },
-      Sep: { below500k: 40, between500kAnd2_5m: 25, above2_5m: 15 },
-      Oct: { below500k: 45, between500kAnd2_5m: 20, above2_5m: 15 },
-      Nov: { below500k: 35, between500kAnd2_5m: 15, above2_5m: 30 },
-      Dec: { below500k: 40, between500kAnd2_5m: 20, above2_5m: 20 }
-    },
-    "Sales Agent": {
-      Jan: { below500k: 60, between500kAnd2_5m: 10, above2_5m: 5 },
-      Feb: { below500k: 65, between500kAnd2_5m: 8, above2_5m: 7 },
-      Mar: { below500k: 55, between500kAnd2_5m: 12, above2_5m: 8 },
-      Apr: { below500k: 60, between500kAnd2_5m: 15, above2_5m: 5 },
-      May: { below500k: 65, between500kAnd2_5m: 10, above2_5m: 5 },
-      Jun: { below500k: 60, between500kAnd2_5m: 8, above2_5m: 12 },
-      Jul: { below500k: 55, between500kAnd2_5m: 15, above2_5m: 10 },
-      Aug: { below500k: 60, between500kAnd2_5m: 10, above2_5m: 10 },
-      Sep: { below500k: 65, between500kAnd2_5m: 12, above2_5m: 3 },
-      Oct: { below500k: 60, between500kAnd2_5m: 15, above2_5m: 5 },
-      Nov: { below500k: 55, between500kAnd2_5m: 10, above2_5m: 15 },
-      Dec: { below500k: 60, between500kAnd2_5m: 8, above2_5m: 12 }
+  useEffect(() => {
+    fetchPartnerUsers();
+  }, []);
+
+  useEffect(() => {
+    processPartnerData();
+  }, [partnerData, year, timeFrame]);
+
+  const fetchPartnerUsers = async () => {
+    setLoading(true);
+    try {
+      const authToken = localStorage.getItem('authToken');
+      let allPartnerUsers = [];
+      let currentPage = 1;
+      let hasNextPage = true;
+
+      while (hasNextPage) {
+        const response = await fetch(`${CONFIG.API_BASE_URL}/api/admin/get-all-users?page=${currentPage}&limit=100`, {
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+          const partnerUsers = result.data.users.filter(user => user.userType === 'PARTNER');
+          allPartnerUsers = [...allPartnerUsers, ...partnerUsers];
+          hasNextPage = result.data.metadata.hasNextPage;
+          currentPage++;
+        } else {
+          hasNextPage = false;
+        }
+      }
+
+      setPartnerData(allPartnerUsers);
+    } catch (err) {
+      setError(err.message || "Failed to load data");
+    } finally {
+      setLoading(false);
     }
   };
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        
-        setCustomerData(mockData[partnerType]);
-        
-        setTimeout(() => {
-          setLoading(false);
-        }, 500);
-      } catch (err) {
-        setError(err.message || "Failed to load data");
-        setLoading(false);
-      }
-    };
+  const processPartnerData = () => {
+    const monthlyData = Array(12).fill(0).map((_, index) => ({
+      month: MONTHS[index],
+      below500k: 0,
+      between500kAnd2_5m: 0,
+      above2_5m: 0
+    }));
 
-    fetchData();
-  }, [partnerType, timeFrame, year]);
+    partnerData.forEach(user => {
+      const userDate = new Date(user.date);
+      const userYear = userDate.getFullYear().toString();
+      const userMonth = userDate.getMonth();
+
+      if (userYear === year) {
+        monthlyData[userMonth].below500k += 1;
+      }
+    });
+
+    const maxValue = Math.max(...monthlyData.map(m => m.below500k));
+    const scaleFactor = maxValue > 100 ? 100 / maxValue : 1;
+
+    monthlyData.forEach(month => {
+      month.below500k = Math.round(month.below500k * scaleFactor);
+    });
+
+    setProcessedData(monthlyData);
+  };
+
+  const [processedData, setProcessedData] = useState([]);
 
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const yAxisLabels = [0, 25, 50, 75, 100];
 
-  const getMaxTotal = () => {
-    if (!customerData) return 100;
-    
-    let max = 0;
-    months.forEach(month => {
-      if (customerData[month]) {
-        const total = 
-          customerData[month].below500k + 
-          customerData[month].between500kAnd2_5m + 
-          customerData[month].above2_5m;
-        if (total > max) max = total;
-      }
-    });
-    
-    return max > 100 ? max : 100;
+  const getMonthlyValue = (month) => {
+    const monthData = processedData.find(d => d.month === month);
+    return monthData ? monthData.below500k : 0;
   };
-
-  const maxTotal = getMaxTotal();
 
   return (
     <div className="bg-white rounded-lg shadow-md p-4 flex flex-col w-full">
@@ -208,84 +191,100 @@ export default function CustomerVisualizationCard() {
 
       <hr className="border-gray-300 w-full mb-6" />
 
-      <div className="flex">
-        <div className="flex flex-col justify-between h-64 pr-2 text-sm text-gray-600">
-          {yAxisLabels.reverse().map((label) => (
-            <div key={label} className="text-right">
-              {label}
-            </div>
-          ))}
+      {loading ? (
+        <div className="flex items-center justify-center h-64">
+          <p className="text-gray-500 animate-pulse text-xs">Loading partner data...</p>
         </div>
-
-        <div className="flex-1">
-          <div className="flex h-64 justify-between">
-            {months.map((month) => (
-              <div key={month} className="flex flex-col items-center justify-end flex-1">
-                <div 
-                  className="w-14 rounded-lg overflow-hidden flex flex-col-reverse"
-                  style={{ 
-                    backgroundColor: "#EEEEEE",
-                    height: "100%"
-                  }}
-                >
-                  <div 
-                    className="w-full" 
-                    style={{ 
-                      height: `50%`, 
-                      backgroundColor: "#FFB200",
-                      borderBottomLeftRadius: "6px",
-                      borderBottomRightRadius: "6px"
-                    }}
-                  />
-                  
-                  <div 
-                    className="w-full" 
-                    style={{ 
-                      height: `25%`, 
-                      backgroundColor: "#056C69" 
-                    }}
-                  />
-                  
-                  <div 
-                    className="w-full" 
-                    style={{ 
-                      height: `25%`, 
-                      backgroundColor: "#00B4AE",
-                      borderTopLeftRadius: "6px",
-                      borderTopRightRadius: "6px"
-                    }}
-                  />
+      ) : (
+        <>
+          <div className="flex">
+            <div className="flex flex-col justify-between h-64 pr-2 text-sm text-gray-600">
+              {yAxisLabels.reverse().map((label) => (
+                <div key={label} className="text-right">
+                  {label}
                 </div>
+              ))}
+            </div>
+
+            <div className="flex-1">
+              <div className="flex h-64 justify-between">
+                {months.map((month) => {
+                  const value = getMonthlyValue(month);
+                  return (
+                    <div key={month} className="flex flex-col items-center justify-end flex-1">
+                      <div 
+                        className="w-14 rounded-lg overflow-hidden flex flex-col-reverse"
+                        style={{ 
+                          backgroundColor: "#EEEEEE",
+                          height: "100%"
+                        }}
+                      >
+                        <div 
+                          className="w-full" 
+                          style={{ 
+                            height: `${value}%`, 
+                            backgroundColor: "#FFB200",
+                            borderBottomLeftRadius: "6px",
+                            borderBottomRightRadius: "6px"
+                          }}
+                        />
+                        
+                        <div 
+                          className="w-full" 
+                          style={{ 
+                            height: `0%`, 
+                            backgroundColor: "#056C69" 
+                          }}
+                        />
+                        
+                        <div 
+                          className="w-full" 
+                          style={{ 
+                            height: `0%`, 
+                            backgroundColor: "#00B4AE",
+                            borderTopLeftRadius: "6px",
+                            borderTopRightRadius: "6px"
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            ))}
+
+              <div className="flex justify-between mt-2 text-sm text-gray-600">
+                {months.map((month) => (
+                  <div key={month} className="text-center px-2">
+                    {month}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
-          <div className="flex justify-between mt-2 text-sm text-gray-600">
-            {months.map((month) => (
-              <div key={month} className="text-center px-2">
-                {month}
-              </div>
-            ))}
+          <hr className="border-gray-300 w-full my-4" />
+
+          <div className="flex justify-end space-x-4 text-sm">
+            <div className="flex items-center">
+              <div className="h-3 w-3 rounded-full mr-2" style={{ backgroundColor: "#FFB200" }}></div>
+              <span>Partners ({partnerData.length})</span>
+            </div>
+            <div className="flex items-center">
+              <div className="h-3 w-3 rounded-full mr-2" style={{ backgroundColor: "#056C69" }}></div>
+              <span>$500k-$2.5M</span>
+            </div>
+            <div className="flex items-center">
+              <div className="h-3 w-3 rounded-full mr-2" style={{ backgroundColor: "#00B4AE" }}></div>
+              <span>&gt;$2.5M</span>
+            </div>
           </div>
-        </div>
-      </div>
-
-      <hr className="border-gray-300 w-full my-4" />
-
-      <div className="flex justify-end space-x-4 text-sm">
-        <div className="flex items-center">
-          <div className="h-3 w-3 rounded-full mr-2" style={{ backgroundColor: "#FFB200" }}></div>
-          <span>&lt;$500k</span>
-        </div>
-        <div className="flex items-center">
-          <div className="h-3 w-3 rounded-full mr-2" style={{ backgroundColor: "#056C69" }}></div>
-          <span>$500k-$2.5M</span>
-        </div>
-        <div className="flex items-center">
-          <div className="h-3 w-3 rounded-full mr-2" style={{ backgroundColor: "#00B4AE" }}></div>
-          <span>&gt;$2.5M</span>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }
+
+const MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];

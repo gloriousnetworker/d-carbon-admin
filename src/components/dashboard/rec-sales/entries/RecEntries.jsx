@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
-import { Filter, ChevronDown, ChevronLeft, ChevronRight, CalendarIcon, X, Upload } from "lucide-react"
+import { Filter, ChevronDown, ChevronLeft, ChevronRight, CalendarIcon, X, Upload, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import BuyerManagement from "./BuyerManagement"
@@ -44,8 +44,8 @@ function Modal({ isOpen, onClose, children }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="fixed inset-0 bg-black bg-opacity-50" onClick={onClose}></div>
-      <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="fixed inset-0 bg-black/50" onClick={onClose}></div>
+      <div className="relative z-10 bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         {children}
       </div>
     </div>
@@ -198,6 +198,7 @@ export default function RecEntries() {
     party: '',
     vintageDate: ''
   })
+  const [showFilters, setShowFilters] = useState(false)
   const [loading, setLoading] = useState(true)
   const [buyersLoading, setBuyersLoading] = useState(true)
   const [buyerNames, setBuyerNames] = useState({})
@@ -252,7 +253,7 @@ export default function RecEntries() {
   const fetchRecEntries = async (page = 1) => {
     try {
       const token = localStorage.getItem('authToken')
-      const response = await fetch(`${API_URL}/api/rec`, {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/rec`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -327,19 +328,18 @@ export default function RecEntries() {
         }
       })
       if (!response.ok) {
-        throw new Error('Network response was not ok')
+        setCurrentPrice(0)
+        return
       }
       const data = await response.json()
       if (data.status === 'success') {
         setCurrentPrice(data.data?.price || 0)
       } else {
         setCurrentPrice(0)
-        toast.error(data.message || 'Failed to fetch current price')
       }
     } catch (error) {
       console.error('Fetch current price error:', error)
       setCurrentPrice(0)
-      toast.error('Failed to fetch current price')
     }
   }
 
@@ -437,8 +437,9 @@ export default function RecEntries() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#039994]"></div>
+      <div className="flex flex-col items-center justify-center py-16 border border-gray-200 rounded-xl">
+        <Loader2 className="h-8 w-8 animate-spin text-[#039994]" />
+        <span className="text-sm text-gray-500 font-sfpro mt-3">Loading REC entries...</span>
       </div>
     )
   }
@@ -450,8 +451,8 @@ export default function RecEntries() {
           <div className="flex justify-between items-center">
             <CustomDropdownMenu
               trigger={
-                <div className="flex items-center text-xl font-medium text-[#039994] cursor-pointer focus:outline-none">
-                  REC Entries <ChevronDown className="ml-2 h-5 w-5" />
+                <div className="flex items-center text-sm font-semibold text-[#039994] font-sfpro cursor-pointer focus:outline-none">
+                  REC Entries <ChevronDown className="ml-2 h-4 w-4" />
                 </div>
               }
             >
@@ -463,79 +464,84 @@ export default function RecEntries() {
               </div>
             </CustomDropdownMenu>
             <div className="flex space-x-2">
-              <Button variant="outline" className="flex items-center bg-white">
-                <Filter className="h-4 w-4 mr-2" /> Filter by
-              </Button>
-              <Button 
-                className="bg-[#039994] hover:bg-[#028a85] text-white"
+              <button
+                className={`flex items-center gap-2 px-3 py-2 text-sm border border-[#039994] rounded-md font-sfpro transition-colors ${showFilters ? "bg-[#039994] text-white" : "text-[#039994] hover:bg-[#039994] hover:text-white"}`}
+                onClick={() => setShowFilters(!showFilters)}
+              >
+                <Filter className="h-4 w-4" /> Filter by
+              </button>
+              <button
+                className="px-4 py-2 bg-[#039994] hover:bg-[#02857f] text-white text-sm rounded-md font-sfpro transition-colors"
                 onClick={() => setIsNewRecModalOpen(true)}
               >
                 New REC Sale
-              </Button>
+              </button>
             </div>
           </div>
           
-          <div className="bg-white rounded-md shadow">
-            <div className="p-4 border-b">
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className={styles.labelClass}>Type</label>
-                  <Input 
-                    placeholder="Filter by status" 
-                    value={filters.type}
-                    onChange={(e) => {
-                      setFilters({...filters, type: e.target.value})
-                    }}
-                    className={styles.inputClass}
-                  />
-                </div>
-                <div>
-                  <label className={styles.labelClass}>Party</label>
-                  <Input 
-                    placeholder="Filter by buyer" 
-                    value={filters.party}
-                    onChange={(e) => {
-                      setFilters({...filters, party: e.target.value})
-                    }}
-                    className={styles.inputClass}
-                  />
-                </div>
-                <div>
-                  <label className={styles.labelClass}>Vintage Date</label>
-                  <Input 
-                    placeholder="Filter by vintage date (YYYY-MM-DD)" 
-                    value={filters.vintageDate}
-                    onChange={(e) => {
-                      setFilters({...filters, vintageDate: e.target.value})
-                    }}
-                    className={styles.inputClass}
-                  />
+          <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
+            {showFilters && (
+              <div className="p-4 border-b">
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className={styles.labelClass}>Type</label>
+                    <Input
+                      placeholder="Filter by status"
+                      value={filters.type}
+                      onChange={(e) => {
+                        setFilters({...filters, type: e.target.value})
+                      }}
+                      className={styles.inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className={styles.labelClass}>Party</label>
+                    <Input
+                      placeholder="Filter by buyer"
+                      value={filters.party}
+                      onChange={(e) => {
+                        setFilters({...filters, party: e.target.value})
+                      }}
+                      className={styles.inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className={styles.labelClass}>Vintage Date</label>
+                    <Input
+                      placeholder="Filter by vintage date (YYYY-MM-DD)"
+                      value={filters.vintageDate}
+                      onChange={(e) => {
+                        setFilters({...filters, vintageDate: e.target.value})
+                      }}
+                      className={styles.inputClass}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
             
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b">
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Type</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Transfer Date</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Vintage</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">RECs Sold</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">CEC</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Price per REC</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Total Price</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Buyer</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Balance Before</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Balance After</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">% Sold</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Status</th>
+                  <tr className="border-y bg-gray-50/60">
+                    <th className="px-4 py-3 text-left text-xs font-medium font-sfpro text-[#1E1E1E]">Type</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium font-sfpro text-[#1E1E1E]">Transfer Date</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium font-sfpro text-[#1E1E1E]">Vintage</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium font-sfpro text-[#1E1E1E]">RECs Sold</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium font-sfpro text-[#1E1E1E]">CEC</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium font-sfpro text-[#1E1E1E]">Price per REC</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium font-sfpro text-[#1E1E1E]">Total Price</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium font-sfpro text-[#1E1E1E]">Buyer</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium font-sfpro text-[#1E1E1E]">Balance Before</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium font-sfpro text-[#1E1E1E]">Balance After</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium font-sfpro text-[#1E1E1E]">% Sold</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium font-sfpro text-[#1E1E1E]">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredEntries.length > 0 ? (
                     filteredEntries.map((entry) => (
-                      <tr key={entry.id} className="border-b hover:bg-gray-50">
+                      <tr key={entry.id} className="border-t border-gray-100 hover:bg-gray-50 transition-colors duration-100">
                         <td className="px-4 py-3 text-sm">SALE</td>
                         <td className="px-4 py-3 text-sm">{entry.transferDate ? format(new Date(entry.transferDate), 'dd-MM-yyyy') : 'N/A'}</td>
                         <td className="px-4 py-3 text-sm">{entry.vintageDate ? format(new Date(entry.vintageDate), 'dd-MM-yyyy') : 'N/A'}</td>
@@ -548,7 +554,7 @@ export default function RecEntries() {
                         <td className="px-4 py-3 text-sm">{entry.recBalanceAfterSales?.toLocaleString() || '0'}</td>
                         <td className="px-4 py-3 text-sm">{entry.percentageSold?.toFixed(2) || '0'}%</td>
                         <td className="px-4 py-3 text-sm">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${entry.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium font-sfpro ${entry.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
                             {entry.status || 'PENDING'}
                           </span>
                         </td>
@@ -571,26 +577,24 @@ export default function RecEntries() {
                   Showing {((metadata.page - 1) * metadata.limit) + 1} to {Math.min(metadata.page * metadata.limit, metadata.total)} of {metadata.total} entries
                 </div>
                 <div className="flex items-center space-x-2">
-                  <button 
-                    className="p-2 rounded-md hover:bg-gray-100 text-gray-500 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  <button
+                    className="flex items-center px-3 py-1 text-sm border border-[#039994] text-[#039994] rounded-md hover:bg-[#039994] hover:text-white font-sfpro disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                     onClick={() => handlePageChange(metadata.page - 1)}
                     disabled={!metadata.hasPrevPage}
                   >
-                    <ChevronLeft className="h-4 w-4" />
-                    <span className="ml-1">Previous</span>
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    Previous
                   </button>
-                  <div className="flex items-center">
-                    <span className="px-3 py-1 text-sm">{metadata.page}</span>
-                    <span className="text-gray-500 text-sm">of</span>
-                    <span className="px-3 py-1 text-sm">{metadata.totalPages}</span>
-                  </div>
-                  <button 
-                    className="p-2 rounded-md hover:bg-gray-100 text-[#039994] flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  <span className="text-sm text-gray-600 font-sfpro px-1">
+                    {metadata.page} of {metadata.totalPages}
+                  </span>
+                  <button
+                    className="flex items-center px-3 py-1 text-sm border border-[#039994] text-[#039994] rounded-md hover:bg-[#039994] hover:text-white font-sfpro disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                     onClick={() => handlePageChange(metadata.page + 1)}
                     disabled={!metadata.hasNextPage}
                   >
-                    <span className="mr-1">Next</span>
-                    <ChevronRight className="h-4 w-4" />
+                    Next
+                    <ChevronRight className="h-4 w-4 ml-1" />
                   </button>
                 </div>
               </div>
@@ -653,7 +657,7 @@ function NewRecSaleModal({
     <Modal isOpen={isOpen} onClose={onClose}>
       <div className="p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className={`${styles.pageTitle} !mb-0 !text-[24px]`}>New REC Sale</h2>
+          <h2 className="text-sm font-semibold text-[#1E1E1E] font-sfpro">New REC Sale</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 focus:outline-none"
@@ -749,7 +753,7 @@ function NewRecSaleModal({
             </label>
             {buyersLoading ? (
               <div className="flex justify-center py-4">
-                <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-[#039994]"></div>
+                <Loader2 className="h-6 w-6 animate-spin text-[#039994]" />
               </div>
             ) : (
               <CustomSelect

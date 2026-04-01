@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import Loader from '../../../components/loader/Loader';
 import toast from 'react-hot-toast';
@@ -8,6 +9,7 @@ import toast from 'react-hot-toast';
 import CONFIG from '../../../../lib/config';
 
 export default function AdminLoginCard() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,7 +37,7 @@ export default function AdminLoginCard() {
     setError('');
     
     try {
-      // REPLACED: const baseUrl = 'https://naijatrips-app-dcarbon-server.cafyit.easypanel.host';
+      // REPLACED: const baseUrl = `${CONFIG.API_BASE_URL}`;
       // REPLACED: const url = `${baseUrl}/api/auth/admin/login`;
       // NEW - Using config
       const url = `${CONFIG.API_BASE_URL}/api/auth/admin/login`;
@@ -60,8 +62,6 @@ export default function AdminLoginCard() {
         }
       );
 
-      localStorage.setItem('loginResponse', JSON.stringify(response.data));
-
       const { status, message, data } = response.data;
       
       if (status !== 'success') {
@@ -77,12 +77,15 @@ export default function AdminLoginCard() {
       localStorage.setItem('authToken', token);
       localStorage.setItem('userId', admin.id);
       localStorage.setItem('userFirstName', admin.firstName);
+      localStorage.setItem('userLastName', admin.lastName || '');
+      localStorage.setItem('userEmail', admin.email || '');
+      localStorage.setItem('userRole', admin.role || '');
       if (admin.profilePicture) {
         localStorage.setItem('userProfilePicture', admin.profilePicture);
       }
       
       toast.success('Admin login successful');
-      window.location.href = '/admin-dashboard';
+      router.push('/admin-dashboard');
       
     } catch (err) {
       console.error('Login error:', err);
@@ -238,16 +241,6 @@ export default function AdminLoginCard() {
         >
           Sign in
         </button>
-
-        <p className="mt-6 text-center font-sfpro font-[400] text-[14px] leading-[100%] tracking-[-0.05em] text-[#FFFFFF]">
-          Don't have an account?{' '}
-          <a
-            href="/register"
-            className="font-sfpro font-[600] text-[14px] leading-[100%] tracking-[-0.05em] text-[#039994] no-underline hover:text-[#02857f]"
-          >
-            Create account
-          </a>
-        </p>
 
         <hr className="border-t-2 border-gray-200 my-4 opacity-70" />
 

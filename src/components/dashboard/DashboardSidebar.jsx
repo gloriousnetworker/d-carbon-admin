@@ -12,7 +12,8 @@ import {
   FiHeadphones,
   FiUser,
   FiLogOut,
-  FiMessageSquare
+  FiMessageSquare,
+  FiGitBranch,
 } from 'react-icons/fi';
 import Image from 'next/image';
 import { useProfile } from '@/components/contexts/ProfileContext';
@@ -121,6 +122,13 @@ const DashboardSidebar = ({
           <span>User Management</span>
         </button>
         <button
+          onClick={() => onSectionChange('registrationPipeline')}
+          className={`${menuItemBase} ${isActive('registrationPipeline') ? menuItemActive : menuItemInactive}`}
+        >
+          <FiGitBranch className={iconBase} color={isActive('registrationPipeline') ? '#FFFFFF' : '#039994'} />
+          <span>Registration Pipeline</span>
+        </button>
+        <button
           onClick={() => onSectionChange('recSalesManagement')}
           className={`${menuItemBase} ${isActive('recSalesManagement') ? menuItemActive : menuItemInactive}`}
         >
@@ -176,6 +184,20 @@ const DashboardSidebar = ({
         >
           <FiFileText className={iconBase} color={isActive('agreementManagement') ? '#FFFFFF' : '#039994'} />
           <span>Agreement Management</span>
+        </button>
+        <button
+          onClick={() => onSectionChange('documentConfiguration')}
+          className={`${menuItemBase} ${isActive('documentConfiguration') ? menuItemActive : menuItemInactive}`}
+        >
+          <FiFileText className={iconBase} color={isActive('documentConfiguration') ? '#FFFFFF' : '#039994'} />
+          <span>Document Configuration</span>
+        </button>
+        <button
+          onClick={() => onSectionChange('systemJobs')}
+          className={`${menuItemBase} ${isActive('systemJobs') ? menuItemActive : menuItemInactive}`}
+        >
+          <FiLayers className={iconBase} color={isActive('systemJobs') ? '#FFFFFF' : '#039994'} />
+          <span>System Jobs</span>
         </button>
       </nav>
 

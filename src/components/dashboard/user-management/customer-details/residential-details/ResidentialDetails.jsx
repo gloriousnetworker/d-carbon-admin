@@ -1,13 +1,17 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ChevronLeft, Upload, Loader2, CheckCircle } from "lucide-react";
+import { ChevronLeft, Upload, Loader2, CheckCircle, Package, FileSpreadsheet, History } from "lucide-react";
+import { exportDocumentPackage, downloadDocumentsIndividually } from "@/lib/documentExport";
+import { exportWregisCoverSheet, exportPreApprovalWorksheet } from "@/lib/exportUtils";
 import { Button } from "@/components/ui/button";
 import { toast } from "react-hot-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import DocumentsModal from "./DocumentsModal";
+import FacilityRECHistory from "../FacilityRECHistory";
 import CONFIG from "../../../../../../lib/config";
 
 export default function ResidentialDetails({ customer, onBack }) {
+  const [customerDetails, setCustomerDetails] = useState(customer);
   const [facilities, setFacilities] = useState([]);
   const [facilitiesLoading, setFacilitiesLoading] = useState(false);
   const [facilitiesError, setFacilitiesError] = useState(null);
@@ -18,21 +22,52 @@ export default function ResidentialDetails({ customer, onBack }) {
   const [wregisForm, setWregisForm] = useState({
     wregisEligibilityDate: "",
     wregisId: "",
-    rpsId: ""
+    rpsId: "",
+    eiaPlantId: "",
+    commercialOperationDate: "",
+    systemCapacity: "",
+    energyStorageCapacity: "",
+    hasOnSiteLoad: false,
+    hasNetMetering: false,
+    interconnectedUtilityId: "",
   });
   const [updatingWregis, setUpdatingWregis] = useState(false);
   const [uploadingAck, setUploadingAck] = useState(null);
+  const [downloadingDocs, setDownloadingDocs] = useState(null);
   const [currentFacility, setCurrentFacility] = useState(null);
   const [verifyModalOpen, setVerifyModalOpen] = useState(false);
   const [ackModalOpen, setAckModalOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const fileInputRef = useRef(null);
+  // FIX-12: selected facility for REC generation history
+  const [recHistoryFacility, setRecHistoryFacility] = useState(null);
 
   useEffect(() => {
     if (customer?.id) {
       fetchFacilities();
+      fetchCustomerDetails();
     }
   }, [customer?.id]);
+
+  const fetchCustomerDetails = async () => {
+    try {
+      const authToken = localStorage.getItem("authToken");
+      const email = customer?.email;
+      if (!authToken || !email) return;
+      const res = await fetch(
+        `${CONFIG.API_BASE_URL}/api/admin/customer/${encodeURIComponent(email.trim())}`,
+        { headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" } }
+      );
+      if (res.ok) {
+        const json = await res.json();
+        if (json.status === "success" && json.data) {
+          setCustomerDetails(prev => ({ ...prev, ...json.data }));
+        }
+      }
+    } catch {
+      // Non-critical — fall back to the passed customer prop
+    }
+  };
 
   const fetchFacilities = async () => {
     setFacilitiesLoading(true);
@@ -88,14 +123,22 @@ export default function ResidentialDetails({ customer, onBack }) {
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
       const data = await response.json();
-      if (data.status === 'success' && data.data) {
-        setFacilityDocuments(prev => ({
-          ...prev,
-          [facilityId]: {
-            ...data.data,
-            solarInstallationContractStatus: data.data.solarInstallationContractStatus || (data.data.solarInstallationContractUrl ? "SUBMITTED" : "REQUIRED")
-          }
-        }));
+      if (data.status === 'success') {
+        if (data.data) {
+          setFacilityDocuments(prev => ({
+            ...prev,
+            [facilityId]: {
+              ...data.data,
+              solarInstallationContractStatus: data.data.solarInstallationContractStatus || (data.data.solarInstallationContractUrl ? "SUBMITTED" : "REQUIRED")
+            }
+          }));
+        } else {
+          // No documents uploaded yet — valid empty state
+          setFacilityDocuments(prev => ({
+            ...prev,
+            [facilityId]: null
+          }));
+        }
       } else {
         throw new Error(data.message || 'Failed to fetch facility documents');
       }
@@ -169,7 +212,14 @@ export default function ResidentialDetails({ customer, onBack }) {
     setWregisForm({
       wregisEligibilityDate: facility.wregisEligibilityDate ? facility.wregisEligibilityDate.split('T')[0] : "",
       wregisId: facility.wregisId || "",
-      rpsId: facility.rpsId || ""
+      rpsId: facility.rpsId || "",
+      eiaPlantId: facility.eiaPlantId || "",
+      commercialOperationDate: facility.commercialOperationDate ? facility.commercialOperationDate.split('T')[0] : "",
+      systemCapacity: facility.systemCapacity ?? "",
+      energyStorageCapacity: facility.energyStorageCapacity ?? "",
+      hasOnSiteLoad: facility.hasOnSiteLoad ?? false,
+      hasNetMetering: facility.hasNetMetering ?? false,
+      interconnectedUtilityId: facility.interconnectedUtilityId || "",
     });
     setWregisModalOpen(true);
   };
@@ -178,9 +228,9 @@ export default function ResidentialDetails({ customer, onBack }) {
     setWregisModalOpen(false);
     setCurrentFacility(null);
     setWregisForm({
-      wregisEligibilityDate: "",
-      wregisId: "",
-      rpsId: ""
+      wregisEligibilityDate: "", wregisId: "", rpsId: "", eiaPlantId: "",
+      commercialOperationDate: "", systemCapacity: "", energyStorageCapacity: "",
+      hasOnSiteLoad: false, hasNetMetering: false, interconnectedUtilityId: "",
     });
   };
 
@@ -250,12 +300,19 @@ export default function ResidentialDetails({ customer, onBack }) {
       const authToken = localStorage.getItem('authToken');
       if (!authToken) throw new Error('No authentication token found');
 
-      const endpoint = `${CONFIG.API_BASE_URL}/api/admin/update-residential-wregis-info/${currentFacility.id}`;
+      const endpoint = `${CONFIG.API_BASE_URL}/api/admin/residential-facility/${currentFacility.id}/wregis-details`;
 
       const body = {
         wregisEligibilityDate: wregisForm.wregisEligibilityDate ? `${wregisForm.wregisEligibilityDate}T00:00:00Z` : null,
         wregisId: wregisForm.wregisId || null,
-        rpsId: wregisForm.rpsId || null
+        rpsId: wregisForm.rpsId || null,
+        eiaPlantId: wregisForm.eiaPlantId || null,
+        commercialOperationDate: wregisForm.commercialOperationDate ? `${wregisForm.commercialOperationDate}T00:00:00Z` : null,
+        systemCapacity: wregisForm.systemCapacity !== "" ? parseFloat(wregisForm.systemCapacity) : null,
+        energyStorageCapacity: wregisForm.energyStorageCapacity !== "" ? parseFloat(wregisForm.energyStorageCapacity) : null,
+        hasOnSiteLoad: wregisForm.hasOnSiteLoad,
+        hasNetMetering: wregisForm.hasNetMetering,
+        interconnectedUtilityId: wregisForm.interconnectedUtilityId || null,
       };
 
       const response = await fetch(endpoint, {
@@ -331,9 +388,70 @@ export default function ResidentialDetails({ customer, onBack }) {
     }
   };
 
+  const handleDownloadDocPackage = async (facility) => {
+    setDownloadingDocs(facility.id);
+    try {
+      // Ensure docs are loaded
+      let docs = facilityDocuments[facility.id];
+      if (!docs) {
+        await fetchFacilityDocuments(facility.id);
+        // Wait briefly for state update
+        await new Promise((r) => setTimeout(r, 300));
+        docs = facilityDocuments[facility.id] || {};
+      }
+
+      const DOCUMENT_TYPES = [
+        { name: "WREGIS Assignment", urlField: "wregisAssignmentUrl", statusField: "wregisAssignmentStatus" },
+        { name: "Finance Agreement", urlField: "financeAgreementUrl", statusField: "financeAgreementStatus" },
+        { name: "Solar Installation Contract", urlField: "solarInstallationContractUrl", statusField: "solarInstallationStatus" },
+        { name: "Utility PTO Letter", urlField: "ptoLetterUrl", statusField: "ptoLetterStatus" },
+        { name: "Installation Site Plan", urlField: "sitePlanUrl", statusField: "sitePlanStatus" },
+        { name: "Panel Inverter Datasheet", urlField: "panelInverterDatasheetUrl", statusField: "panelInverterDatasheetStatus" },
+        { name: "Revenue Meter Datasheet", urlField: "revenueMeterDataUrl", statusField: "revenueMeterDataStatus" },
+        { name: "Utility Meter Photo", urlField: "utilityMeterPhotoUrl", statusField: "utilityMeterPhotoStatus" },
+        { name: "Single Line Diagram", urlField: "singleLineDiagramUrl", statusField: "singleLineDiagramStatus" },
+        { name: "Assignment of Registration Right", urlField: "assignmentOfRegistrationRightUrl", statusField: "assignmentOfRegistrationRightStatus" },
+        { name: "Acknowledgement of Station Service", urlField: "acknowledgementOfStationServiceUrl", statusField: "acknowledgementOfStationServiceStatus" },
+      ];
+
+      const documents = DOCUMENT_TYPES.map((dt) => ({
+        name: dt.name,
+        url: docs[dt.urlField],
+        status: docs[dt.statusField] || (docs[dt.urlField] ? "SUBMITTED" : "REQUIRED"),
+      }));
+
+      const result = await exportDocumentPackage(documents, {
+        facilityName: facility.facilityName,
+        address: facility.address,
+        id: facility.id,
+        ownerName: customer?.name,
+      });
+
+      if (result.corsFallback) {
+        const opened = downloadDocumentsIndividually(documents);
+        toast.success(`Opening ${opened} document(s) in new tabs for individual download.`);
+      } else if (result.failed > 0) {
+        toast.error(`Package downloaded. ${result.failed} document(s) failed — see placeholder files in ZIP.`);
+      } else {
+        toast.success(`Document package downloaded (${result.success} files)`);
+      }
+    } catch (err) {
+      toast.error(`Download failed: ${err.message}`);
+    } finally {
+      setDownloadingDocs(null);
+    }
+  };
+
   const FacilityCard = ({ facility }) => {
     const hasAckDocument = facilityDocuments[facility.id]?.acknowledgementOfStationServiceUrl;
-    
+    const docs = facilityDocuments[facility.id] || {};
+    const docCount = [
+      docs.wregisAssignmentUrl, docs.financeAgreementUrl, docs.solarInstallationContractUrl,
+      docs.interconnectionAgreementUrl, docs.ptoLetterUrl, docs.singleLineDiagramUrl,
+      docs.sitePlanUrl, docs.panelInverterDatasheetUrl, docs.revenueMeterDataUrl,
+      docs.utilityMeterPhotoUrl, docs.assignmentOfRegistrationRightUrl, docs.acknowledgementOfStationServiceUrl,
+    ].filter(Boolean).length;
+
     return (
       <div 
         className="border border-gray-200 rounded-lg p-6 mb-4 bg-white hover:bg-gray-50 cursor-pointer transition-colors"
@@ -359,10 +477,10 @@ export default function ResidentialDetails({ customer, onBack }) {
           </div>
         </div>
 
-        <div className="mt-4 flex gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="sm"
             onClick={(e) => {
               e.stopPropagation();
               openWregisModal(facility);
@@ -371,10 +489,10 @@ export default function ResidentialDetails({ customer, onBack }) {
           >
             Update WREGIS Information
           </Button>
-          
-          <Button 
-            variant="outline" 
-            size="sm" 
+
+          <Button
+            variant="outline"
+            size="sm"
             onClick={(e) => {
               e.stopPropagation();
               openAckModal(facility);
@@ -392,6 +510,62 @@ export default function ResidentialDetails({ customer, onBack }) {
                 Upload Ack of Station Service
               </>
             )}
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (docCount === 0) {
+                toast.error("No documents uploaded yet for this facility.");
+                return;
+              }
+              handleDownloadDocPackage(facility);
+            }}
+            disabled={downloadingDocs === facility.id}
+            className="text-[#039994] border-[#039994] hover:bg-[#03999410]"
+          >
+            {downloadingDocs === facility.id ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                Downloading...
+              </>
+            ) : (
+              <>
+                <Package className="h-4 w-4 mr-1" />
+                Download Docs ({docCount}/12)
+              </>
+            )}
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              exportWregisCoverSheet(facility, customer, facility.documentation || facility.residentialDocumentation, "residential");
+            }}
+            className="text-[#039994] border-[#039994] hover:bg-[#03999410]"
+          >
+            <FileSpreadsheet className="h-4 w-4 mr-1" />
+            WREGIS Cover Sheet
+          </Button>
+
+          {/* FIX-12: Toggle REC generation history for this facility */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              setRecHistoryFacility(prev =>
+                prev?.id === facility.id ? null : { id: facility.id, name: facility.facilityName }
+              );
+            }}
+            className={`${recHistoryFacility?.id === facility.id ? "bg-[#039994] text-white border-[#039994]" : "text-[#039994] border-[#039994] hover:bg-[#03999410]"}`}
+          >
+            <History className="h-4 w-4 mr-1" />
+            REC History
           </Button>
         </div>
       </div>
@@ -445,42 +619,113 @@ export default function ResidentialDetails({ customer, onBack }) {
       </Dialog>
 
       <Dialog open={wregisModalOpen} onOpenChange={closeWregisModal}>
-        <DialogContent>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Update WREGIS Information</DialogTitle>
+            <DialogTitle>WREGIS & Regulator Details</DialogTitle>
             <DialogDescription>
-              Update WREGIS details for {currentFacility?.facilityName}
+              {currentFacility?.facilityName}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div>
-              <label className="block mb-2 font-sfpro text-[14px] leading-[100%] tracking-[-0.05em] font-[400] text-[#1E1E1E]">WREGIS Eligibility Date</label>
-              <Input
-                type="date"
-                value={wregisForm.wregisEligibilityDate}
-                onChange={(e) => setWregisForm({...wregisForm, wregisEligibilityDate: e.target.value})}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro text-[14px] leading-[100%] tracking-[-0.05em] font-[400] text-[#1E1E1E]"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 font-sfpro mb-1">WREGIS ID</label>
+                <Input
+                  type="text"
+                  value={wregisForm.wregisId}
+                  onChange={(e) => setWregisForm({...wregisForm, wregisId: e.target.value})}
+                  placeholder="—"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 font-sfpro mb-1">RPS ID</label>
+                <Input
+                  type="text"
+                  value={wregisForm.rpsId}
+                  onChange={(e) => setWregisForm({...wregisForm, rpsId: e.target.value})}
+                  placeholder="—"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block mb-2 font-sfpro text-[14px] leading-[100%] tracking-[-0.05em] font-[400] text-[#1E1E1E]">WREGIS ID</label>
-              <Input
-                type="text"
-                value={wregisForm.wregisId}
-                onChange={(e) => setWregisForm({...wregisForm, wregisId: e.target.value})}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro text-[14px] leading-[100%] tracking-[-0.05em] font-[400] text-[#1E1E1E]"
-                placeholder="Enter WREGIS ID"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 font-sfpro mb-1">WREGIS Eligibility Date</label>
+                <Input
+                  type="date"
+                  value={wregisForm.wregisEligibilityDate}
+                  onChange={(e) => setWregisForm({...wregisForm, wregisEligibilityDate: e.target.value})}
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 font-sfpro mb-1">Commercial Operation Date</label>
+                <Input
+                  type="date"
+                  value={wregisForm.commercialOperationDate}
+                  onChange={(e) => setWregisForm({...wregisForm, commercialOperationDate: e.target.value})}
+                />
+              </div>
             </div>
-            <div>
-              <label className="block mb-2 font-sfpro text-[14px] leading-[100%] tracking-[-0.05em] font-[400] text-[#1E1E1E]">RPS ID</label>
-              <Input
-                type="text"
-                value={wregisForm.rpsId}
-                onChange={(e) => setWregisForm({...wregisForm, rpsId: e.target.value})}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro text-[14px] leading-[100%] tracking-[-0.05em] font-[400] text-[#1E1E1E]"
-                placeholder="Enter RPS ID"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 font-sfpro mb-1">System Capacity (kW AC)</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={wregisForm.systemCapacity}
+                  onChange={(e) => setWregisForm({...wregisForm, systemCapacity: e.target.value})}
+                  placeholder="0.0"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 font-sfpro mb-1">Energy Storage (kW)</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={wregisForm.energyStorageCapacity}
+                  onChange={(e) => setWregisForm({...wregisForm, energyStorageCapacity: e.target.value})}
+                  placeholder="0.0"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 font-sfpro mb-1">EIA Plant ID</label>
+                <Input
+                  type="text"
+                  value={wregisForm.eiaPlantId}
+                  onChange={(e) => setWregisForm({...wregisForm, eiaPlantId: e.target.value})}
+                  placeholder="—"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 font-sfpro mb-1">Interconnected Utility ID</label>
+                <Input
+                  type="text"
+                  value={wregisForm.interconnectedUtilityId}
+                  onChange={(e) => setWregisForm({...wregisForm, interconnectedUtilityId: e.target.value})}
+                  placeholder="—"
+                />
+              </div>
+            </div>
+            <div className="flex gap-6 pt-1">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={wregisForm.hasNetMetering}
+                  onChange={(e) => setWregisForm({...wregisForm, hasNetMetering: e.target.checked})}
+                  className="h-4 w-4 rounded border-gray-300 text-[#039994] focus:ring-[#039994]"
+                />
+                <span className="text-xs font-sfpro text-gray-700">Net Metering</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={wregisForm.hasOnSiteLoad}
+                  onChange={(e) => setWregisForm({...wregisForm, hasOnSiteLoad: e.target.checked})}
+                  className="h-4 w-4 rounded border-gray-300 text-[#039994] focus:ring-[#039994]"
+                />
+                <span className="text-xs font-sfpro text-gray-700">On-Site Load</span>
+              </label>
             </div>
           </div>
           <DialogFooter>
@@ -495,7 +740,7 @@ export default function ResidentialDetails({ customer, onBack }) {
               {updatingWregis ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : null}
-              {updatingWregis ? "Updating..." : "Update"}
+              {updatingWregis ? "Saving..." : "Save Details"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -542,7 +787,71 @@ export default function ResidentialDetails({ customer, onBack }) {
           <ChevronLeft className="h-5 w-5 mr-1" />
           <span>Customer Details</span>
         </button>
+        {facilities.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => exportPreApprovalWorksheet(facilities)}
+            className="text-[#039994] border-[#039994] hover:bg-[#03999410]"
+          >
+            <FileSpreadsheet className="h-4 w-4 mr-1" />
+            Export Pre-Approval Worksheet
+          </Button>
+        )}
       </div>
+
+      {/* ─── Registration Progress ───────────────────────────── */}
+      {(() => {
+        const status = (customerDetails?.status || customer?.status || "Invited").toLowerCase();
+        const hasAgreement = !!customerDetails?.agreements?.termsAccepted;
+        const hasUtilityAuth = !!(customerDetails?.utilityAuth?.length > 0 && customerDetails?.utilityAuth?.some(u => ["completed", "AUTHORIZED", "authorized"].includes(u.status)));
+        const hasFacility = facilities.length > 0;
+        const facilityVerified = hasFacility && facilities.some(f => f.status === "VERIFIED" || f.status === "APPROVED");
+        const isActive = status === "active";
+        const isTerminated = status === "terminated" || status === "inactive";
+
+        const steps = [
+          { label: "Registered", done: status !== "invited" },
+          { label: "Agreement Signed", done: hasAgreement },
+          { label: "Utility Authorized", done: hasUtilityAuth },
+          { label: "Facility Added", done: hasFacility },
+          { label: "Facility Verified", done: facilityVerified },
+          { label: "Active", done: isActive && facilityVerified },
+        ];
+
+        return (
+          <div className="mb-6 px-5 py-4 border border-gray-200 rounded-xl bg-white">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-xs font-medium font-sfpro text-gray-500 uppercase tracking-wide">Registration Progress</div>
+              {isTerminated && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-sfpro font-medium bg-red-100 text-red-600">
+                  Terminated
+                </span>
+              )}
+            </div>
+            <div className="flex items-center">
+              {steps.map((step, i, arr) => {
+                const isDone = !isTerminated && step.done;
+                return (
+                  <React.Fragment key={step.label}>
+                    <div className="flex flex-col items-center flex-shrink-0">
+                      <div className={`h-3.5 w-3.5 rounded-full border-2 transition-colors ${
+                        isDone ? "bg-[#039994] border-[#039994]" : "bg-white border-gray-300"
+                      }`} />
+                      <span className={`text-[10px] mt-1 font-sfpro whitespace-nowrap ${
+                        isDone ? "text-[#039994] font-medium" : "text-gray-400"
+                      }`}>{step.label}</span>
+                    </div>
+                    {i < arr.length - 1 && (
+                      <div className={`flex-1 h-0.5 mx-1 mb-4 transition-colors ${isDone ? "bg-[#039994]" : "bg-gray-200"}`} />
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div className="border border-gray-200 rounded-lg bg-[#069B960D] p-6">
@@ -555,6 +864,14 @@ export default function ResidentialDetails({ customer, onBack }) {
             <div className="space-y-1">
               <p className="text-sm text-gray-500">Name</p>
               <p className="font-medium">{customer?.name || "Not specified"}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-gray-500">Email</p>
+              <p className="font-medium truncate" title={customer?.email || customerDetails?.email || "Not specified"}>{customer?.email || customerDetails?.email || "Not specified"}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-gray-500">Phone</p>
+              <p className="font-medium truncate" title={customer?.phoneNumber || customerDetails?.phoneNumber || "Not specified"}>{customer?.phoneNumber || customerDetails?.phoneNumber || "Not specified"}</p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-gray-500">Customer Type</p>
@@ -617,7 +934,17 @@ export default function ResidentialDetails({ customer, onBack }) {
         )}
         
         {facilities.map((facility) => (
-          <FacilityCard key={facility.id} facility={facility} />
+          <React.Fragment key={facility.id}>
+            <FacilityCard facility={facility} />
+            {/* FIX-12: Inline REC generation history when selected */}
+            {recHistoryFacility?.id === facility.id && (
+              <FacilityRECHistory
+                facilityId={facility.id}
+                facilityType="residential"
+                facilityName={facility.facilityName}
+              />
+            )}
+          </React.Fragment>
         ))}
       </div>
     </div>

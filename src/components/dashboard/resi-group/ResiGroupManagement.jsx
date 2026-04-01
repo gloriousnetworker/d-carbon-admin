@@ -1,4 +1,5 @@
 "use client"
+import CONFIG from '@/lib/config'
 
 import { useState, useEffect } from "react"
 import { ChevronLeft, ChevronRight, Filter, Upload, X, Trash2 } from "lucide-react"
@@ -54,7 +55,7 @@ export default function ResiGroupManagement() {
       setLoading(true)
       const authToken = localStorage.getItem('authToken')
       
-      const response = await fetch('https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/residential-facility/groups', {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/residential-facility/groups`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -82,7 +83,7 @@ export default function ResiGroupManagement() {
       setFacilitiesLoading(true)
       const authToken = localStorage.getItem('authToken')
       
-      const response = await fetch('https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/residential-facility/get-all-residential-facility', {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/residential-facility/get-all-residential-facility`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -110,7 +111,7 @@ export default function ResiGroupManagement() {
       setDetailsLoading(true)
       const authToken = localStorage.getItem('authToken')
       
-      const response = await fetch(`https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/residential-facility/groups/${groupId}`, {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/residential-facility/groups/${groupId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -138,7 +139,7 @@ export default function ResiGroupManagement() {
       setCreatingGroup(true)
       const authToken = localStorage.getItem('authToken')
       
-      const response = await fetch('https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/residential-facility/group-facilities', {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/residential-facility/group-facilities`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -178,7 +179,7 @@ export default function ResiGroupManagement() {
       setDetailsLoading(true)
       const authToken = localStorage.getItem('authToken')
       
-      const response = await fetch(`https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/residential-facility/groups/${selectedGroup.id}`, {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/residential-facility/groups/${selectedGroup.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -224,7 +225,7 @@ export default function ResiGroupManagement() {
     try {
       const authToken = localStorage.getItem('authToken')
       
-      const response = await fetch(`https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/residential-facility/groups/${selectedGroup.id}/remove-facilities`, {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/residential-facility/groups/${selectedGroup.id}/remove-facilities`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -320,7 +321,7 @@ export default function ResiGroupManagement() {
   }
 
   return (
-    <div className="bg-gray-50 min-h-screen p-6">
+    <div className="bg-white min-h-screen p-6">
       {!createMode && !selectedGroup ? (
         <>
           <div className="flex justify-between mb-6">
@@ -332,15 +333,15 @@ export default function ResiGroupManagement() {
               </select>
             </div>
             <div className="flex gap-3">
-              <button 
-                className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded bg-white text-sm hover:bg-gray-50"
+              <button
+                className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded bg-white text-sm font-sfpro hover:bg-gray-50"
                 onClick={() => setIsMainFilterOpen(true)}
               >
-                <span>Filter by</span>
                 <Filter className="h-4 w-4" />
+                Filter by
               </button>
-              <button 
-                className="flex items-center gap-2 px-3 py-2 bg-teal-500 text-white rounded text-sm hover:bg-teal-600"
+              <button
+                className="flex items-center gap-2 px-3 py-2 bg-[#039994] text-white rounded text-sm font-sfpro hover:bg-[#02857f]"
                 onClick={() => setCreateMode(true)}
               >
                 <Upload className="h-4 w-4" />
@@ -351,7 +352,7 @@ export default function ResiGroupManagement() {
 
           <div className="bg-white border border-gray-200 rounded-lg">
             <div className="p-4">
-              <h2 className="text-xl font-medium text-teal-500">Residential Groups</h2>
+              <h2 className="text-base font-semibold text-[#039994] font-sfpro">Residential Groups</h2>
             </div>
 
             {error && (
@@ -363,39 +364,39 @@ export default function ResiGroupManagement() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-y text-xs">
-                    <th className="py-2 px-3 text-left font-medium">Group Name</th>
-                    <th className="py-2 px-3 text-left font-medium">WREGIS ID</th>
-                    <th className="py-2 px-3 text-left font-medium">Status</th>
-                    <th className="py-2 px-3 text-left font-medium">Finance Comp.</th>
-                    <th className="py-2 px-3 text-left font-medium">Utility Prov.</th>
-                    <th className="py-2 px-3 text-left font-medium">Total Capacity</th>
-                    <th className="py-2 px-3 text-left font-medium">Facilities</th>
-                    <th className="py-2 px-3 text-left font-medium">Created</th>
-                    <th className="py-2 px-3 text-left font-medium">Actions</th>
+                  <tr className="border-y text-sm">
+                    <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Group Name</th>
+                    <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">WREGIS ID</th>
+                    <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Status</th>
+                    <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Finance Comp.</th>
+                    <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Utility Prov.</th>
+                    <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Total Capacity</th>
+                    <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Facilities</th>
+                    <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Created</th>
+                    <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {paginatedGroups.map((group) => (
                     <tr 
                       key={group.id} 
-                      className="border-b text-xs hover:bg-gray-50"
+                      className="border-b text-sm hover:bg-gray-50 transition-colors duration-100"
                     >
-                      <td className="py-2 px-3 text-teal-500 cursor-pointer" onClick={() => handleRowClick(group)}>{group.name}</td>
-                      <td className="py-2 px-3 cursor-pointer" onClick={() => handleRowClick(group)}>{group.wregisGroupId || 'N/A'}</td>
-                      <td className="py-2 px-3 cursor-pointer" onClick={() => handleRowClick(group)}>
+                      <td className="py-3 px-4 text-teal-500 cursor-pointer font-sfpro" onClick={() => handleRowClick(group)}>{group.name}</td>
+                      <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E] cursor-pointer" onClick={() => handleRowClick(group)}>{group.wregisGroupId || 'N/A'}</td>
+                      <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E] cursor-pointer" onClick={() => handleRowClick(group)}>
                         <span className={`px-2 py-1 rounded text-xs ${
                           group.status === 'FORMATION' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
                         }`}>
                           {group.status}
                         </span>
                       </td>
-                      <td className="py-2 px-3 cursor-pointer" onClick={() => handleRowClick(group)}>{group.financeCompany || 'N/A'}</td>
-                      <td className="py-2 px-3 cursor-pointer" onClick={() => handleRowClick(group)}>{group.utilityProvider}</td>
-                      <td className="py-2 px-3 cursor-pointer" onClick={() => handleRowClick(group)}>{group.totalCapacity} kW</td>
-                      <td className="py-2 px-3 cursor-pointer" onClick={() => handleRowClick(group)}>{group.facilities?.length || 0}</td>
-                      <td className="py-2 px-3 cursor-pointer" onClick={() => handleRowClick(group)}>{new Date(group.createdAt).toLocaleDateString()}</td>
-                      <td className="py-2 px-3">
+                      <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E] cursor-pointer" onClick={() => handleRowClick(group)}>{group.financeCompany || 'N/A'}</td>
+                      <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E] cursor-pointer" onClick={() => handleRowClick(group)}>{group.utilityProvider}</td>
+                      <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E] cursor-pointer" onClick={() => handleRowClick(group)}>{group.totalCapacity} kW</td>
+                      <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E] cursor-pointer" onClick={() => handleRowClick(group)}>{group.facilities?.length || 0}</td>
+                      <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E] cursor-pointer" onClick={() => handleRowClick(group)}>{new Date(group.createdAt).toLocaleDateString()}</td>
+                      <td className="py-3 px-4">
                         <button 
                           onClick={(e) => {
                             e.stopPropagation()
@@ -421,7 +422,7 @@ export default function ResiGroupManagement() {
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
-              <span className="text-sm">
+              <span className="text-sm font-sfpro">
                 {currentPage} of {totalPages || 1}
               </span>
               <button
@@ -512,11 +513,11 @@ export default function ResiGroupManagement() {
   )
 }
 
-function CreateNewResidentGroup({ 
-  onBack, 
-  onFilterOpen, 
-  onCreate, 
-  totalKWSelected, 
+function CreateNewResidentGroup({
+  onBack,
+  onFilterOpen,
+  onCreate,
+  totalKWSelected,
   totalKWCapacity,
   facilities,
   loading,
@@ -527,10 +528,15 @@ function CreateNewResidentGroup({
   creatingGroup,
   error
 }) {
+  const [facPage, setFacPage] = useState(1)
+  const facPerPage = 10
+  const facTotalPages = Math.ceil(facilities.length / facPerPage)
+  const paginatedFacilities = facilities.slice((facPage - 1) * facPerPage, facPage * facPerPage)
+
   return (
     <div className="bg-white border border-gray-200 rounded-lg">
       <div className="p-4 flex justify-between items-center">
-        <h2 className="text-xl font-medium text-teal-500">Create New Resident Group</h2>
+        <h2 className="text-base font-semibold text-[#039994] font-sfpro">Create New Resident Group</h2>
         <button className="p-1 text-gray-500 hover:text-gray-700" onClick={onBack}>
           <X className="h-5 w-5" />
         </button>
@@ -581,7 +587,7 @@ function CreateNewResidentGroup({
 
       <div className="px-4 pb-4 flex justify-end">
         <button 
-          className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded bg-white text-sm hover:bg-gray-50"
+          className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded bg-white text-sm font-sfpro hover:bg-gray-50"
           onClick={onFilterOpen}
         >
           <span>Filter by</span>
@@ -598,16 +604,16 @@ function CreateNewResidentGroup({
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-y text-xs">
-              <th className="py-2 px-3 text-left font-medium">Select</th>
-              <th className="py-2 px-3 text-left font-medium">Facility Name</th>
-              <th className="py-2 px-3 text-left font-medium">Facility ID</th>
-              <th className="py-2 px-3 text-left font-medium">Finance Comp.</th>
-              <th className="py-2 px-3 text-left font-medium">Installer</th>
-              <th className="py-2 px-3 text-left font-medium">Utility Prov.</th>
-              <th className="py-2 px-3 text-left font-medium">Address</th>
-              <th className="py-2 px-3 text-left font-medium">KW Capacity</th>
-              <th className="py-2 px-3 text-left font-medium">Date of Reg.</th>
+            <tr className="border-y text-sm">
+              <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Select</th>
+              <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Facility Name</th>
+              <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Facility ID</th>
+              <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Finance Comp.</th>
+              <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Installer</th>
+              <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Utility Prov.</th>
+              <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Address</th>
+              <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">KW Capacity</th>
+              <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Date of Reg.</th>
             </tr>
           </thead>
           <tbody>
@@ -624,24 +630,24 @@ function CreateNewResidentGroup({
                 </td>
               </tr>
             ) : (
-              facilities.map((facility) => (
-                <tr key={facility.id} className="border-b text-xs hover:bg-gray-50">
-                  <td className="py-2 px-3">
-                    <input 
-                      type="checkbox" 
+              paginatedFacilities.map((facility) => (
+                <tr key={facility.id} className="border-b hover:bg-gray-50 transition-colors duration-100">
+                  <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E]">
+                    <input
+                      type="checkbox"
                       checked={selectedResidents.includes(facility.id)}
                       onChange={() => onSelectResident(facility.id)}
                       className="h-4 w-4"
                     />
                   </td>
-                  <td className="py-2 px-3">{facility.facilityName}</td>
-                  <td className="py-2 px-3">{facility.id}</td>
-                  <td className="py-2 px-3">{facility.financeCompany || 'N/A'}</td>
-                  <td className="py-2 px-3">{facility.installer}</td>
-                  <td className="py-2 px-3">{facility.utilityProvider}</td>
-                  <td className="py-2 px-3">{facility.address}</td>
-                  <td className="py-2 px-3">{facility.systemCapacity}</td>
-                  <td className="py-2 px-3">
+                  <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E]">{facility.facilityName}</td>
+                  <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E]">{facility.id}</td>
+                  <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E]">{facility.financeCompany || 'N/A'}</td>
+                  <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E]">{facility.installer}</td>
+                  <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E]">{facility.utilityProvider}</td>
+                  <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E]">{facility.address}</td>
+                  <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E]">{facility.systemCapacity}</td>
+                  <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E]">
                     {facility.createdAt ? new Date(facility.createdAt).toLocaleDateString() : 'N/A'}
                   </td>
                 </tr>
@@ -653,11 +659,19 @@ function CreateNewResidentGroup({
 
       <div className="p-4 flex justify-between items-center">
         <div className="flex items-center gap-4">
-          <button className="p-1 text-gray-300" disabled>
+          <button
+            className="p-1 text-gray-500 hover:text-gray-700 disabled:text-gray-300"
+            disabled={facPage === 1}
+            onClick={() => setFacPage(p => Math.max(1, p - 1))}
+          >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <span className="text-sm">1 of 1</span>
-          <button className="p-1 text-gray-300" disabled>
+          <span className="text-sm">{facPage} of {facTotalPages || 1}</span>
+          <button
+            className="p-1 text-gray-500 hover:text-gray-700 disabled:text-gray-300"
+            disabled={facPage >= facTotalPages}
+            onClick={() => setFacPage(p => Math.min(facTotalPages, p + 1))}
+          >
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>
@@ -668,7 +682,7 @@ function CreateNewResidentGroup({
 
       <div className="p-4">
         <button 
-          className={`px-4 py-2 text-white rounded hover:bg-[#028984] ${
+          className={`px-4 py-2 text-white rounded font-sfpro hover:bg-[#02857f] ${
             creatingGroup ? 'bg-gray-400' : 'bg-[#039994]'
           }`}
           onClick={onCreate}
@@ -700,7 +714,7 @@ function ResidentGroupsFilterByModal({ onClose, onApplyFilter }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold">Filter Residential Groups</h3>
@@ -775,7 +789,7 @@ function ResidentGroupsFilterByModal({ onClose, onApplyFilter }) {
           </button>
           <button 
             onClick={handleApply}
-            className="px-4 py-2 bg-[#039994] text-white rounded hover:bg-[#028984]"
+            className="px-4 py-2 bg-[#039994] text-white rounded font-sfpro hover:bg-[#02857f]"
           >
             Apply Filters
           </button>
@@ -806,7 +820,7 @@ function CreateNewResidentGroupFilterByModal({ onClose, onApplyFilter }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold">Filter Available Residents</h3>
@@ -897,7 +911,7 @@ function CreateNewResidentGroupFilterByModal({ onClose, onApplyFilter }) {
           </button>
           <button 
             onClick={handleApply}
-            className="px-4 py-2 bg-[#039994] text-white rounded hover:bg-[#028984]"
+            className="px-4 py-2 bg-[#039994] text-white rounded font-sfpro hover:bg-[#02857f]"
           >
             Apply Filters
           </button>
@@ -909,7 +923,7 @@ function CreateNewResidentGroupFilterByModal({ onClose, onApplyFilter }) {
 
 function RemoveUsersModal({ onClose, onConfirm, selectedCount }) {
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-lg p-6 w-full max-w-md">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold">Remove Users</h3>
@@ -941,7 +955,7 @@ function RemoveUsersModal({ onClose, onConfirm, selectedCount }) {
 
 function DeleteGroupModal({ onClose, onConfirm, groupName }) {
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-lg p-6 w-full max-w-md">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold">Delete Group</h3>

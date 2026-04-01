@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { FiChevronDown, FiLoader } from 'react-icons/fi';
+import { useRouter } from 'next/navigation';
+import { ChevronDown, Loader2 } from 'lucide-react';
 import axios from 'axios';
 import CONFIG from '../../../../lib/config';
 
 export default function QuickActions() {
+  const router = useRouter();
   const [filter, setFilter] = useState('total');
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -16,7 +18,7 @@ export default function QuickActions() {
         const authToken = localStorage.getItem('authToken');
         
         if (!authToken) {
-          window.location.href = '/login';
+          router.push('/login');
           return;
         }
 
@@ -32,7 +34,7 @@ export default function QuickActions() {
         console.error('Error fetching analytics:', err);
         setError('Failed to fetch analytics data');
         localStorage.clear();
-        window.location.href = '/login';
+        router.push('/login');
       } finally {
         setLoading(false);
       }
@@ -104,36 +106,37 @@ export default function QuickActions() {
             className="flex items-center text-black text-xs font-semibold"
           >
             {filter === 'total' ? 'Total' : filter}
-            <FiChevronDown className="ml-1 w-3 h-3" />
+            <ChevronDown className="ml-1 h-3 w-3" />
           </button>
         </div>
       </div>
 
       {loading ? (
-        <div className="flex justify-center items-center h-32">
-          <FiLoader className="animate-spin h-6 w-6 text-[#056C69]" />
+        <div className="flex flex-col items-center justify-center py-16 border border-gray-200 rounded-xl">
+          <Loader2 className="h-8 w-8 animate-spin text-[#039994]" />
+          <span className="text-sm text-gray-500 font-sfpro mt-3">Loading analytics...</span>
         </div>
       ) : error ? (
-        <div className="text-red-500 text-center p-4">{error}</div>
+        <div className="text-red-500 text-center p-4 border border-red-200 rounded-xl">{error}</div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {getCardsData().map(({ key, icon, label, value }) => (
             <div
               key={key}
-              className="p-2 bg-white rounded-xl flex flex-col"
+              className="p-4 bg-white border border-gray-200 rounded-xl flex flex-col"
             >
-              <div className="flex items-center mb-1">
+              <div className="flex items-center mb-2">
                 <img
                   src={icon}
                   alt={label}
-                  className="h-4 w-4 object-contain mr-1"
+                  className="h-6 w-6 object-contain mr-2"
                 />
-                <span className="text-[#1E1E1E] font-sfpro font-medium text-[11px] leading-[100%] tracking-[-0.05em] truncate">
+                <span className="text-[#1E1E1E] font-sfpro font-medium text-xs leading-[100%] tracking-[-0.05em] truncate">
                   {label}
                 </span>
               </div>
-              <hr className="border-gray-200 w-full my-1" />
-              <span className="text-[#056C69] font-sfpro font-bold text-[14px] leading-tight">
+              <hr className="border-gray-200 w-full my-2" />
+              <span className="text-[#039994] font-sfpro font-bold text-xl leading-tight">
                 {value}
               </span>
             </div>

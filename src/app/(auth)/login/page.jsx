@@ -1,8 +1,20 @@
 "use client";
 
+import { useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
+import toast from 'react-hot-toast';
 import LoginCard from '../../../components/(auth)/login/LoginCard';
 
-export default function LoginPage() {
+function LoginPageContent() {
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get('reason') === 'session_expired') {
+      toast.error('Your session has expired. Please sign in again.');
+    }
+  }, [searchParams]);
+
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#15104D]">
       {/* Left Section - Image */}
@@ -19,5 +31,13 @@ export default function LoginPage() {
         <LoginCard />
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageContent />
+    </Suspense>
   );
 }

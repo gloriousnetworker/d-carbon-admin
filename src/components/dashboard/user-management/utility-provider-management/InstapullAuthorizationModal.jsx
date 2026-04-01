@@ -1,3 +1,4 @@
+import CONFIG from '@/lib/config';
 import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import axios from "axios";
@@ -51,7 +52,7 @@ export default function InstapullAuthorizationModal({ isOpen, onClose, utilityPr
       if (!authToken) throw new Error("Authentication token not found");
 
       const response = await axios.get(
-        'https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/auth/utility-providers?page=1&limit=100',
+        `${CONFIG.API_BASE_URL}/api/auth/utility-providers?page=1&limit=100`,
         {
           headers: {
             'Authorization': `Bearer ${authToken}`,
@@ -86,8 +87,7 @@ export default function InstapullAuthorizationModal({ isOpen, onClose, utilityPr
         });
         setSameEmail(authorizationData.email === authorizationData.authorizationEmail);
       } else {
-        const loginResponse = JSON.parse(localStorage.getItem('loginResponse') || '{}');
-        const userEmail = loginResponse?.data?.user?.email || loginResponse?.data?.user?.userEmail || '';
+        const userEmail = localStorage.getItem('userEmail') || '';
         setFormData(prev => ({
           ...prev,
           email: userEmail,
@@ -152,7 +152,7 @@ export default function InstapullAuthorizationModal({ isOpen, onClose, utilityPr
       };
 
       const response = await axios.post(
-        'https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/utility-auth/green-button',
+        `${CONFIG.API_BASE_URL}/api/utility-auth/green-button`,
         payload,
         { 
           headers: { 

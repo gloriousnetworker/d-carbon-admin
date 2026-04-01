@@ -1,4 +1,5 @@
 "use client";
+import CONFIG from '@/lib/config';
 
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -53,7 +54,7 @@ export default function EditPartnerModal({ isOpen, onClose, partner }) {
 
       // Assuming there's an update endpoint - adjust this based on your actual API
       const response = await fetch(
-        `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/admin/customer/${partner.id}`, 
+        `${CONFIG.API_BASE_URL}/api/admin/customer/${partner.id}`, 
         {
           method: "PUT",
           headers: {

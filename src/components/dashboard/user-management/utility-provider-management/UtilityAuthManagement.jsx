@@ -1,4 +1,5 @@
 "use client";
+import CONFIG from '@/lib/config';
 
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -6,35 +7,10 @@ import { ChevronLeft, Loader2, Trash2, RefreshCw, Key, CheckCircle, XCircle, Sea
 import toast from "react-hot-toast";
 import InstapullAuthorizationModal from "./InstapullAuthorizationModal";
 
-const styles = {
-  mainContainer: 'min-h-screen w-full flex flex-col items-center justify-center py-8 px-4 bg-white',
-  headingContainer: 'relative w-full flex flex-col items-center mb-2',
-  backArrow: 'absolute left-4 top-0 text-[#039994] cursor-pointer z-10',
-  pageTitle: 'mb-4 font-[600] text-[36px] leading-[100%] tracking-[-0.05em] text-[#039994] font-sfpro text-center',
-  progressContainer: 'w-full max-w-md flex items-center justify-between mb-6',
-  progressBarWrapper: 'flex-1 h-1 bg-gray-200 rounded-full mr-4',
-  progressBarActive: 'h-1 bg-[#039994] w-2/3 rounded-full',
-  progressStepText: 'text-sm font-medium text-gray-500 font-sfpro',
-  formWrapper: 'w-full max-w-md space-y-6',
-  labelClass: 'block mb-2 font-sfpro text-[14px] leading-[100%] tracking-[-0.05em] font-[400] text-[#1E1E1E]',
-  selectClass: 'w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro text-[14px] leading-[100%] tracking-[-0.05em] font-[400] text-[#626060]',
-  inputClass: 'w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro text-[14px] leading-[100%] tracking-[-0.05em] font-[400] text-[#1E1E1E]',
-  fileInputWrapper: 'relative flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-500 bg-gray-50 focus-within:outline-none focus-within:ring-2 focus-within:ring-[#039994] cursor-pointer font-sfpro',
-  noteText: 'mt-2 font-sfpro text-[12px] leading-[100%] tracking-[-0.05em] font-[300] italic text-[#1E1E1E]',
-  rowWrapper: 'flex space-x-4',
-  halfWidth: 'w-1/2',
-  grayPlaceholder: 'bg-[#E8E8E8]',
-  buttonPrimary: 'w-full rounded-md bg-[#039994] text-white font-semibold py-2 hover:bg-[#02857f] focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro',
-  spinnerOverlay: 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-20',
-  spinner: 'h-12 w-12 border-4 border-t-4 border-gray-300 border-t-[#039994] rounded-full animate-spin',
-  termsTextContainer: 'mt-6 text-center font-sfpro text-[10px] font-[800] leading-[100%] tracking-[-0.05em] underline text-[#1E1E1E]',
-  uploadHeading: 'block mb-2 font-sfpro text-[14px] leading-[100%] tracking-[-0.05em] font-[400] text-[#1E1E1E]',
-  uploadFieldWrapper: 'flex items-center space-x-3',
-  uploadInputLabel: 'relative flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-500 bg-gray-50 focus-within:outline-none focus-within:ring-2 focus-within:ring-[#039994] cursor-pointer font-sfpro',
-  uploadIconContainer: 'absolute right-3 top-1/2 -translate-y-1/2 text-gray-400',
-  uploadButtonStyle: 'px-4 py-2 bg-[#039994] text-white rounded-md hover:bg-[#02857f] focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro',
-  uploadNoteStyle: 'mt-2 font-sfpro text-[12px] leading-[100%] tracking-[-0.03em] font-[300] italic text-[#1E1E1E]'
-};
+const inputCls = 'w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro text-[14px] text-[#1E1E1E]';
+const selectCls = 'w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro text-[14px] text-[#626060]';
+const labelCls = 'block mb-2 font-sfpro text-[14px] font-[400] text-[#1E1E1E]';
+const styles = { inputClass: inputCls, selectClass: selectCls, labelClass: labelCls };
 
 export default function UtilityAuthManagement({ onBack }) {
   const [auths, setAuths] = useState([]);
@@ -76,7 +52,7 @@ export default function UtilityAuthManagement({ onBack }) {
       if (!authToken) throw new Error("Authentication token not found");
       
       const response = await fetch(
-        "https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/auth/utility-providers",
+        `${CONFIG.API_BASE_URL}/api/auth/utility-providers`,
         {
           method: "GET",
           headers: { 
@@ -131,7 +107,7 @@ export default function UtilityAuthManagement({ onBack }) {
       
       const queryString = buildQueryString(page);
       const response = await fetch(
-        `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/utility-auth/list?${queryString}`,
+        `${CONFIG.API_BASE_URL}/api/utility-auth/list?${queryString}`,
         {
           method: "GET",
           headers: { 
@@ -193,7 +169,7 @@ export default function UtilityAuthManagement({ onBack }) {
       if (!authToken) return;
       
       const response = await fetch(
-        `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/auth/user-meters/${userId}`,
+        `${CONFIG.API_BASE_URL}/api/auth/user-meters/${userId}`,
         {
           method: "GET",
           headers: { 
@@ -248,7 +224,7 @@ export default function UtilityAuthManagement({ onBack }) {
       if (!authToken) throw new Error("Authentication token not found");
       
       const response = await fetch(
-        `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/utility-auth/delete/${authId}`,
+        `${CONFIG.API_BASE_URL}/api/utility-auth/delete/${authId}`,
         {
           method: "DELETE",
           headers: { 
@@ -548,17 +524,12 @@ export default function UtilityAuthManagement({ onBack }) {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-100">
-        <h1 className={styles.pageTitle}>Utility Authorization Management</h1>
-        <p className="text-gray-600 text-center font-sfpro text-sm mb-2">
-          Admin panel for managing user utility authorizations
-        </p>
-      </div>
-
       {showFilters && (
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-100">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-sfpro font-[600] text-[#039994]">Filter Authorizations</h2>
+        <div className="border border-gray-200 rounded-xl p-5 mb-6 bg-white">
+          <div className="flex justify-between items-center mb-5">
+            <h3 className="text-sm font-semibold text-[#039994] font-sfpro flex items-center gap-2">
+              <Filter className="h-4 w-4" /> Filter Authorizations
+            </h3>
             <Button 
               variant="outline" 
               onClick={handleClearFilters}
@@ -696,18 +667,18 @@ export default function UtilityAuthManagement({ onBack }) {
       )}
 
       {activeFilters.length > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+        <div className="border border-[#03999430] bg-[#03999408] rounded-xl p-4 mb-6">
           <div className="flex justify-between items-center mb-3">
-            <span className="text-blue-800 font-sfpro font-[500]">Active Filters ({activeFilters.length})</span>
+            <span className="text-[#039994] font-sfpro font-[500] text-sm">Active Filters ({activeFilters.length})</span>
           </div>
           <div className="flex flex-wrap gap-2">
             {activeFilters.map(filter => (
-              <span 
+              <span
                 key={filter.key}
-                className="inline-flex items-center bg-white border border-blue-200 rounded-full px-3 py-1 text-sm font-sfpro text-blue-800"
+                className="inline-flex items-center bg-white border border-[#03999430] rounded-full px-3 py-1 text-sm font-sfpro text-[#039994]"
               >
                 <span className="font-[600] mr-1">{filter.label}:</span> {filter.value}
-                <button 
+                <button
                   onClick={() => removeActiveFilter(filter.key)}
                   className="ml-2 text-red-500 hover:text-red-700"
                 >
@@ -720,22 +691,22 @@ export default function UtilityAuthManagement({ onBack }) {
       )}
 
       {selectedAuths.size > 0 && (
-        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-6">
+        <div className="border border-gray-200 rounded-xl p-4 mb-6 bg-gray-50">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
-              <span className="text-orange-800 font-sfpro font-[500]">
+              <span className="text-[#1E1E1E] font-sfpro font-[500] text-sm">
                 {selectedAuths.size} authorization(s) selected
               </span>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={toggleSelectAll}
-                className="border-orange-300 text-orange-700 hover:bg-orange-100 text-xs font-sfpro font-[500]"
+                className="border-gray-300 text-gray-700 hover:bg-gray-100 text-xs font-sfpro font-[500]"
                 size="sm"
               >
                 {selectedAuths.size === auths.length ? 'Deselect All' : 'Select All'}
               </Button>
             </div>
-            <Button 
+            <Button
               onClick={handleBulkDelete}
               disabled={bulkDeleting}
               className="bg-red-600 hover:bg-red-700 text-white font-sfpro font-[500] flex items-center gap-2"
@@ -752,17 +723,17 @@ export default function UtilityAuthManagement({ onBack }) {
       )}
 
       {isLoading && (
-        <div className="flex flex-col items-center justify-center py-16 bg-white rounded-xl shadow-sm border border-gray-100">
-          <Loader2 className="h-12 w-12 animate-spin text-[#039994]" />
-          <span className="ml-3 text-lg text-gray-600 font-sfpro mt-4">Loading utility authorizations...</span>
+        <div className="flex flex-col items-center justify-center py-16 border border-gray-200 rounded-xl">
+          <Loader2 className="h-8 w-8 animate-spin text-[#039994]" />
+          <span className="text-sm text-gray-500 font-sfpro mt-3">Loading utility authorizations...</span>
         </div>
       )}
 
       {error && (
-        <div className="py-8 px-6 bg-red-50 border border-red-200 rounded-xl text-center max-w-2xl mx-auto">
-          <p className="text-red-600 font-sfpro text-lg mb-4">{error}</p>
-          <Button 
-            className="mt-4 bg-red-600 hover:bg-red-700 text-white font-sfpro font-[500] px-6 py-2 rounded-lg"
+        <div className="py-8 px-6 bg-red-50 border border-red-200 rounded-xl text-center">
+          <p className="text-red-600 font-sfpro text-sm mb-4">{error}</p>
+          <Button
+            className="bg-red-600 hover:bg-red-700 text-white font-sfpro font-[500]"
             onClick={() => fetchAuths(pagination.page)}
           >
             Retry Loading
@@ -771,11 +742,9 @@ export default function UtilityAuthManagement({ onBack }) {
       )}
 
       {!isLoading && !error && auths.length === 0 && (
-        <div className="py-16 text-center bg-white rounded-xl shadow-sm border border-gray-100">
-          <div className="text-gray-400 mb-4">
-            <Key className="h-16 w-16 mx-auto" />
-          </div>
-          <p className="text-gray-500 text-lg font-sfpro mb-6">No utility authorizations found</p>
+        <div className="py-16 text-center border border-gray-200 rounded-xl">
+          <Key className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+          <p className="text-sm text-gray-500 font-sfpro mb-5">No utility authorizations found</p>
           {activeFilters.length > 0 ? (
             <Button 
               onClick={handleClearFilters}
@@ -808,30 +777,31 @@ export default function UtilityAuthManagement({ onBack }) {
 
       {!isLoading && !error && auths.length > 0 && (
         <>
-          <div className="overflow-hidden border border-gray-200 rounded-xl shadow-sm">
-            <div className="bg-gradient-to-r from-[#039994] to-[#02857f] px-6 py-4">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-4">
-                  <h3 className="text-white font-sfpro font-[600] text-lg">
-                    Authorization Records ({pagination.total})
-                    {activeFilters.length > 0 && ' (Filtered)'}
-                  </h3>
-                  <button 
-                    onClick={toggleSelectAll}
-                    className="flex items-center gap-2 text-white text-sm font-sfpro hover:text-gray-200 transition-colors"
-                  >
-                    {selectedAuths.size === auths.length ? (
-                      <CheckSquare className="h-4 w-4" />
-                    ) : (
-                      <Square className="h-4 w-4" />
-                    )}
-                    {selectedAuths.size === auths.length ? 'Deselect All' : 'Select All'}
-                  </button>
-                </div>
-                <div className="text-white text-sm font-sfpro">
-                  Page {pagination.page} of {pagination.totalPages}
-                </div>
+          <div className="overflow-hidden border border-gray-200 rounded-xl">
+            <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <h3 className="text-sm font-semibold text-[#039994] font-sfpro flex items-center gap-2">
+                  <Key className="h-4 w-4" />
+                  Authorization Records
+                  <span className="ml-1 px-2 py-0.5 rounded-full bg-[#03999415] text-[#039994] text-xs font-medium">
+                    {pagination.total}{activeFilters.length > 0 && ' filtered'}
+                  </span>
+                </h3>
+                <button
+                  onClick={toggleSelectAll}
+                  className="flex items-center gap-1.5 text-gray-500 text-xs font-sfpro hover:text-[#039994] transition-colors"
+                >
+                  {selectedAuths.size === auths.length ? (
+                    <CheckSquare className="h-3.5 w-3.5" />
+                  ) : (
+                    <Square className="h-3.5 w-3.5" />
+                  )}
+                  {selectedAuths.size === auths.length ? 'Deselect All' : 'Select All'}
+                </button>
               </div>
+              <span className="text-xs text-gray-500 font-sfpro">
+                Page {pagination.page} of {pagination.totalPages}
+              </span>
             </div>
             
             <div className="overflow-x-auto">
@@ -913,7 +883,7 @@ export default function UtilityAuthManagement({ onBack }) {
                         <div className="flex gap-2">
                           <Button
                             size="sm"
-                            className="h-8 px-3 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:text-blue-800 text-xs font-sfpro font-[500]"
+                            className="h-8 px-3 bg-[#03999415] text-[#039994] border border-[#03999430] hover:bg-[#03999425] text-xs font-sfpro font-[500]"
                             onClick={() => handleReinitiateAuth(auth)}
                             disabled={reinitiatingId === auth.id || deletingId === auth.id || bulkDeleting}
                           >

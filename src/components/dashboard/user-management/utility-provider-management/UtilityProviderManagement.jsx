@@ -1,4 +1,5 @@
 "use client";
+import CONFIG from '@/lib/config';
 
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -46,7 +47,7 @@ export default function UtilityProviderManagement({ onViewChange }) {
     try {
       const authToken = localStorage.getItem("authToken");
       if (!authToken) return;
-      const response = await fetch("https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/admin/utility-provider-requests", {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/admin/utility-provider-requests`, {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${authToken}`,
@@ -73,7 +74,7 @@ export default function UtilityProviderManagement({ onViewChange }) {
     try {
       const authToken = localStorage.getItem("authToken");
       if (!authToken) return;
-      const response = await fetch("https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/auth/utility-auth", {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/auth/utility-auth`, {
         method: "GET",
         headers: { 
           "Authorization": `Bearer ${authToken}`, 
@@ -116,7 +117,7 @@ export default function UtilityProviderManagement({ onViewChange }) {
       try {
         const authToken = localStorage.getItem("authToken");
         if (!authToken) throw new Error("Authentication token not found");
-        const response = await fetch("https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/admin/utility-providers", {
+        const response = await fetch(`${CONFIG.API_BASE_URL}/api/admin/utility-providers`, {
           method: "GET",
           headers: {
             "Authorization": `Bearer ${authToken}`,
@@ -204,7 +205,7 @@ export default function UtilityProviderManagement({ onViewChange }) {
     try {
       const authToken = localStorage.getItem("authToken");
       if (!authToken) throw new Error("Authentication token not found");
-      const response = await fetch("https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/admin/utility-providers", {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/admin/utility-providers`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${authToken}`,
@@ -219,7 +220,7 @@ export default function UtilityProviderManagement({ onViewChange }) {
       if (!response.ok) throw new Error(`Error creating utility provider: ${response.statusText}`);
       const result = await response.json();
       if (result.status === "success") {
-        const fetchResponse = await fetch("https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/admin/utility-providers", {
+        const fetchResponse = await fetch(`${CONFIG.API_BASE_URL}/api/admin/utility-providers`, {
           method: "GET",
           headers: {
             "Authorization": `Bearer ${authToken}`,
@@ -284,19 +285,19 @@ export default function UtilityProviderManagement({ onViewChange }) {
         <>
           <div className="flex justify-between mb-6">
             <div className="flex gap-3">
-              <Button 
-                variant="outline" 
-                className="gap-2"
+              <Button
+                variant="outline"
+                className="gap-2 text-sm font-sfpro"
                 onClick={() => setShowFilterModal(true)}
               >
                 <Filter className="h-4 w-4" />
                 Filter by
               </Button>
-              
+
               <div className="relative">
-                <Button 
-                  variant="outline" 
-                  className="gap-2"
+                <Button
+                  variant="outline"
+                  className="gap-2 text-sm font-sfpro"
                   onClick={handleViewRequests}
                 >
                   <Mail className="h-4 w-4" />
@@ -306,9 +307,9 @@ export default function UtilityProviderManagement({ onViewChange }) {
               </div>
 
               <div className="relative">
-                <Button 
-                  variant="outline" 
-                  className="gap-2"
+                <Button
+                  variant="outline"
+                  className="gap-2 text-sm font-sfpro"
                   onClick={handleViewAuthManagement}
                 >
                   <Check className="h-4 w-4" />
@@ -319,7 +320,7 @@ export default function UtilityProviderManagement({ onViewChange }) {
             </div>
 
             <Button
-              className="gap-2 bg-[#039994] text-white hover:bg-[#02857f]"
+              className="gap-2 text-sm font-sfpro bg-[#039994] text-white hover:bg-[#02857f]"
               onClick={() => setShowAddUtilityModal(true)}
             >
               <Plus className="h-4 w-4" />
@@ -330,7 +331,7 @@ export default function UtilityProviderManagement({ onViewChange }) {
           <div className="mb-6 p-4 border-b flex items-center justify-between bg-white">
             <div className="relative">
               <button
-                className={`flex items-center gap-1 text-xl font-medium text-[#039994] ${styles.pageTitle.replace('mb-4', '').replace('text-center', '')}`}
+                className="flex items-center gap-1 text-base font-semibold text-[#039994] font-sfpro"
                 onClick={() => setShowMainDropdown(!showMainDropdown)}
               >
                 Utility Provider Management
@@ -341,30 +342,30 @@ export default function UtilityProviderManagement({ onViewChange }) {
                 <div className="absolute top-full left-0 mt-1 w-60 bg-white border border-gray-200 rounded-md shadow-lg z-50">
                   <div className="py-1">
                     <button
-                      className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 ${styles.labelClass}`}
+                      className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 font-sfpro text-[#1E1E1E]"
                       onClick={() => onViewChange("management")}
                     >
                       Customer Management
                     </button>
                     <button
-                      className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 font-medium text-[#039994]`}
+                      className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 font-semibold text-[#039994] font-sfpro"
                     >
                       Utility Provider Management
                     </button>
                     <button
-                      className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 ${styles.labelClass}`}
+                      className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 font-sfpro text-[#1E1E1E]"
                       onClick={() => onViewChange("partner-management")}
                     >
                       Partner Management
                     </button>
                     <button
-                      className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 ${styles.labelClass}`}
+                      className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 font-sfpro text-[#1E1E1E]"
                       onClick={() => onViewChange("finance-types")}
                     >
                       Finance Types
                     </button>
                     <button
-                      className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 ${styles.labelClass} relative`}
+                      className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 font-sfpro text-[#1E1E1E] relative"
                       onClick={() => onViewChange("auth-management")}
                     >
                       Manage Authorizations
@@ -414,29 +415,29 @@ export default function UtilityProviderManagement({ onViewChange }) {
 
           {!isLoading && !error && filteredProviders.length > 0 && (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm table-auto">
+              <table className="w-full table-auto">
                 <thead>
-                  <tr className="border-b">
-                    <th className="py-3 px-4 text-left font-medium">S/N</th>
-                    <th className="py-3 px-4 text-left font-medium">Utility Provider</th>
-                    <th className="py-3 px-4 text-left font-medium">Utility ID</th>
-                    <th className="py-3 px-4 text-left font-medium">Website</th>
-                    <th className="py-3 px-4 text-left font-medium">Documentation</th>
-                    <th className="py-3 px-4 text-left font-medium">Created Date</th>
-                    <th className="py-3 px-4 text-left font-medium">Updated Date</th>
+                  <tr className="border-y text-sm">
+                    <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">S/N</th>
+                    <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Utility Provider</th>
+                    <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Utility ID</th>
+                    <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Website</th>
+                    <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Documentation</th>
+                    <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Created Date</th>
+                    <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Updated Date</th>
                   </tr>
                 </thead>
                 <tbody>
                   {currentProviders.map((provider, index) => (
                     <tr
                       key={provider.id}
-                      className="border-b cursor-pointer hover:bg-gray-50"
+                      className="border-b cursor-pointer hover:bg-gray-50 transition-colors duration-100"
                       onClick={() => handleProviderClick(provider)}
                     >
-                      <td className="py-3 px-4">{indexOfFirst + index + 1}</td>
-                      <td className="py-3 px-4">{provider.name || "N/A"}</td>
-                      <td className="py-3 px-4">{provider.id || "N/A"}</td>
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E]">{indexOfFirst + index + 1}</td>
+                      <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E]">{provider.name || "N/A"}</td>
+                      <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E]">{provider.id || "N/A"}</td>
+                      <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E]">
                         {provider.website ? (
                           <a
                             href={provider.website}
@@ -449,7 +450,7 @@ export default function UtilityProviderManagement({ onViewChange }) {
                           </a>
                         ) : "N/A"}
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E]">
                         {provider.documentation ? (
                           <a
                             href={provider.documentation}
@@ -462,10 +463,10 @@ export default function UtilityProviderManagement({ onViewChange }) {
                           </a>
                         ) : "N/A"}
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E]">
                         {provider.createdAt ? new Date(provider.createdAt).toLocaleDateString() : "N/A"}
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E]">
                         {provider.updatedAt ? new Date(provider.updatedAt).toLocaleDateString() : "N/A"}
                       </td>
                     </tr>
@@ -485,7 +486,7 @@ export default function UtilityProviderManagement({ onViewChange }) {
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <span className={`text-sm ${styles.labelClass}`}>
+              <span className="text-sm font-sfpro">
                 {currentPage} of {totalPages}
               </span>
               <Button

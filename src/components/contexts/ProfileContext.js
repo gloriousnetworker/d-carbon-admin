@@ -1,5 +1,6 @@
 // app/contexts/ProfileContext.js
 'use client';
+import CONFIG from '@/lib/config';
 
 import { createContext, useContext, useState, useEffect } from 'react';
 
@@ -10,26 +11,27 @@ export const ProfileProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const loadFromStorage = () => {
+    const storedPic = localStorage.getItem('userProfilePicture');
+    const storedName = localStorage.getItem('userFirstName');
+    setProfile({ picture: storedPic || null, firstName: storedName || 'User' });
+    setLoading(false);
+  };
+
   const updateProfile = async () => {
     setLoading(true);
     setError(null);
     try {
       const userId = localStorage.getItem('userId');
       const authToken = localStorage.getItem('authToken');
-      
+
       if (!userId || !authToken) {
-        // Fallback to localStorage if no auth tokens
-        const storedPic = localStorage.getItem('userProfilePicture');
-        const storedName = localStorage.getItem('userFirstName');
-        setProfile({
-          picture: storedPic || null,
-          firstName: storedName || 'User'
-        });
+        loadFromStorage();
         return;
       }
 
       const response = await fetch(
-        `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/user/get-one-user/${userId}`,
+        `${CONFIG.API_BASE_URL}/api/user/get-one-user/${userId}`,
         {
           method: 'GET',
           headers: {
@@ -39,10 +41,13 @@ export const ProfileProvider = ({ children }) => {
         }
       );
 
-      if (!response.ok) throw new Error('Failed to fetch user data');
+      if (!response.ok) {
+        loadFromStorage();
+        return;
+      }
 
       const data = await response.json();
-      
+
       if (data.status === 'success' && data.data) {
         const newProfile = {
           picture: data.data.profilePicture || null,
@@ -52,23 +57,17 @@ export const ProfileProvider = ({ children }) => {
         localStorage.setItem('userProfilePicture', newProfile.picture || '');
         localStorage.setItem('userFirstName', newProfile.firstName);
       }
-    } catch (err) {
-      console.error('Error fetching profile:', err);
-      setError(err.message);
-      // Fallback to localStorage
-      const storedPic = localStorage.getItem('userProfilePicture');
-      const storedName = localStorage.getItem('userFirstName');
-      setProfile({
-        picture: storedPic || null,
-        firstName: storedName || 'User'
-      });
+    } catch {
+      loadFromStorage();
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    updateProfile();
+    // Load from localStorage immediately — no API call on init to avoid
+    // 404s for admin users who are not in the regular /api/user endpoint.
+    loadFromStorage();
   }, []);
 
   const value = {

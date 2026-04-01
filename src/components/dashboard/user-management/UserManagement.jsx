@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Filter,
@@ -14,15 +15,18 @@ import {
   Info,
   Mail,
   Check,
+  Download,
+  Loader2,
 } from "lucide-react";
+import { exportToExcel, exportToCSV, CUSTOMER_COLUMNS } from "@/lib/exportUtils";
 import CommercialDetails from "./customer-details/commercial-details/CommercialDetails";
 import ResidentialDetails from "./customer-details/residential-details/ResidentialDetails";
-import PartnerDetails from "./customer-details/PartnerDetails";
 import SendReminderModal from "./modals/customerManagement/SendReminderModal";
 import InviteCustomerModal from "./modals/customerManagement/InviteCustomerModal";
 import InviteBulkCustomersModal from "./modals/customerManagement/InviteBulkCustomersModal";
 import FilterByModal from "./modals/customerManagement/FilterBy";
 import PartnerManagement from "./partner-management/PartnerManagement";
+import PartnerDetails from "./partner-management/PartnerDetails";
 import UtilityProviderManagement from "./utility-provider-management/UtilityProviderManagement";
 import FinanceTypes from "./partner-management/finance-types/FinanceType";
 import UtilityAuthManagement from "./utility-provider-management/UtilityAuthManagement";
@@ -30,6 +34,7 @@ import * as styles from "./styles";
 import CONFIG from "../../../../lib/config";
 
 export default function CustomerManagement() {
+  const router = useRouter();
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -39,6 +44,7 @@ export default function CustomerManagement() {
   const [showInviteDropdown, setShowInviteDropdown] = useState(false);
   const [showMainDropdown, setShowMainDropdown] = useState(false);
   const [currentView, setCurrentView] = useState("management");
+  const [previousView, setPreviousView] = useState(null);
   const [customers, setCustomers] = useState([]);
   const [filteredCustomers, setFilteredCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -58,6 +64,7 @@ export default function CustomerManagement() {
   const [authsCount, setAuthsCount] = useState(0);
   const [previousAuthsCount, setPreviousAuthsCount] = useState(0);
   const [showAuthsNotification, setShowAuthsNotification] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const fetchCustomers = async (page = 1, limit = 50) => {
     try {
@@ -79,8 +86,17 @@ export default function CustomerManagement() {
 
       const data = await response.json();
       if (data.data?.users) {
-        setCustomers(data.data.users);
-        setFilteredCustomers(data.data.users);
+        const PARTNER_TYPES = new Set(["PARTNER", "SALES_AGENT", "INSTALLER", "FINANCE_COMPANY"]);
+        const filtered = data.data.users.filter(u => !PARTNER_TYPES.has(u.userType));
+        // Deduplicate by user ID to prevent duplicate rows
+        const seen = new Set();
+        const customers = filtered.filter(u => {
+          if (seen.has(u.id)) return false;
+          seen.add(u.id);
+          return true;
+        });
+        setCustomers(customers);
+        setFilteredCustomers(customers);
         setTotalPages(data.data.metadata.totalPages);
         setTotalCount(data.data.metadata.total);
       } else {
@@ -126,7 +142,7 @@ export default function CustomerManagement() {
     try {
       const authToken = localStorage.getItem("authToken");
       if (!authToken) return;
-      const response = await fetch("https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/auth/utility-auth", {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/auth/utility-auth`, {
         method: "GET",
         headers: { 
           "Authorization": `Bearer ${authToken}`, 
@@ -187,6 +203,57 @@ export default function CustomerManagement() {
       setResending(false);
     }
   };
+
+  const handleExportCustomers = async (format = "excel") => {
+    try {
+      setExporting(true);
+      const authToken = localStorage.getItem("authToken");
+      if (!authToken) throw new Error("Authentication token not found");
+
+      // Fetch all customers (up to 1000) for export
+      const res = await fetch(
+        `${CONFIG.API_BASE_URL}/api/admin/get-all-users?page=1&limit=1000`,
+        { headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" } }
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const allUsers = data.data?.users || [];
+
+      const PARTNER_TYPES = new Set(["PARTNER", "SALES_AGENT", "INSTALLER", "FINANCE_COMPANY"]);
+      const exportData = allUsers
+        .filter((u) => !PARTNER_TYPES.has(u.userType))
+        .map((c) => ({
+          ...c,
+          dateRegistered: c.date || c.createdAt
+            ? new Date(c.date || c.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
+            : "",
+        }));
+
+      const filename = `DCarbon_Customers_${new Date().toISOString().slice(0, 10)}`;
+      if (format === "csv") {
+        exportToCSV(exportData, CUSTOMER_COLUMNS, filename);
+      } else {
+        exportToExcel(exportData, CUSTOMER_COLUMNS, filename, "Customers");
+      }
+    } catch (err) {
+      alert(`Export failed: ${err.message}`);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  useEffect(() => {
+    // Check if navigated from Registration Pipeline with a selected customer
+    const stored = sessionStorage.getItem("pipelineSelectedCustomer");
+    if (stored) {
+      sessionStorage.removeItem("pipelineSelectedCustomer");
+      try {
+        const customer = JSON.parse(stored);
+        setSelectedCustomer(customer);
+        setCurrentView("details");
+      } catch { /* ignore parse errors */ }
+    }
+  }, []);
 
   useEffect(() => {
     if (currentView === "management") {
@@ -267,8 +334,104 @@ export default function CustomerManagement() {
 
   const handleBackToList = () => {
     setSelectedCustomer(null);
-    setCurrentView("management");
-    fetchCustomers(currentPage);
+    // If we navigated here from the registration pipeline (partner click), return there
+    const returnSection = sessionStorage.getItem("pipelineReturnSection");
+    if (returnSection === "registrationPipeline") {
+      sessionStorage.removeItem("pipelineReturnSection");
+      router.push("/admin-dashboard?section=registrationPipeline");
+      return;
+    }
+    const backTo = previousView || "management";
+    setPreviousView(null);
+    setCurrentView(backTo);
+    if (backTo === "management") fetchCustomers(currentPage);
+  };
+
+  const handleCustomerSelectFromPartner = async (referral) => {
+    const email = referral.inviteeEmail || referral.email;
+    const userType = referral.customerType || referral.userType;
+
+    // Strategy 1: look in already-loaded customers state — gives the exact same object
+    // as the Customer Management path uses (utility, status, etc. all present).
+    const cached = customers.find(
+      (c) => c.email?.toLowerCase() === email?.toLowerCase()
+    );
+    if (cached) {
+      setSelectedCustomer(cached);
+      setPreviousView("partner-management");
+      setCurrentView("details");
+      return;
+    }
+
+    try {
+      const authToken = localStorage.getItem("authToken");
+      if (!authToken || !email) throw new Error("missing auth or email");
+
+      // Strategy 2: try admin endpoint with email filter — returns same shape as the
+      // customer list (utility, status, address, financeCompany all included).
+      const adminRes = await fetch(
+        `${CONFIG.API_BASE_URL}/api/admin/get-all-users?email=${encodeURIComponent(email.trim())}&limit=10`,
+        { headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" } }
+      );
+      if (adminRes.ok) {
+        const adminData = await adminRes.json();
+        const users = adminData.data?.users || [];
+        const found = users.find(
+          (u) => u.email?.toLowerCase() === email.toLowerCase()
+        );
+        if (found) {
+          setSelectedCustomer(found);
+          setPreviousView("partner-management");
+          setCurrentView("details");
+          return;
+        }
+      }
+
+      // Strategy 3: /api/user/:email — returns correct user ID but missing utility/status.
+      // Note: referral.status is the referral relationship status ("ACCEPTED"), not the
+      // user's account status — do NOT use it as a fallback for status here.
+      const res = await fetch(
+        `${CONFIG.API_BASE_URL}/api/user/${encodeURIComponent(email.trim())}`,
+        { headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" } }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (data.status === "success" && data.data) {
+          const raw = data.data;
+          const nested = raw.user || raw.userDetails || {};
+          setSelectedCustomer({
+            ...raw,
+            id: raw.id || nested.id,
+            name: raw.name || nested.name || `${raw.firstName || nested.firstName || ""} ${raw.lastName || nested.lastName || ""}`.trim() || email,
+            userType: raw.userType || nested.userType || userType,
+            utility: raw.utility || raw.utilityProvider || nested.utility || nested.utilityProvider,
+            status: raw.status || nested.status || raw.accountStatus,
+            date: raw.date || raw.createdAt || nested.createdAt,
+            address: raw.address || nested.address,
+            financeCompany: raw.financeCompany || nested.financeCompany,
+            phoneNumber: raw.phoneNumber || nested.phoneNumber || referral.phoneNumber,
+          });
+          setPreviousView("partner-management");
+          setCurrentView("details");
+          return;
+        }
+      }
+    } catch (_) {
+      // fall through to last-resort fallback
+    }
+
+    // Strategy 4 (last resort): build from referral data.
+    // referral.id is a referral record ID not a user ID — facilities may not load.
+    setSelectedCustomer({
+      id: referral.inviteeId || referral.userId || referral.invitee?.id || referral.id,
+      email,
+      name: referral.name || `${referral.firstName || ""} ${referral.lastName || ""}`.trim() || email,
+      userType,
+      phoneNumber: referral.phoneNumber,
+      createdAt: referral.createdAt,
+    });
+    setPreviousView("partner-management");
+    setCurrentView("details");
   };
 
   const handleInviteCustomerType = (type) => {
@@ -333,14 +496,22 @@ export default function CustomerManagement() {
 
   const renderCustomerDetails = () => {
     if (!selectedCustomer) return null;
-    
+
     switch (selectedCustomer.userType) {
       case "COMMERCIAL":
         return <CommercialDetails customer={selectedCustomer} onBack={handleBackToList} />;
       case "RESIDENTIAL":
         return <ResidentialDetails customer={selectedCustomer} onBack={handleBackToList} />;
       case "PARTNER":
-        return <PartnerDetails customer={selectedCustomer} onBack={handleBackToList} />;
+      case "SALES_AGENT":
+      case "INSTALLER":
+      case "FINANCE_COMPANY":
+        return (
+          <PartnerDetails
+            partner={{ ...selectedCustomer, email: selectedCustomer.email }}
+            onBack={handleBackToList}
+          />
+        );
       default:
         return null;
     }
@@ -357,11 +528,11 @@ export default function CustomerManagement() {
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
-      <div className="flex-1 overflow-hidden p-4">
+      <div className="flex-1 p-6">
         {currentView === "details" && renderCustomerDetails()}
         
         {currentView === "partner-management" && (
-          <PartnerManagement onViewChange={handleViewChange} />
+          <PartnerManagement onViewChange={handleViewChange} onCustomerSelect={handleCustomerSelectFromPartner} />
         )}
         
         {currentView === "utility-management" && (
@@ -369,7 +540,7 @@ export default function CustomerManagement() {
         )}
 
         {currentView === "finance-types" && (
-          <FinanceTypes onBack={() => handleViewChange("management")} />
+          <FinanceTypes onBack={() => handleViewChange("management")} onViewChange={handleViewChange} />
         )}
 
         {currentView === "auth-management" && (
@@ -378,47 +549,57 @@ export default function CustomerManagement() {
         
         {currentView === "management" && (
           <>
-            <div className="flex justify-between mb-3">
-              <Button 
-                variant="outline" 
-                className="gap-2 text-xs h-8"
+            <div className="flex justify-between mb-4">
+              <Button
+                variant="outline"
+                className="gap-2 text-sm font-sfpro"
                 onClick={() => setShowFilterModal(true)}
               >
-                <Filter className="h-3 w-3" />
+                <Filter className="h-4 w-4" />
                 Filter by
               </Button>
 
               <div className="flex gap-2">
                 <Button
                   variant="outline"
-                  className="gap-2 text-xs h-8 bg-gray-900 text-white hover:bg-gray-800"
+                  className="gap-2 text-sm font-sfpro"
+                  onClick={() => handleExportCustomers("excel")}
+                  disabled={exporting}
+                >
+                  {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  {exporting ? "Exporting..." : "Export"}
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="gap-2 text-sm border-[#039994] text-[#039994] hover:bg-[#039994] hover:text-white font-sfpro transition-colors"
                   onClick={() => setShowReminderModal(true)}
                 >
-                  <Send className="h-3 w-3" />
+                  <Send className="h-4 w-4" />
                   Send Reminder
                 </Button>
 
                 <div className="relative">
-                  <Button 
-                    className="gap-2 text-xs h-8 bg-teal-500 hover:bg-teal-600"
+                  <Button
+                    className="gap-2 text-sm bg-[#039994] hover:bg-[#02857f] font-sfpro"
                     onClick={() => setShowInviteDropdown(!showInviteDropdown)}
                   >
-                    <Plus className="h-3 w-3" />
+                    <Plus className="h-4 w-4" />
                     Invite Customer
-                    <ChevronDown className="h-3 w-3 ml-1" />
+                    <ChevronDown className="h-4 w-4 ml-1" />
                   </Button>
 
                   {showInviteDropdown && (
                     <div className="absolute top-full right-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
                       <div className="py-1">
                         <button
-                          className="w-full px-3 py-2 text-left text-xs hover:bg-gray-50"
+                          className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
                           onClick={() => handleInviteCustomerType("individual")}
                         >
                           Individual Customer
                         </button>
                         <button
-                          className="w-full px-3 py-2 text-left text-xs hover:bg-gray-50"
+                          className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
                           onClick={() => handleInviteCustomerType("bulk")}
                         >
                           Bulk Customers (CSV)
@@ -430,10 +611,10 @@ export default function CustomerManagement() {
               </div>
             </div>
 
-            <div className="mb-3 p-2 border-b flex items-center justify-between">
+            <div className="mb-4 p-3 border-b flex items-center justify-between">
               <div className="relative">
                 <button
-                  className="flex items-center gap-1 text-sm font-medium text-[#039994]"
+                  className="flex items-center gap-1 text-base font-semibold text-[#039994] font-sfpro"
                   onClick={() => setShowMainDropdown(!showMainDropdown)}
                 >
                   Customer Management
@@ -444,31 +625,31 @@ export default function CustomerManagement() {
                   <div className="absolute top-full left-0 mt-1 w-60 bg-white border border-gray-200 rounded-md shadow-lg z-50">
                     <div className="py-1">
                       <button
-                        className="w-full px-3 py-2 text-left text-xs hover:bg-gray-50 font-medium text-[#039994]"
+                        className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 font-semibold text-[#039994]"
                         onClick={() => handleViewChange("management")}
                       >
                         Customer Management
                       </button>
                       <button
-                        className="w-full px-3 py-2 text-left text-xs hover:bg-gray-50"
+                        className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
                         onClick={() => handleViewChange("partner-management")}
                       >
                         Partner Management
                       </button>
                       <button
-                        className="w-full px-3 py-2 text-left text-xs hover:bg-gray-50"
+                        className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
                         onClick={() => handleViewChange("utility-management")}
                       >
                         Utility Provider Management
                       </button>
                       <button
-                        className="w-full px-3 py-2 text-left text-xs hover:bg-gray-50"
+                        className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
                         onClick={() => handleViewChange("finance-types")}
                       >
                         Finance Types
                       </button>
                       <button
-                        className="w-full px-3 py-2 text-left text-xs hover:bg-gray-50 relative"
+                        className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 relative"
                         onClick={() => {
                           setShowAuthsNotification(false);
                           handleViewChange("auth-management");
@@ -482,7 +663,35 @@ export default function CustomerManagement() {
                 )}
               </div>
 
-              <Info className="h-3 w-3 text-teal-500" />
+              <Info className="h-4 w-4 text-teal-500" />
+            </div>
+
+            {/* FIX-02: Inline status filter tabs */}
+            <div className="flex gap-1.5 flex-wrap mb-3">
+              {[
+                { label: "All",        value: "" },
+                { label: "Active",     value: "Active" },
+                { label: "Invited",    value: "Invited" },
+                { label: "Registered", value: "Registered" },
+                { label: "Terminated", value: "Terminated" },
+                { label: "Inactive",   value: "Inactive" },
+              ].map(({ label, value }) => (
+                <button
+                  key={label}
+                  onClick={() => {
+                    const newFilters = { ...filters, status: value };
+                    setFilters(newFilters);
+                    applyFilters(newFilters);
+                  }}
+                  className={`px-3 py-1 rounded-full text-xs font-sfpro font-medium transition-colors ${
+                    filters.status === value
+                      ? "bg-[#039994] text-white"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
 
             <div className="mb-3">
@@ -496,20 +705,20 @@ export default function CustomerManagement() {
                 </div>
               </div>
               
-              <div className="flex justify-end mt-1 gap-2">
-                <div className="text-[10px] flex items-center">
+              <div className="flex justify-end mt-1.5 gap-3">
+                <div className="text-xs text-gray-500 font-sfpro flex items-center">
                   <LegendDot className="bg-red-500" /> Terminated
                 </div>
-                <div className="text-[10px] flex items-center">
+                <div className="text-xs text-gray-500 font-sfpro flex items-center">
                   <LegendDot className="bg-amber-400" /> Invited
                 </div>
-                <div className="text-[10px] flex items-center">
+                <div className="text-xs text-gray-500 font-sfpro flex items-center">
                   <LegendDot className="bg-teal-500" /> Active
                 </div>
-                <div className="text-[10px] flex items-center">
+                <div className="text-xs text-gray-500 font-sfpro flex items-center">
                   <LegendDot className="bg-black" /> Registered
                 </div>
-                <div className="text-[10px] flex items-center">
+                <div className="text-xs text-gray-500 font-sfpro flex items-center">
                   <LegendDot className="bg-gray-400" /> Inactive
                 </div>
               </div>
@@ -526,8 +735,8 @@ export default function CustomerManagement() {
                 <div className="flex justify-center items-center h-48">
                   <div className="text-gray-500 text-center text-xs">
                     <p className="font-medium">No customers found</p>
-                    <Button 
-                      className="mt-3 text-xs bg-teal-500 hover:bg-teal-600"
+                    <Button
+                      className="mt-3 text-sm bg-[#039994] hover:bg-[#02857f] font-sfpro"
                       onClick={() => setShowInviteDropdown(true)}
                     >
                       Invite New Customer
@@ -535,53 +744,63 @@ export default function CustomerManagement() {
                   </div>
                 </div>
               ) : (
-                <table className="w-full text-[10px]">
+                <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b">
-                      <th className="py-1 px-1 text-left font-medium">S/N</th>
-                      <th className="py-1 px-1 text-left font-medium">NAME</th>
-                      <th className="py-1 px-1 text-left font-medium">EMAIL</th>
-                      <th className="py-1 px-1 text-left font-medium">PHONE</th>
-                      <th className="py-1 px-1 text-left font-medium">TYPE</th>
-                      <th className="py-1 px-1 text-left font-medium">STATUS</th>
-                      <th className="py-1 px-1 text-left font-medium">DOCS</th>
-                      <th className="py-1 px-1 text-left font-medium">RESEND</th>
+                    <tr className="border-y text-sm">
+                      <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">S/N</th>
+                      <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Name / Company</th>
+                      <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Email</th>
+                      <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Phone</th>
+                      <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Type</th>
+                      <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Status</th>
+                      <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Docs</th>
+                      <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">E-Sign</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredCustomers.map((customer, index) => (
                       <tr
                         key={customer.id}
-                        className="border-b hover:bg-gray-50"
+                        className="border-b hover:bg-gray-50 transition-colors duration-100"
                       >
-                        <td className="py-1 px-1">{(currentPage - 1) * 50 + index + 1}</td>
-                        <td className="py-1 px-1 truncate max-w-[100px] cursor-pointer" onClick={() => handleCustomerClick(customer)}>{customer.name}</td>
-                        <td className="py-1 px-1 truncate max-w-[120px] cursor-pointer" onClick={() => handleCustomerClick(customer)}>{customer.email}</td>
-                        <td className="py-1 px-1 cursor-pointer" onClick={() => handleCustomerClick(customer)}>{customer.phoneNumber}</td>
-                        <td className="py-1 px-1 cursor-pointer" onClick={() => handleCustomerClick(customer)}>{customer.userType}</td>
-                        <td className="py-1 px-1 cursor-pointer" onClick={() => handleCustomerClick(customer)}>
+                        <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E]">{(currentPage - 1) * 50 + index + 1}</td>
+                        {/* FIX-03: company name as primary identity for commercial users */}
+                        <td className="py-3 px-4 font-sfpro text-[#1E1E1E] cursor-pointer" onClick={() => handleCustomerClick(customer)}>
+                          {customer.userType === "COMMERCIAL" && customer.companyName ? (
+                            <div>
+                              <p className="text-sm font-semibold truncate max-w-[160px]">{customer.companyName}</p>
+                              <p className="text-xs text-gray-400 truncate max-w-[160px]">{customer.name}</p>
+                            </div>
+                          ) : (
+                            <span className="text-sm truncate max-w-[140px] block">{customer.name || "—"}</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E] truncate max-w-[160px] cursor-pointer" onClick={() => handleCustomerClick(customer)}>{customer.email}</td>
+                        <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E] cursor-pointer" onClick={() => handleCustomerClick(customer)}>{customer.phoneNumber}</td>
+                        <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E] cursor-pointer" onClick={() => handleCustomerClick(customer)}>{customer.userType}</td>
+                        <td className="py-3 px-4 cursor-pointer" onClick={() => handleCustomerClick(customer)}>
                           <StatusBadge status={customer.status} />
                         </td>
-                        <td className="py-1 px-1 cursor-pointer" onClick={() => handleCustomerClick(customer)}>
+                        <td className="py-3 px-4 cursor-pointer" onClick={() => handleCustomerClick(customer)}>
                           <div className="relative group">
                             {customer.facilityStatus === "PENDING" ? (
-                              <AlertTriangle className="h-3 w-3 text-amber-400" />
+                              <AlertTriangle className="h-4 w-4 text-amber-400" />
                             ) : customer.facilityStatus === "APPROVED" ? (
-                              <CheckCircle className="h-3 w-3 text-teal-500" />
+                              <CheckCircle className="h-4 w-4 text-teal-500" />
                             ) : (
-                              <span className="text-[9px] text-gray-400">N/A</span>
+                              <span className="text-xs text-gray-400">N/A</span>
                             )}
                           </div>
                         </td>
-                        <td className="py-1 px-1">
+                        <td className="py-3 px-4">
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-5 text-[9px] gap-1"
+                            className="text-xs gap-1 font-sfpro"
                             onClick={() => handleResendESignature(customer.email)}
                             disabled={resending}
                           >
-                            <Mail className="h-2 w-2" />
+                            <Mail className="h-3 w-3" />
                             E-Sign
                           </Button>
                         </td>
@@ -605,9 +824,9 @@ export default function CustomerManagement() {
                     fetchCustomers(prevPage, 50);
                   }}
                 >
-                  <ChevronLeft className="h-3 w-3" />
+                  <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <span className="text-xs">
+                <span className="text-sm font-sfpro">
                   {getCurrentRange()}
                 </span>
                 <Button
@@ -621,7 +840,7 @@ export default function CustomerManagement() {
                     fetchCustomers(nextPage, 50);
                   }}
                 >
-                  <ChevronRight className="h-3 w-3" />
+                  <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
             )}
@@ -691,7 +910,7 @@ function StatusBadge({ status }) {
       classes = "bg-gray-300 text-black";
   }
   return (
-    <span className={`inline-block px-2 py-1 rounded-full text-[9px] ${classes}`}>
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-sfpro font-medium ${classes}`}>
       {status}
     </span>
   );

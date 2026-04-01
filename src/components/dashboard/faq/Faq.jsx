@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { ChevronUp, ChevronDown, Trash2, Edit, Plus, X } from "lucide-react"
 import toast from "react-hot-toast"
+import CONFIG from "@/lib/config"
 
 const mainContainer = 'min-h-screen w-full flex flex-col items-center justify-center py-8 px-4 bg-white'
 const pageTitle = 'mb-4 font-[600] text-[36px] leading-[100%] tracking-[-0.05em] text-[#039994] font-sfpro text-center'
@@ -41,7 +42,7 @@ export default function FAQManagement() {
     try {
       setLoading(true)
       const token = localStorage.getItem('authToken')
-      const response = await fetch('https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/faq/faqs', {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/faq/faqs`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -67,8 +68,8 @@ export default function FAQManagement() {
     try {
       const token = localStorage.getItem('authToken')
       const url = editMode 
-        ? `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/faq/faqs/${currentFaq.id}`
-        : 'https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/faq/faqs'
+        ? `${CONFIG.API_BASE_URL}/api/faq/faqs/${currentFaq.id}`
+        : `${CONFIG.API_BASE_URL}/api/faq/faqs`
 
       const method = editMode ? 'PUT' : 'POST'
 
@@ -109,7 +110,7 @@ export default function FAQManagement() {
     if (window.confirm('Are you sure you want to delete this FAQ?')) {
       try {
         const token = localStorage.getItem('authToken')
-        const response = await fetch(`https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/faq/faqs/${id}`, {
+        const response = await fetch(`${CONFIG.API_BASE_URL}/api/faq/faqs/${id}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`

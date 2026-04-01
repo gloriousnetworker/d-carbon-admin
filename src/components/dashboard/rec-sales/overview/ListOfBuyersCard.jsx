@@ -1,9 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import * as styles from "../styles";
+import { Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import CONFIG from "../../../../../lib/config";
 
 export default function ListOfBuyersCard() {
@@ -50,7 +49,7 @@ export default function ListOfBuyersCard() {
 
   return (
     <div className="w-full">
-      <Card className="w-full p-4 border border-gray-200 rounded-lg shadow-sm">
+      <Card className="w-full p-4 border border-gray-200 rounded-xl">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <svg
@@ -75,18 +74,18 @@ export default function ListOfBuyersCard() {
                 strokeLinejoin="round"
               />
             </svg>
-            <h3 className="text-base font-medium text-gray-900">
+            <h3 className="text-sm font-semibold text-[#039994] font-sfpro">
               List of Buyers
             </h3>
           </div>
-          <span className="text-sm text-teal-500 font-medium">
+          <span className="text-xs text-[#039994] font-medium font-sfpro">
             ({total}) Buyers
           </span>
         </div>
 
         {loading && (
-          <div className={styles.spinnerOverlay}>
-            <div className={styles.spinner}></div>
+          <div className="flex flex-col items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-[#039994]" />
           </div>
         )}
 
@@ -101,7 +100,7 @@ export default function ListOfBuyersCard() {
                 key={buyer.id}
                 className="flex items-center gap-3 border-b border-gray-100 pb-2"
               >
-                <div className="h-2 w-2 rounded-full bg-black"></div>
+                <div className="h-2 w-2 rounded-full bg-[#039994]"></div>
                 <span className="text-sm text-gray-700">
                   {buyer.companyName}
                 </span>
@@ -111,12 +110,11 @@ export default function ListOfBuyersCard() {
         )}
 
         <div className="mt-6">
-          <Button
-            variant="outline"
-            className="w-full border-teal-500 text-teal-500 hover:bg-teal-50"
+          <button
+            className="w-full px-4 py-2 text-sm border border-[#039994] text-[#039994] rounded-md hover:bg-[#039994] hover:text-white font-sfpro transition-colors"
           >
             View more
-          </Button>
+          </button>
         </div>
       </Card>
     </div>

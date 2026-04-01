@@ -1,165 +1,627 @@
 "use client"
 
-import { useState } from "react"
-import { ChevronDown, ChevronLeft, ChevronRight, Filter, Download } from 'lucide-react'
+import { useState, useEffect } from "react"
+import { ChevronDown, ChevronLeft, ChevronRight, Filter, Download, Eye, X } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import ResidentialRecGenerationFilterModal from "./modals/ResidentialRecGenerationFilterModal"
-import CommercialRecGenerationFilterModal from "./modals/CommercialRecGenerationFilterModal"
 import PartnerPerformanceFilterModal from "./modals/PartnerPerformanceFilterModal"
 import WregisGenerationFilterModal from "./modals/WregisGenerationFilterModal"
+import CONFIG from "@/lib/config"
 
-// Sample data for all report types
-const residentialRecSalesData = [
-  { id: 1, name: "John Doe", residentId: "RES-001", recBalance: "150", avgRecPrice: "$12.50", recSold: "50", date: "16-03-2025" },
-  { id: 2, name: "Jane Smith", residentId: "RES-002", recBalance: "200", avgRecPrice: "$13.00", recSold: "30", date: "15-03-2025" },
-  { id: 3, name: "Robert Johnson", residentId: "RES-003", recBalance: "75", avgRecPrice: "$11.75", recSold: "25", date: "14-03-2025" },
-];
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
 
-const residentialRecRedemptionData = [
-  { id: 1, name: "John Doe", residentId: "RES-001", paymentId: "PAY-001", pointRedeemed: "3000", pricePerPoint: "$0.10", totalAmount: "$300.00", date: "16-03-2025" },
-  { id: 2, name: "Jane Smith", residentId: "RES-002", paymentId: "PAY-002", pointRedeemed: "2500", pricePerPoint: "$0.10", totalAmount: "$250.00", date: "16-03-2025" },
-  { id: 3, name: "Robert Johnson", residentId: "RES-003", paymentId: "PAY-003", pointRedeemed: "1800", pricePerPoint: "$0.10", totalAmount: "$180.00", date: "15-03-2025" },
-];
+function formatDate(d) {
+  if (!d) return "—"
+  try { return new Date(d).toLocaleDateString("en-GB") } catch { return "—" }
+}
 
-const commercialRecSalesData = [
-  { id: 1, name: "ABC Company", commercialId: "COM-001", recBalance: "500", avgRecPrice: "$11.25", recSold: "200", date: "15-03-2025" },
-  { id: 2, name: "XYZ Corporation", commercialId: "COM-002", recBalance: "750", avgRecPrice: "$12.50", recSold: "300", date: "16-03-2025" },
-];
+// ─────────────────────────────────────────────────────────────────────────────
+// Invoice preview modal
+// ─────────────────────────────────────────────────────────────────────────────
 
-const commercialRecPayoutData = [
-  { id: 1, name: "ABC Company", commercialId: "COM-001", invoiceId: "INV-001", totalAmount: "$2250.00", date: "15-03-2025", status: "Completed" },
-  { id: 2, name: "XYZ Corporation", commercialId: "COM-002", invoiceId: "INV-002", totalAmount: "$3750.00", date: "16-03-2025", status: "Pending" },
-];
+function InvoiceModal({ invoice, onClose }) {
+  if (!invoice) return null
+  const url = invoice.invoiceUrl || invoice.invoiceDocument || invoice.documentUrl || invoice.fileUrl || ""
+  const ext = url.split(".").pop()?.toLowerCase()
+  const isPdf = ext === "pdf"
+  const isImage = ["jpg", "jpeg", "png", "webp", "gif"].includes(ext)
 
-const partnerPerformanceData = [
-  { id: 1, name: "Partner One", address: "123 Main St", activeCommGenerators: "5", activeResidentGenerators: "25", totalCommGen: "150", totalRecsSold: "1200", totalEarnings: "$14,400" },
-  { id: 2, name: "Partner Two", address: "456 Oak Ave", activeCommGenerators: "3", activeResidentGenerators: "18", totalCommGen: "90", totalRecsSold: "750", totalEarnings: "$9,000" },
-];
+  const handleDownload = () => {
+    if (!url) return
+    const link = document.createElement("a")
+    link.href = url
+    link.download = url.split("/").pop() || "invoice"
+    link.target = "_blank"
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
 
-const wregisGenerationData = [
-  { id: 1, generatorId: "GEN-001", reportingUnitId: "RU-001", vintage: "2024", startDate: "01-01-2024", endDate: "31-12-2024", totalMWh: "150" },
-  { id: 2, generatorId: "GEN-002", reportingUnitId: "RU-002", vintage: "2024", startDate: "01-01-2024", endDate: "31-12-2024", totalMWh: "225" },
-];
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-lg w-11/12 h-5/6 max-w-4xl max-h-[90vh] flex flex-col">
+        <div className="flex justify-between items-center p-4 border-b">
+          <h3 className="font-sfpro text-[16px] font-semibold">Invoice — {invoice.id?.slice(0, 8)}...</h3>
+          <div className="flex gap-2">
+            {url && (
+              <Button onClick={handleDownload} className="bg-[#039994] text-white px-4 py-2 rounded-md text-sm hover:bg-[#028884] flex items-center gap-2">
+                <Download className="h-4 w-4" /> Download
+              </Button>
+            )}
+            <Button onClick={onClose} className="bg-red-500 text-white px-4 py-2 rounded-md text-sm hover:bg-red-600 flex items-center gap-1">
+              <X className="h-4 w-4" /> Close
+            </Button>
+          </div>
+        </div>
+        <div className="flex-1 overflow-auto p-4">
+          {url && isPdf ? (
+            <iframe src={`${url}#view=FitH`} className="w-full h-full border rounded-lg min-h-[400px]" title="Invoice" />
+          ) : url && isImage ? (
+            <img src={url} alt="Invoice" className="max-w-full max-h-full object-contain mx-auto" />
+          ) : url ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500 font-sfpro mb-4">Preview not available for this file type.</p>
+              <Button onClick={handleDownload} className="bg-[#039994] text-white px-4 py-2 rounded-md font-sfpro hover:bg-[#028884]">
+                <Download className="h-4 w-4 mr-2" /> Download Invoice
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3 text-sm font-sfpro">
+              {Object.entries(invoice).filter(([k]) => !["invoiceUrl", "documentUrl", "fileUrl", "invoiceDocument"].includes(k)).map(([k, v]) => (
+                <div key={k} className="flex justify-between border-b py-2">
+                  <span className="text-gray-500 capitalize">{k.replace(/([A-Z])/g, " $1").trim()}</span>
+                  <span className="text-[#1E1E1E] font-medium">{v != null ? String(v) : "—"}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Facility Type badge (used in merged REC Generation table)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function FacilityTypeBadge({ type }) {
+  if (type === "Commercial") return (
+    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">Commercial</span>
+  )
+  if (type === "Residential") return (
+    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-teal-100 text-teal-700">Residential</span>
+  )
+  return <span className="text-gray-400">—</span>
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main component
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function ReportsDashboard() {
   const [currentPage, setCurrentPage] = useState(1)
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
-  const [reportType, setReportType] = useState("Residential REC Generation")
+  // FIX-10: default changed to "REC Generation" (merged view)
+  const [reportType, setReportType] = useState("REC Generation")
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-  const [filteredData, setFilteredData] = useState(residentialRecSalesData)
-  const [residentialView, setResidentialView] = useState("sales")
-  const [commercialView, setCommercialView] = useState("sales")
-  
+  const [allData, setAllData] = useState([])
+  const [filteredData, setFilteredData] = useState([])
+  // FIX-10: replaces residentialView + commercialView toggles
+  const [recGenerationFilter, setRecGenerationFilter] = useState("all")
+  const [loading, setLoading] = useState(false)
+  const [selectedInvoice, setSelectedInvoice] = useState(null)
+
   const totalPages = Math.ceil(filteredData.length / 10)
 
+  // FIX-09: "Commercial REC Generation" renamed to "Commercial REC Sales"
+  // FIX-10: "Residential REC Generation" + "Commercial REC Sales" merged into "REC Generation"
+  //         "Residential Redemption" is the former redemption sub-view, now its own report
+  // FIX-13: Added three new report types from /api/reports/* endpoints
   const reportTypes = [
-    "Residential REC Generation", 
-    "Commercial REC Generation", 
+    "REC Generation",
+    "Residential Redemption",
     "Partner Performance",
-    "WREGIS Generation Report"
+    "Partner Customers",
+    "WREGIS Generation Report",
+    "Points Report",
+    "REC Generation Report",
+    "REC Sales Entries",
   ]
 
-  const handleFilterApply = (filters) => {
-    // Apply filtering logic based on current report type and view
-    let results;
-    
-    switch(reportType) {
-      case "Residential REC Generation":
-        results = residentialView === "sales" 
-          ? [...residentialRecSalesData] 
-          : [...residentialRecRedemptionData];
-        break;
-        
-      case "Commercial REC Generation":
-        results = commercialView === "sales" 
-          ? [...commercialRecSalesData] 
-          : [...commercialRecPayoutData];
-        break;
-        
-      case "Partner Performance":
-        results = [...partnerPerformanceData];
-        break;
-        
-      case "WREGIS Generation Report":
-        results = [...wregisGenerationData];
-        break;
+  // ── Data mappers ──────────────────────────────────────────────────────────
+
+  const fetchAllPages = async (buildUrl, extractRecords) => {
+    const authToken = localStorage.getItem("authToken")
+    let all = []
+    let page = 1
+    let hasMore = true
+    while (hasMore) {
+      const res = await fetch(buildUrl(page), {
+        headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+      })
+      if (!res.ok) break
+      const json = await res.json()
+      if (json.status === "success") {
+        const { records, hasNextPage } = extractRecords(json.data)
+        all = [...all, ...records]
+        hasMore = hasNextPage
+        page++
+      } else {
+        hasMore = false
+      }
     }
-    
-    // Apply common filters
+    return all
+  }
+
+  // FIX-10: residential records now include Facility Type + _type for filtering
+  const mapResidentialForREC = (records) =>
+    records.map((r) => ({
+      id: r.id,
+      "Facility Type": "Residential",
+      _type: "residential",
+      Name: r.residentialFacility?.user
+        ? `${r.residentialFacility.user.firstName} ${r.residentialFacility.user.lastName}`
+        : "—",
+      "Facility / Property": r.residentialFacility?.address || r.utilityServiceAddress || "—",
+      "Meter UID": r.meterUid || "—",
+      Utility: r.utility || "—",
+      "Start Date": formatDate(r.intervalStart),
+      "End Date": formatDate(r.intervalEnd),
+      "Interval kWh": r.intervalKWh != null ? Number(r.intervalKWh).toFixed(2) : "—",
+      Points: r.points != null ? Number(r.points).toFixed(2) : "—",
+      RECs: r.recs != null ? Number(r.recs).toFixed(8) : "—",
+    }))
+
+  // FIX-10: commercial records now include Facility Type + _type for filtering
+  const mapCommercialForREC = (records) =>
+    records.map((r) => ({
+      id: r.id,
+      "Facility Type": "Commercial",
+      _type: "commercial",
+      Name: r.commercialFacility?.commercialUser?.user
+        ? `${r.commercialFacility.commercialUser.user.firstName} ${r.commercialFacility.commercialUser.user.lastName}`
+        : "—",
+      "Facility / Property": r.commercialFacility?.facilityName || "—",
+      "Meter UID": r.meterUid || "—",
+      Utility: r.utility || "—",
+      "Start Date": formatDate(r.intervalStart),
+      "End Date": formatDate(r.intervalEnd),
+      "Interval kWh": r.intervalKWh != null ? Number(r.intervalKWh).toFixed(3) : "—",
+      Points: r.points != null ? Number(r.points).toFixed(4) : "—",
+      RECs: r.recs != null ? Number(r.recs).toFixed(8) : "—",
+    }))
+
+  const mapInvoices = (invoices) =>
+    invoices.map((inv) => ({
+      id: inv.id,
+      "Invoice ID": inv.id?.slice(0, 8) + "..." || "—",
+      "User / Company": inv.userName || inv.companyName || inv.userId || "—",
+      Amount: inv.totalAmount != null ? `$${Number(inv.totalAmount).toFixed(2)}` : inv.amount != null ? `$${Number(inv.amount).toFixed(2)}` : "—",
+      Status: inv.status || "—",
+      Period: inv.period || inv.quarter || "—",
+      Date: formatDate(inv.createdAt || inv.generatedAt || inv.date),
+      _raw: inv,
+    }))
+
+  // ── Load data by report type ──────────────────────────────────────────────
+
+  const loadData = async (type) => {
+    setLoading(true)
+    try {
+      // FIX-10: combined REC Generation fetches both residential + commercial
+      if (type === "REC Generation") {
+        const authToken = localStorage.getItem("authToken")
+        const [resiResult, commResult] = await Promise.allSettled([
+          fetchAllPages(
+            (p) => `${CONFIG.API_BASE_URL}/api/admin/meter-records/residential?page=${p}&limit=100`,
+            (d) => ({ records: d.records || [], hasNextPage: d.metadata?.hasNextPage || false })
+          ),
+          fetchAllPages(
+            (p) => `${CONFIG.API_BASE_URL}/api/admin/meter-records/commercial?page=${p}&limit=100`,
+            (d) => ({ records: d.records || [], hasNextPage: d.metadata?.hasNextPage || false })
+          ),
+        ])
+        const resiRecords = resiResult.status === "fulfilled" ? resiResult.value : []
+        const commRecords = commResult.status === "fulfilled" ? commResult.value : []
+        const combined = [
+          ...mapResidentialForREC(resiRecords),
+          ...mapCommercialForREC(commRecords),
+        ]
+        setAllData(combined)
+        setFilteredData(combined)
+
+      // Residential Redemption (was sub-view of "Residential REC Generation")
+      } else if (type === "Residential Redemption") {
+        const authToken = localStorage.getItem("authToken")
+        const res = await fetch(`${CONFIG.API_BASE_URL}/api/payout-request?userType=RESIDENTIAL`, {
+          headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+        })
+        if (res.ok) {
+          const json = await res.json()
+          const payouts = json.status === "success"
+            ? Array.isArray(json.data) ? json.data : json.data?.payoutRequests || json.data?.payouts || []
+            : []
+          const mapped = payouts.map((p, idx) => ({
+            id: p.id || idx,
+            Name: p.user ? `${p.user.firstName || ""} ${p.user.lastName || ""}`.trim() : p.userName || "—",
+            Amount: p.amount != null ? `$${Number(p.amount).toFixed(2)}` : "—",
+            Status: p.status || "—",
+            "Request Date": formatDate(p.createdAt),
+            "Processed Date": formatDate(p.processedAt || p.updatedAt),
+          }))
+          setAllData(mapped)
+          setFilteredData(mapped)
+        } else {
+          setAllData([])
+          setFilteredData([])
+        }
+
+      // FIX-08 + FIX-13: Partner Performance — uses dedicated /api/admin/partner-performance endpoint
+      } else if (type === "Partner Performance") {
+        const authToken = localStorage.getItem("authToken")
+        const res = await fetch(`${CONFIG.API_BASE_URL}/api/admin/partner-performance?page=1&limit=100`, {
+          headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+        })
+        if (res.ok) {
+          const json = await res.json()
+          const partners = json.status === "success"
+            ? Array.isArray(json.data) ? json.data : json.data?.partners || json.data?.data || []
+            : []
+          const mapped = partners.map((p, idx) => ({
+            id: p.id || idx,
+            companyName: p.companyName || "—",
+            name: p.email || "—",
+            partnerType: p.partnerType || "—",
+            email: p.email || "—",
+            totalReferrals: p.totalReferrals ?? 0,
+            totalFacilities: p.totalFacilities ?? "—",
+            recsGenerated: p.recsGenerated != null ? Number(p.recsGenerated).toFixed(4) : "—",
+            dateJoined: formatDate(p.createdAt),
+          }))
+          setAllData(mapped)
+          setFilteredData(mapped)
+        } else {
+          setAllData([])
+          setFilteredData([])
+        }
+
+      // Partner Customers — individual customers per partner, using the same
+      // data sources as PartnerManagement (partners endpoint) and CustomerManagement
+      // (get-all-users?email=X for full user profile data)
+      } else if (type === "Partner Customers") {
+        const authToken = localStorage.getItem("authToken")
+        const PARTNER_TYPES = new Set(["PARTNER", "SALES_AGENT", "INSTALLER", "FINANCE_COMPANY"])
+
+        // Step 1: fetch registered partners (same as PartnerManagement.jsx)
+        const [partnersRes, allUsersRes] = await Promise.allSettled([
+          fetch(`${CONFIG.API_BASE_URL}/api/admin/partners?page=1&limit=200`, {
+            headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+          }).then((r) => r.ok ? r.json() : null),
+          fetch(`${CONFIG.API_BASE_URL}/api/admin/get-all-users?page=1&limit=200`, {
+            headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+          }).then((r) => r.ok ? r.json() : null),
+        ])
+
+        // Registered partners — use user.id as the userId for referral lookup
+        let partnerList = []
+        if (partnersRes.status === "fulfilled" && partnersRes.value?.status === "success") {
+          const raw = partnersRes.value.data?.partners || partnersRes.value.data?.data || []
+          partnerList = raw.map((p) => ({
+            userId: p.user?.id || p.userId || p.id,
+            label: p.name || p.companyName || p.user?.email || p.email || "—",
+          }))
+        }
+        // Invited partner-type users not yet in partners table (same logic as PartnerManagement)
+        const registeredIds = new Set(partnerList.map((p) => p.userId).filter(Boolean))
+        if (allUsersRes.status === "fulfilled" && allUsersRes.value?.data?.users) {
+          allUsersRes.value.data.users
+            .filter((u) => PARTNER_TYPES.has(u.userType) && !registeredIds.has(u.id))
+            .forEach((u) => {
+              partnerList.push({
+                userId: u.id,
+                label: u.name || `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.email || "—",
+              })
+            })
+        }
+
+        // Step 2: fetch referrals per partner in parallel
+        const referralResults = await Promise.allSettled(
+          partnerList.map(({ userId }) =>
+            userId
+              ? fetch(`${CONFIG.API_BASE_URL}/api/user/get-users-referrals/${userId}`, {
+                  headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+                }).then((r) => r.ok ? r.json() : null)
+              : Promise.resolve(null)
+          )
+        )
+
+        // Step 3: for every referred email, look up the full user via
+        // get-all-users?email=X (same endpoint customer management uses)
+        // so all fields — userType, phoneNumber, name — come from the User record directly
+        const allEmails = new Set()
+        const partnerByEmail = new Map() // email → partner label
+        for (let i = 0; i < partnerList.length; i++) {
+          const result = referralResults[i]
+          if (result.status !== "fulfilled" || !result.value) continue
+          const json = result.value
+          const refs = json.status === "success"
+            ? (Array.isArray(json.data) ? json.data : json.data?.referrals ?? [])
+            : []
+          for (const ref of refs) {
+            const email = (ref.inviteeEmail || ref.email || "").toLowerCase().trim()
+            if (!email) continue
+            allEmails.add(email)
+            if (!partnerByEmail.has(email)) partnerByEmail.set(email, partnerList[i].label)
+          }
+        }
+
+        // Batch lookup all unique customer emails via get-all-users?email=X
+        const emailList = Array.from(allEmails)
+        const userLookups = await Promise.allSettled(
+          emailList.map((email) =>
+            fetch(`${CONFIG.API_BASE_URL}/api/admin/get-all-users?email=${encodeURIComponent(email)}&limit=1`, {
+              headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+            }).then((r) => r.ok ? r.json() : null)
+          )
+        )
+
+        // Step 4: build final rows — one per customer, with full profile data
+        const allRows = []
+        emailList.forEach((email, idx) => {
+          const result = userLookups[idx]
+          if (result.status !== "fulfilled" || !result.value) return
+          const users = result.value.data?.users || []
+          const user = users[0]
+          if (!user) return
+          const name = user.name || `${user.firstName || ""} ${user.lastName || ""}`.trim() || "—"
+          allRows.push({
+            id: user.id || email,
+            _partnerName: partnerByEmail.get(email) || "—",
+            _customerName: name,
+            _email: user.email || email,
+            _customerType: user.userType || "—",
+            _role: user.role || user.partnerType || "—",
+            _phone: user.phoneNumber || "—",
+            _status: user.status || "—",
+            _date: user.createdAt ? formatDate(user.createdAt) : "—",
+          })
+        })
+        setAllData(allRows)
+        setFilteredData(allRows)
+
+      } else if (type === "WREGIS Generation Report") {
+        const authToken = localStorage.getItem("authToken")
+        const [commRes, resiRes] = await Promise.allSettled([
+          fetch(`${CONFIG.API_BASE_URL}/api/admin/meter-records/commercial?page=1&limit=500`, {
+            headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+          }),
+          fetch(`${CONFIG.API_BASE_URL}/api/admin/meter-records/residential?page=1&limit=500`, {
+            headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+          }),
+        ])
+
+        const parseRecords = async (result) => {
+          if (result.status !== "fulfilled" || !result.value.ok) return []
+          const json = await result.value.json()
+          return json.status === "success" ? (json.data?.records || []) : []
+        }
+
+        const commRecords = await parseRecords(commRes)
+        const resiRecords = await parseRecords(resiRes)
+
+        const facilityMap = new Map()
+        const processRecord = (r, facilityKey, wregisId) => {
+          if (!facilityKey) return
+          const existing = facilityMap.get(facilityKey) || {
+            generatorId: wregisId || facilityKey.slice(0, 12),
+            reportingUnitId: wregisId || facilityKey.slice(0, 12),
+            totalKWh: 0,
+            startDate: null,
+            endDate: null,
+          }
+          const kwh = Number(r.intervalKWh || r.revKwh || 0)
+          existing.totalKWh += kwh
+          const start = r.intervalStart ? new Date(r.intervalStart) : null
+          const end = r.intervalEnd ? new Date(r.intervalEnd) : null
+          if (start && (!existing.startDate || start < existing.startDate)) existing.startDate = start
+          if (end && (!existing.endDate || end > existing.endDate)) existing.endDate = end
+          facilityMap.set(facilityKey, existing)
+        }
+
+        commRecords.forEach((r) => {
+          const fac = r.commercialFacility
+          processRecord(r, fac?.id || r.commercialFacilityId, fac?.wregisId)
+        })
+        resiRecords.forEach((r) => {
+          const fac = r.residentialFacility
+          processRecord(r, fac?.id || r.residentialFacilityId, fac?.wregisId)
+        })
+
+        const mapped = Array.from(facilityMap.entries()).map(([, val], idx) => {
+          const startMonth = val.startDate ? String(val.startDate.getMonth() + 1).padStart(2, "0") : "—"
+          const startYear = val.startDate ? val.startDate.getFullYear() : "—"
+          return {
+            id: idx + 1,
+            generatorId: val.generatorId || "—",
+            reportingUnitId: val.reportingUnitId || "—",
+            vintage: val.startDate ? `${startMonth}/${startYear}` : "—",
+            startDate: val.startDate ? val.startDate.toLocaleDateString("en-US") : "—",
+            endDate: val.endDate ? val.endDate.toLocaleDateString("en-US") : "—",
+            totalMWh: (val.totalKWh / 1000).toFixed(4),
+          }
+        })
+        setAllData(mapped)
+        setFilteredData(mapped)
+      // FIX-13: Points Report — GET /api/reports/points
+      } else if (type === "Points Report") {
+        const authToken = localStorage.getItem("authToken")
+        const res = await fetch(`${CONFIG.API_BASE_URL}/api/reports/points?page=1&limit=200`, {
+          headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+        })
+        if (res.ok) {
+          const json = await res.json()
+          const records = json.status === "success"
+            ? Array.isArray(json.data) ? json.data : json.data?.records || json.data?.data || []
+            : []
+          const mapped = records.map((r, idx) => ({
+            id: r.id || idx,
+            "User / Facility": r.facilityName || r.facilityId
+              || (r.user ? `${r.user.firstName || ""} ${r.user.lastName || ""}`.trim() : null)
+              || r.userId || "—",
+            "Earned Points": r.earnedPoints ?? r.totalEarnedPoints ?? "—",
+            "Redeemed Points": r.redeemedPoints ?? r.totalRedeemedPoints ?? "—",
+            "Open Balance": r.openBalance ?? r.carryOverPoints ?? r.pointBalance ?? "—",
+          }))
+          setAllData(mapped)
+          setFilteredData(mapped)
+        } else {
+          setAllData([])
+          setFilteredData([])
+        }
+
+      // FIX-13: REC Generation Report (WREGIS pipeline) — GET /api/reports/rec-generation
+      } else if (type === "REC Generation Report") {
+        const authToken = localStorage.getItem("authToken")
+        const res = await fetch(`${CONFIG.API_BASE_URL}/api/reports/rec-generation?page=1&limit=200`, {
+          headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+        })
+        if (res.ok) {
+          const json = await res.json()
+          const records = json.status === "success"
+            ? Array.isArray(json.data) ? json.data : json.data?.records || json.data?.data || []
+            : []
+          const mapped = records.map((r, idx) => ({
+            id: r.id || idx,
+            _wregisStatus: r.wregisStatus,
+            "Facility": r.facilityName || r.facilityId || "—",
+            "Month/Year": r.month && r.year
+              ? `${String(r.month).padStart(2, "0")}/${r.year}`
+              : formatDate(r.intervalStart || r.createdAt),
+            "RECs Generated": r.recsGenerated != null ? Number(r.recsGenerated).toFixed(8) : "—",
+            "RECs Approved": r.approvedRecsAmount != null ? Number(r.approvedRecsAmount).toFixed(8) : "—",
+            "WREGIS Status": r.wregisStatus || "—",
+          }))
+          setAllData(mapped)
+          setFilteredData(mapped)
+        } else {
+          setAllData([])
+          setFilteredData([])
+        }
+
+      // FIX-13: REC Sales Entries — GET /api/reports/rec-sales
+      } else if (type === "REC Sales Entries") {
+        const authToken = localStorage.getItem("authToken")
+        const res = await fetch(`${CONFIG.API_BASE_URL}/api/reports/rec-sales?page=1&limit=200`, {
+          headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+        })
+        if (res.ok) {
+          const json = await res.json()
+          const records = json.status === "success"
+            ? Array.isArray(json.data) ? json.data : json.data?.records || json.data?.sales || json.data?.data || []
+            : []
+          const mapped = records.map((r, idx) => ({
+            id: r.id || idx,
+            "Sale Date": formatDate(r.saleDate || r.createdAt),
+            "Vintage": r.vintage || (r.month && r.year ? `${String(r.month).padStart(2, "0")}/${r.year}` : "—"),
+            "RECs Sold": r.recsSold ?? r.quantity ?? r.totalRecsSold ?? "—",
+            "Price Per REC": r.pricePerRec != null ? `$${Number(r.pricePerRec).toFixed(4)}` : "—",
+            "Total Amount": r.totalAmount != null ? `$${Number(r.totalAmount).toFixed(2)}` : "—",
+            "Buyer": r.buyer || r.recBuyer || r.buyerName || "—",
+          }))
+          setAllData(mapped)
+          setFilteredData(mapped)
+        } else {
+          setAllData([])
+          setFilteredData([])
+        }
+
+      } else {
+        setAllData([])
+        setFilteredData([])
+      }
+    } catch (err) {
+      console.error("Error loading report data:", err)
+      setAllData([])
+      setFilteredData([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadData(reportType)
+    setCurrentPage(1)
+    // Reset rec generation filter when switching report types
+    if (reportType === "REC Generation") setRecGenerationFilter("all")
+  }, [reportType])
+
+  // FIX-10: filter the combined REC generation data by facility type
+  useEffect(() => {
+    if (reportType !== "REC Generation") return
+    if (recGenerationFilter === "all") {
+      setFilteredData(allData)
+    } else {
+      setFilteredData(allData.filter((r) => r._type === recGenerationFilter))
+    }
+    setCurrentPage(1)
+  }, [recGenerationFilter])
+
+  // ── Export ─────────────────────────────────────────────────────────────────
+
+  const handleExport = () => {
+    if (!filteredData.length) return
+    const cols = getColumns()
+    const exportRows = reportType === "Partner Customers"
+      ? filteredData.map((item) => Object.fromEntries(cols.map((c) => [c, item[{
+          "Partner": "_partnerName", "Name": "_customerName", "Email": "_email",
+          "Customer Type": "_customerType", "Role": "_role", "Phone Number": "_phone",
+          "Status": "_status", "Date Registered": "_date",
+        }[c]] ?? "—"])))
+      : filteredData.map(({ id, _raw, _type, _wregisStatus, ...rest }) => rest)
+    const headers = Object.keys(exportRows[0] || {})
+    const csv = [
+      headers.join(","),
+      ...exportRows.map((row) =>
+        headers.map((h) => `"${(row[h] ?? "").toString().replace(/"/g, '""')}"`).join(",")
+      ),
+    ].join("\n")
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = `${reportType.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.csv`
+    link.style.visibility = "hidden"
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
+  // ── Filter handlers ────────────────────────────────────────────────────────
+
+  const handleFilterApply = (filters) => {
+    let results = [...allData]
     if (filters.name) {
-      results = results.filter(item => 
-        item.name?.toLowerCase().includes(filters.name.toLowerCase())
+      results = results.filter((item) =>
+        (item.Name || item.name || item.companyName || "").toLowerCase().includes(filters.name.toLowerCase())
       )
     }
-    
     if (filters.dateFrom && filters.dateTo) {
-      results = results.filter(item => {
-        const itemDate = new Date(item.date?.split('-').reverse().join('-') || item.startDate?.split('-').reverse().join('-'))
-        const fromDate = new Date(filters.dateFrom)
-        const toDate = new Date(filters.dateTo)
-        return itemDate >= fromDate && itemDate <= toDate
+      results = results.filter((item) => {
+        const raw = item["Start Date"] || item.startDate || item.date || ""
+        const parts = raw.split("/").length > 1 ? raw.split("/").reverse().join("-") : raw.split("-").reverse().join("-")
+        const d = new Date(parts)
+        return d >= new Date(filters.dateFrom) && d <= new Date(filters.dateTo)
       })
     }
-    
-    // Apply type-specific filters
-    if (reportType === "Residential REC Generation") {
-      if (filters.residentId) {
-        results = results.filter(item => 
-          item.residentId?.toLowerCase().includes(filters.residentId.toLowerCase())
-        )
-      }
-      if (residentialView === "sales" && filters.recBalance) {
-        results = results.filter(item => item.recBalance === filters.recBalance)
-      }
-      if (residentialView === "redemption" && filters.paymentId) {
-        results = results.filter(item => 
-          item.paymentId?.toLowerCase().includes(filters.paymentId.toLowerCase())
-        )
-      }
+    // Re-apply recGenerationFilter on top of name/date filter
+    if (reportType === "REC Generation" && recGenerationFilter !== "all") {
+      results = results.filter((r) => r._type === recGenerationFilter)
     }
-    
-    if (reportType === "Commercial REC Generation") {
-      if (filters.commercialId) {
-        results = results.filter(item => 
-          item.commercialId?.toLowerCase().includes(filters.commercialId.toLowerCase())
-        )
-      }
-      if (commercialView === "payout" && filters.invoiceId) {
-        results = results.filter(item => 
-          item.invoiceId?.toLowerCase().includes(filters.invoiceId.toLowerCase())
-        )
-      }
-    }
-    
-    if (reportType === "Partner Performance") {
-      if (filters.address) {
-        results = results.filter(item => 
-          item.address?.toLowerCase().includes(filters.address.toLowerCase())
-        )
-      }
-      if (filters.totalRecsSold) {
-        results = results.filter(item => item.totalRecsSold === filters.totalRecsSold)
-      }
-    }
-    
-    if (reportType === "WREGIS Generation Report") {
-      if (filters.generatorId) {
-        results = results.filter(item => 
-          item.generatorId?.toLowerCase().includes(filters.generatorId.toLowerCase())
-        )
-      }
-      if (filters.reportingUnitId) {
-        results = results.filter(item => 
-          item.reportingUnitId?.toLowerCase().includes(filters.reportingUnitId.toLowerCase())
-        )
-      }
-      if (filters.vintage) {
-        results = results.filter(item => item.vintage === filters.vintage)
-      }
-    }
-    
     setFilteredData(results)
     setIsFilterModalOpen(false)
     setCurrentPage(1)
@@ -168,87 +630,149 @@ export default function ReportsDashboard() {
   const handleReportTypeChange = (type) => {
     setReportType(type)
     setIsDropdownOpen(false)
-    
-    switch(type) {
-      case "Residential REC Generation":
-        setFilteredData(residentialRecSalesData)
-        setResidentialView("sales")
-        break
-      case "Commercial REC Generation":
-        setFilteredData(commercialRecSalesData)
-        setCommercialView("sales")
-        break
-      case "Partner Performance":
-        setFilteredData(partnerPerformanceData)
-        break
-      case "WREGIS Generation Report":
-        setFilteredData(wregisGenerationData)
-        break
+    setCurrentPage(1)
+  }
+
+  // ── Table columns by report type ───────────────────────────────────────────
+
+  const getColumns = () => {
+    // FIX-10: merged REC Generation columns with Facility Type
+    if (reportType === "REC Generation") {
+      return ["Facility Type", "Name", "Facility / Property", "Meter UID", "Utility", "Start Date", "End Date", "Interval kWh", "Points", "RECs"]
     }
-    setCurrentPage(1)
+    if (reportType === "Residential Redemption") {
+      return ["Name", "Amount", "Status", "Request Date", "Processed Date"]
+    }
+    // FIX-08: updated partner performance columns
+    if (reportType === "Partner Performance") {
+      return ["Company Name", "Partner Type", "Total Referrals", "Total Facilities", "RECs Generated", "Date Joined"]
+    }
+    if (reportType === "Partner Customers") {
+      return ["Partner", "Name", "Email", "Customer Type", "Role", "Phone Number", "Status", "Date Registered"]
+    }
+    if (reportType === "WREGIS Generation Report") {
+      return ["Generator ID", "Reporting Unit ID", "Vintage", "Start Date", "End Date", "Total MWh"]
+    }
+    // FIX-13: Three new report types
+    if (reportType === "Points Report") {
+      return ["User / Facility", "Earned Points", "Redeemed Points", "Open Balance"]
+    }
+    if (reportType === "REC Generation Report") {
+      return ["Facility", "Month/Year", "RECs Generated", "RECs Approved", "WREGIS Status"]
+    }
+    if (reportType === "REC Sales Entries") {
+      return ["Sale Date", "Vintage", "RECs Sold", "Price Per REC", "Total Amount", "Buyer"]
+    }
+    return []
   }
 
-  const handleResidentialViewChange = (value) => {
-    setResidentialView(value)
-    setFilteredData(value === "sales" ? residentialRecSalesData : residentialRecRedemptionData)
-    setCurrentPage(1)
-  }
-
-  const handleCommercialViewChange = (value) => {
-    setCommercialView(value)
-    setFilteredData(value === "sales" ? commercialRecSalesData : commercialRecPayoutData)
-    setCurrentPage(1)
-  }
-
-  const handleExport = () => {
-    // Convert data to CSV
-    const headers = Object.keys(filteredData[0] || {})
-    const csvContent = [
-      headers.join(","),
-      ...filteredData.map(row => 
-        headers.map(header => 
-          `"${row[header]?.toString().replace(/"/g, '""') || ''}"`
-        ).join(",")
+  const getCellValue = (item, col) => {
+    if (col === "Actions") {
+      return (
+        <Button
+          onClick={() => setSelectedInvoice(item._raw || item)}
+          className="bg-[#039994] text-white px-3 py-1 rounded-md text-xs hover:bg-[#028884] flex items-center gap-1"
+        >
+          <Eye className="h-3.5 w-3.5" /> View
+        </Button>
       )
-    ].join("\n")
-    
-    // Create download link
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.setAttribute("href", url)
-    link.setAttribute("download", `${reportType.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.csv`)
-    link.style.visibility = "hidden"
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    }
+    // FIX-10: render badge for Facility Type
+    if (col === "Facility Type") {
+      return <FacilityTypeBadge type={item["Facility Type"]} />
+    }
+    // FIX-13: render badge for WREGIS Status in REC Generation Report
+    if (col === "WREGIS Status") {
+      const s = item["WREGIS Status"]
+      const styleMap = {
+        PENDING_SUBMISSION: "bg-gray-100 text-gray-600",
+        SUBMITTED:          "bg-amber-100 text-amber-700",
+        APPROVED:           "bg-teal-100 text-teal-700",
+        REJECTED:           "bg-red-100 text-red-700",
+        ADJUSTED:           "bg-purple-100 text-purple-700",
+      }
+      const labelMap = {
+        PENDING_SUBMISSION: "Pending",
+        SUBMITTED:          "Submitted",
+        APPROVED:           "Approved",
+        REJECTED:           "Rejected",
+        ADJUSTED:           "Adjusted",
+      }
+      return (
+        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold font-sfpro ${styleMap[s] || "bg-gray-100 text-gray-500"}`}>
+          {labelMap[s] || s || "—"}
+        </span>
+      )
+    }
+    // Partner Customers columns map to underscore-prefixed internal keys
+    if (reportType === "Partner Customers") {
+      const pcMap = {
+        "Partner": "_partnerName",
+        "Name": "_customerName",
+        "Email": "_email",
+        "Customer Type": "_customerType",
+        "Role": "_role",
+        "Phone Number": "_phone",
+        "Status": "_status",
+        "Date Registered": "_date",
+      }
+      return item[pcMap[col]] ?? "—"
+    }
+    const keyMap = {
+      "Generator ID": "generatorId",
+      "Reporting Unit ID": "reportingUnitId",
+      "Total MWh": "totalMWh",
+      // FIX-08: new partner performance columns
+      "Company Name": "companyName",
+      "Partner Type": "partnerType",
+      "Total Referrals": "totalReferrals",
+      "Total Facilities": "totalFacilities",
+      "RECs Generated": "recsGenerated",
+      "Date Joined": "dateJoined",
+      // shared
+      "Email": "email",
+      "Name": "name",
+      "Status": "status",
+      "Address": "address",
+      "Facility / Property": "Facility / Property",
+      "Request Date": "Request Date",
+      "Processed Date": "Processed Date",
+      "Amount": "Amount",
+    }
+    // FIX-13: new report columns map directly by column name (used as object key)
+    return item[keyMap[col] ?? col] ?? "—"
   }
 
-  // Get current page data
+  const columns = getColumns()
   const indexOfLastItem = currentPage * 10
   const indexOfFirstItem = indexOfLastItem - 10
   const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem)
 
   return (
     <div className="bg-white min-h-screen p-6">
+      {selectedInvoice && (
+        <InvoiceModal invoice={selectedInvoice} onClose={() => setSelectedInvoice(null)} />
+      )}
+
       <Card className="border-gray-200">
         <CardContent className="p-0">
+
+          {/* Header row */}
           <div className="p-4 flex items-center justify-between">
             <div className="relative">
-              <div 
+              <div
                 className="text-xl font-medium text-teal-500 flex items-center cursor-pointer"
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               >
                 {reportType}
                 <ChevronDown className="h-5 w-5 ml-2 text-teal-500" />
               </div>
-              
               {isDropdownOpen && (
                 <div className="absolute top-full left-0 z-10 w-64 bg-white shadow-lg rounded-md border border-gray-200 mt-1">
                   {reportTypes.map((type) => (
-                    <div 
-                      key={type} 
-                      className="p-3 hover:bg-gray-50 cursor-pointer"
+                    <div
+                      key={type}
+                      className={`p-3 hover:bg-gray-50 cursor-pointer font-sfpro text-sm ${reportType === type ? "bg-teal-50 text-teal-600 font-medium" : ""}`}
                       onClick={() => handleReportTypeChange(type)}
                     >
                       {type}
@@ -257,61 +781,50 @@ export default function ReportsDashboard() {
                 </div>
               )}
             </div>
-            
+
             <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                className="gap-2"
-                onClick={() => setIsFilterModalOpen(true)}
-              >
+              <Button variant="outline" className="gap-2" onClick={() => setIsFilterModalOpen(true)}>
                 <span>Filter by</span>
                 <Filter className="h-4 w-4" />
               </Button>
-              <Button 
-                variant="outline" 
-                className="gap-2"
-                onClick={handleExport}
-              >
+              <Button variant="outline" className="gap-2" onClick={handleExport} disabled={!filteredData.length || loading}>
                 <span>Export Report</span>
                 <Download className="h-4 w-4" />
               </Button>
             </div>
           </div>
 
-          {/* View Toggles */}
-          {reportType === "Residential REC Generation" && (
-            <div className="px-4 pb-4">
-              <ToggleGroup 
-                type="single" 
-                value={residentialView}
-                onValueChange={handleResidentialViewChange}
-                className="grid grid-cols-2"
-              >
-                <ToggleGroupItem value="sales" className="data-[state=on]:bg-teal-500 data-[state=on]:text-white">
-                  Residential REC Sales
-                </ToggleGroupItem>
-                <ToggleGroupItem value="redemption" className="data-[state=on]:bg-teal-500 data-[state=on]:text-white">
-                  Residential REC Points Redemption
-                </ToggleGroupItem>
-              </ToggleGroup>
-            </div>
-          )}
-
-          {reportType === "Commercial REC Generation" && (
-            <div className="px-4 pb-4">
-              <ToggleGroup 
-                type="single" 
-                value={commercialView}
-                onValueChange={handleCommercialViewChange}
-                className="grid grid-cols-2"
-              >
-                <ToggleGroupItem value="sales" className="data-[state=on]:bg-teal-500 data-[state=on]:text-white">
-                  Commercial REC Sales
-                </ToggleGroupItem>
-                <ToggleGroupItem value="payout" className="data-[state=on]:bg-teal-500 data-[state=on]:text-white">
-                  Commercial REC Payout
-                </ToggleGroupItem>
-              </ToggleGroup>
+          {/* FIX-10: REC Generation filter pills (All | Residential | Commercial) */}
+          {reportType === "REC Generation" && (
+            <div className="px-4 pb-3 flex items-center gap-2">
+              <span className="text-xs text-gray-500 font-sfpro mr-1">Filter by type:</span>
+              {[
+                { label: "All", value: "all" },
+                { label: "Residential", value: "residential" },
+                { label: "Commercial", value: "commercial" },
+              ].map(({ label, value }) => (
+                <button
+                  key={value}
+                  onClick={() => setRecGenerationFilter(value)}
+                  className={`px-3 py-1 rounded-full text-xs font-sfpro font-medium transition-colors ${
+                    recGenerationFilter === value
+                      ? "bg-[#039994] text-white"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  {label}
+                  {value !== "all" && allData.length > 0 && (
+                    <span className="ml-1 opacity-75">
+                      ({allData.filter((r) => r._type === value).length})
+                    </span>
+                  )}
+                </button>
+              ))}
+              {allData.length > 0 && (
+                <span className="ml-auto text-xs text-gray-400 font-sfpro">
+                  {filteredData.length} record{filteredData.length !== 1 ? "s" : ""}
+                </span>
+              )}
             </div>
           )}
 
@@ -320,197 +833,89 @@ export default function ReportsDashboard() {
             <table className="w-full">
               <thead>
                 <tr className="border-y text-sm">
-                  {reportType === "Residential REC Generation" && residentialView === "sales" ? (
-                    <>
-                      <th className="py-3 px-4 text-left font-medium">S/N</th>
-                      <th className="py-3 px-4 text-left font-medium">Name</th>
-                      <th className="py-3 px-4 text-left font-medium">Resident ID</th>
-                      <th className="py-3 px-4 text-left font-medium">REC Balance</th>
-                      <th className="py-3 px-4 text-left font-medium">Avg. REC Price</th>
-                      <th className="py-3 px-4 text-left font-medium">REC Sold</th>
-                      <th className="py-3 px-4 text-left font-medium">Date</th>
-                    </>
-                  ) : reportType === "Residential REC Generation" && residentialView === "redemption" ? (
-                    <>
-                      <th className="py-3 px-4 text-left font-medium">S/N</th>
-                      <th className="py-3 px-4 text-left font-medium">Name</th>
-                      <th className="py-3 px-4 text-left font-medium">Resident ID</th>
-                      <th className="py-3 px-4 text-left font-medium">Payment ID</th>
-                      <th className="py-3 px-4 text-left font-medium">Point Redeemed</th>
-                      <th className="py-3 px-4 text-left font-medium">Price/Point</th>
-                      <th className="py-3 px-4 text-left font-medium">Total Amount</th>
-                      <th className="py-3 px-4 text-left font-medium">Date</th>
-                    </>
-                  ) : reportType === "Commercial REC Generation" && commercialView === "sales" ? (
-                    <>
-                      <th className="py-3 px-4 text-left font-medium">S/N</th>
-                      <th className="py-3 px-4 text-left font-medium">Name</th>
-                      <th className="py-3 px-4 text-left font-medium">Commercial ID</th>
-                      <th className="py-3 px-4 text-left font-medium">REC Balance</th>
-                      <th className="py-3 px-4 text-left font-medium">Avg. REC Price</th>
-                      <th className="py-3 px-4 text-left font-medium">REC Sold</th>
-                      <th className="py-3 px-4 text-left font-medium">Date</th>
-                    </>
-                  ) : reportType === "Commercial REC Generation" && commercialView === "payout" ? (
-                    <>
-                      <th className="py-3 px-4 text-left font-medium">S/N</th>
-                      <th className="py-3 px-4 text-left font-medium">Name</th>
-                      <th className="py-3 px-4 text-left font-medium">Commercial ID</th>
-                      <th className="py-3 px-4 text-left font-medium">Invoice ID</th>
-                      <th className="py-3 px-4 text-left font-medium">Total Amount</th>
-                      <th className="py-3 px-4 text-left font-medium">Date</th>
-                    </>
-                  ) : reportType === "Partner Performance" ? (
-                    <>
-                      <th className="py-3 px-4 text-left font-medium">S/N</th>
-                      <th className="py-3 px-4 text-left font-medium">Name</th>
-                      <th className="py-3 px-4 text-left font-medium">Address</th>
-                      <th className="py-3 px-4 text-left font-medium">Active Comm. Generators</th>
-                      <th className="py-3 px-4 text-left font-medium">Active Resident Generators</th>
-                      <th className="py-3 px-4 text-left font-medium">Total Comm. Gen. (MWh)</th>
-                      <th className="py-3 px-4 text-left font-medium">Total RECs Sold</th>
-                      <th className="py-3 px-4 text-left font-medium">Total Earnings</th>
-                    </>
-                  ) : (
-                    <>
-                      <th className="py-3 px-4 text-left font-medium">S/N</th>
-                      <th className="py-3 px-4 text-left font-medium">Generator ID</th>
-                      <th className="py-3 px-4 text-left font-medium">Reporting Unit ID</th>
-                      <th className="py-3 px-4 text-left font-medium">Vintage</th>
-                      <th className="py-3 px-4 text-left font-medium">Start Date</th>
-                      <th className="py-3 px-4 text-left font-medium">End Date</th>
-                      <th className="py-3 px-4 text-left font-medium">Total MWh</th>
-                    </>
+                  <th className="py-3 px-4 text-left font-medium">S/N</th>
+                  {columns.filter(c => c !== "Actions").map((col) => (
+                    <th key={col} className="py-3 px-4 text-left font-medium">{col}</th>
+                  ))}
+                  {columns.includes("Actions") && (
+                    <th className="py-3 px-4 text-left font-medium">Invoice</th>
                   )}
                 </tr>
               </thead>
               <tbody>
-                {currentItems.map((item, index) => (
-                  <tr 
-                    key={item.id} 
-                    className="border-b text-sm hover:bg-gray-50"
-                  >
-                    <td className="py-3 px-4">{indexOfFirstItem + index + 1}</td>
-                    
-                    {reportType === "Residential REC Generation" && residentialView === "sales" ? (
-                      <>
-                        <td className="py-3 px-4">{item.name}</td>
-                        <td className="py-3 px-4">{item.residentId}</td>
-                        <td className="py-3 px-4">{item.recBalance}</td>
-                        <td className="py-3 px-4">{item.avgRecPrice}</td>
-                        <td className="py-3 px-4">{item.recSold}</td>
-                        <td className="py-3 px-4">{item.date}</td>
-                      </>
-                    ) : reportType === "Residential REC Generation" && residentialView === "redemption" ? (
-                      <>
-                        <td className="py-3 px-4">{item.name}</td>
-                        <td className="py-3 px-4">{item.residentId}</td>
-                        <td className="py-3 px-4">{item.paymentId}</td>
-                        <td className="py-3 px-4">{item.pointRedeemed}</td>
-                        <td className="py-3 px-4">{item.pricePerPoint}</td>
-                        <td className="py-3 px-4">{item.totalAmount}</td>
-                        <td className="py-3 px-4">{item.date}</td>
-                      </>
-                    ) : reportType === "Commercial REC Generation" && commercialView === "sales" ? (
-                      <>
-                        <td className="py-3 px-4">{item.name}</td>
-                        <td className="py-3 px-4">{item.commercialId}</td>
-                        <td className="py-3 px-4">{item.recBalance}</td>
-                        <td className="py-3 px-4">{item.avgRecPrice}</td>
-                        <td className="py-3 px-4">{item.recSold}</td>
-                        <td className="py-3 px-4">{item.date}</td>
-                      </>
-                    ) : reportType === "Commercial REC Generation" && commercialView === "payout" ? (
-                      <>
-                        <td className="py-3 px-4">{item.name}</td>
-                        <td className="py-3 px-4">{item.commercialId}</td>
-                        <td className="py-3 px-4">{item.invoiceId}</td>
-                        <td className="py-3 px-4">{item.totalAmount}</td>
-                        <td className="py-3 px-4">{item.date}</td>
-                      </>
-                    ) : reportType === "Partner Performance" ? (
-                      <>
-                        <td className="py-3 px-4">{item.name}</td>
-                        <td className="py-3 px-4">{item.address}</td>
-                        <td className="py-3 px-4">{item.activeCommGenerators}</td>
-                        <td className="py-3 px-4">{item.activeResidentGenerators}</td>
-                        <td className="py-3 px-4">{item.totalCommGen}</td>
-                        <td className="py-3 px-4">{item.totalRecsSold}</td>
-                        <td className="py-3 px-4">{item.totalEarnings}</td>
-                      </>
-                    ) : (
-                      <>
-                        <td className="py-3 px-4">{item.generatorId}</td>
-                        <td className="py-3 px-4">{item.reportingUnitId}</td>
-                        <td className="py-3 px-4">{item.vintage}</td>
-                        <td className="py-3 px-4">{item.startDate}</td>
-                        <td className="py-3 px-4">{item.endDate}</td>
-                        <td className="py-3 px-4">{item.totalMWh}</td>
-                      </>
-                    )}
+                {loading ? (
+                  <tr>
+                    <td colSpan={columns.length + 1} className="py-10 text-center text-gray-500 font-sfpro">
+                      Loading data...
+                    </td>
                   </tr>
-                ))}
+                ) : currentItems.length === 0 ? (
+                  <tr>
+                    <td colSpan={columns.length + 1} className="py-10 text-center text-gray-500 font-sfpro">
+                      No records found
+                    </td>
+                  </tr>
+                ) : (
+                  currentItems.map((item, index) => (
+                    <tr key={item.id || index} className="border-b text-sm hover:bg-gray-50">
+                      <td className="py-3 px-4 font-sfpro">{indexOfFirstItem + index + 1}</td>
+                      {columns.map((col) => (
+                        <td key={col} className="py-3 px-4 font-sfpro text-[#1E1E1E]">
+                          {getCellValue(item, col)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
 
           {/* Pagination */}
           {filteredData.length > 0 ? (
-            <div className="p-4 flex items-center justify-center gap-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-sm">
-                {currentPage} of {totalPages || 1}
+            <div className="p-4 flex items-center justify-between">
+              <span className="text-sm text-gray-500 font-sfpro">
+                {filteredData.length} record{filteredData.length !== 1 ? "s" : ""}
               </span>
-              <Button
-                variant="ghost"
-                size="icon"
-                disabled={currentPage === totalPages || totalPages === 0}
-                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm font-sfpro">{currentPage} of {totalPages || 1}</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  disabled={currentPage === totalPages || totalPages === 0}
+                  onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-          ) : (
-            <div className="p-8 text-center text-gray-500">
-              No records found matching your filters
-            </div>
+          ) : !loading && (
+            <div className="p-8 text-center text-gray-500 font-sfpro">No records found</div>
           )}
         </CardContent>
       </Card>
 
       {/* Filter Modals */}
-      {isFilterModalOpen && reportType === "Residential REC Generation" && (
-        <ResidentialRecGenerationFilterModal 
-          onClose={() => setIsFilterModalOpen(false)} 
+      {isFilterModalOpen && (reportType === "REC Generation" || reportType === "Residential Redemption") && (
+        <ResidentialRecGenerationFilterModal
+          onClose={() => setIsFilterModalOpen(false)}
           onApplyFilter={handleFilterApply}
-          view={residentialView}
-        />
-      )}
-      {isFilterModalOpen && reportType === "Commercial REC Generation" && (
-        <CommercialRecGenerationFilterModal 
-          onClose={() => setIsFilterModalOpen(false)} 
-          onApplyFilter={handleFilterApply}
-          view={commercialView}
+          view="sales"
         />
       )}
       {isFilterModalOpen && reportType === "Partner Performance" && (
-        <PartnerPerformanceFilterModal 
-          onClose={() => setIsFilterModalOpen(false)} 
-          onApplyFilter={handleFilterApply}
-        />
+        <PartnerPerformanceFilterModal onClose={() => setIsFilterModalOpen(false)} onApplyFilter={handleFilterApply} />
       )}
       {isFilterModalOpen && reportType === "WREGIS Generation Report" && (
-        <WregisGenerationFilterModal 
-          onClose={() => setIsFilterModalOpen(false)} 
-          onApplyFilter={handleFilterApply}
-        />
+        <WregisGenerationFilterModal onClose={() => setIsFilterModalOpen(false)} onApplyFilter={handleFilterApply} />
       )}
     </div>
   )

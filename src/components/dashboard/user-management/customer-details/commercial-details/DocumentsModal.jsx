@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Eye, Download, Loader2, CheckCircle, AlertTriangle } from "lucide-react";
+import React, { useState, useRef } from "react";
+import { Eye, Download, Upload, Loader2, CheckCircle, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { toast } from "react-hot-toast";
@@ -13,11 +13,34 @@ const getStatusColor = (status) => {
     case "PENDING": return "bg-[#FFF8E6] text-[#FFB200]";
     case "REJECTED": return "bg-[#FFEBEB] text-[#FF0000]";
     case "SUBMITTED": return "bg-[#E6F7FF] text-[#1890FF]";
+    case "WREGIS_SUBMITTED": return "bg-[#E8E0F0] text-[#7C3AED]";
+    case "REGULATOR_APPROVED": return "bg-[#D1FAE5] text-[#065F46]";
+    case "REGULATOR_REJECTED": return "bg-[#FEE2E2] text-[#991B1B]";
     case "Required":
     case "REQUIRED":
       return "bg-[#F2F2F2] text-gray-500";
     default: return "bg-gray-100 text-gray-500";
   }
+};
+
+const getStatusLabel = (status) => {
+  switch (status) {
+    case "APPROVED": return "Internal Approved";
+    case "REJECTED": return "Internal Rejected";
+    case "SUBMITTED":
+    case "PENDING": return "Pending Review";
+    case "WREGIS_SUBMITTED": return "Submitted to WREGIS";
+    case "REGULATOR_APPROVED": return "Regulator Approved";
+    case "REGULATOR_REJECTED": return "Regulator Rejected";
+    case "Required":
+    case "REQUIRED":
+    default: return status || "Not Uploaded";
+  }
+};
+
+// Determine if a doc is in the regulator track (internally approved, ready for WREGIS)
+const isInRegulatorTrack = (status) => {
+  return ["APPROVED", "WREGIS_SUBMITTED", "REGULATOR_APPROVED", "REGULATOR_REJECTED"].includes(status);
 };
 
 const StatusBadge = ({ status }) => {
@@ -75,24 +98,114 @@ export default function DocumentsModal({ facility, onVerifyFacility, verifyingFa
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [actionType, setActionType] = useState("");
+  const [uploadingDoc, setUploadingDoc] = useState(null);
+  const fileInputRef = useRef(null);
+  const [uploadTargetDoc, setUploadTargetDoc] = useState(null);
+
+  // Map doc types to their upload endpoint paths
+  const docUploadEndpoints = {
+    wregisAssignment: "update-wregis-assignment",
+    financeAgreement: "update-facility-financial-agreement",
+    solarInstallationContract: "update-commercial-solar-installation-contract",
+    interconnectionAgreement: "update-commercial-interconnection-agreement",
+    ptoLetter: "update-commercial-pto-letter",
+    singleLineDiagram: "update-commercial-single-line-diagram",
+    sitePlan: "update-facility-site-plan",
+    panelInverterDatasheet: "update-facility-inverter-datasheet",
+    revenueMeterData: "update-facility-revenue-meter-data",
+    utilityMeterPhoto: "update-commercial-utility-meter-photo",
+    assignmentOfRegistrationRight: "update-facility-assignment-of-registration-right",
+    acknowledgementOfStationService: "update-acknowledgement-of-station-service",
+  };
+
+  const handleUploadClick = (doc) => {
+    setUploadTargetDoc(doc);
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelected = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !uploadTargetDoc) return;
+
+    const endpoint = docUploadEndpoints[uploadTargetDoc.type];
+    if (!endpoint) {
+      toast.error("Upload not supported for this document type");
+      return;
+    }
+
+    setUploadingDoc(`${facility.id}-${uploadTargetDoc.type}`);
+
+    try {
+      const authToken = localStorage.getItem('authToken');
+      if (!authToken) throw new Error('No authentication token found');
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch(
+        `${CONFIG.API_BASE_URL}/api/facility/${endpoint}/${facility.id}`,
+        {
+          method: 'PUT',
+          headers: { 'Authorization': `Bearer ${authToken}` },
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Upload failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      toast.success(`${uploadTargetDoc.name} uploaded successfully`);
+
+      if (data.data && updateFacilityFromResponse) {
+        updateFacilityFromResponse(data.data);
+      }
+    } catch (error) {
+      toast.error(error.message || "Failed to upload document");
+    } finally {
+      setUploadingDoc(null);
+      setUploadTargetDoc(null);
+      e.target.value = '';
+    }
+  };
+
+  if (!facility) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+        <p className="text-lg font-medium">No documents available</p>
+        <p className="text-sm mt-1">This facility has not yet uploaded any documents.</p>
+      </div>
+    );
+  }
 
   const documents = [
-    { name: "WREGIS Assignment", url: facility.wregisAssignmentUrl, status: facility.wregisAssignmentStatus, type: "wregisAssignment", rejectionReason: facility.wregisAssignmentRejectionReason },
-    { name: "Finance Agreement", url: facility.financeAgreementUrl, status: facility.financeAgreementStatus, type: "financeAgreement", rejectionReason: facility.financeAgreementRejectionReason },
-    { name: "Solar Installation Contract", url: facility.solarInstallationContractUrl, status: facility.solarInstallationContractStatus, type: "solarInstallationContract", rejectionReason: facility.solarInstallationContractRejectionReason },
-    { name: "Utility Interconnection Agreement", url: facility.interconnectionAgreementUrl, status: facility.interconnectionAgreementStatus, type: "interconnectionAgreement", rejectionReason: facility.interconnectionAgreementRejectionReason },
-    { name: "Utility PTO Letter", url: facility.ptoLetterUrl, status: facility.ptoLetterStatus, type: "ptoLetter", rejectionReason: facility.ptoLetterRejectionReason },
-    { name: "Single Line Diagram", url: facility.singleLineDiagramUrl, status: facility.singleLineDiagramStatus, type: "singleLineDiagram", rejectionReason: facility.singleLineDiagramRejectionReason },
-    { name: "Installation Site Plan", url: facility.sitePlanUrl, status: facility.sitePlanStatus, type: "sitePlan", rejectionReason: facility.sitePlanRejectionReason },
-    { name: "Panel/Inverter Datasheet", url: facility.panelInverterDatasheetUrl, status: facility.panelInverterDatasheetStatus, type: "panelInverterDatasheet", rejectionReason: facility.panelInverterDatasheetRejectionReason },
-    { name: "Revenue Meter Datasheet", url: facility.revenueMeterDataUrl, status: facility.revenueMeterDataStatus, type: "revenueMeterData", rejectionReason: facility.revenueMeterDataRejectionReason },
-    { name: "Utility Meter Photo", url: facility.utilityMeterPhotoUrl, status: facility.utilityMeterPhotoStatus, type: "utilityMeterPhoto", rejectionReason: facility.utilityMeterPhotoRejectionReason },
-    { name: "Assignment of Registration Right", url: facility.assignmentOfRegistrationRightUrl, status: facility.assignmentOfRegistrationRightStatus, type: "assignmentOfRegistrationRight", rejectionReason: facility.assignmentOfRegistrationRightRejectionReason },
-    { name: "Acknowledgement of Station Service", url: facility.acknowledgementOfStationServiceUrl, status: facility.acknowledgementOfStationServiceStatus, type: "acknowledgementOfStationService", rejectionReason: facility.acknowledgementOfStationServiceRejectionReason }
+    { name: "WREGIS Assignment",                  url: facility.wregisAssignmentUrl,               status: facility.wregisAssignmentStatus,               type: "wregisAssignment",               rejectionReason: facility.wregisAssignmentRejectionReason,               mandatory: true  },
+    { name: "Finance Agreement",                  url: facility.financeAgreementUrl,               status: facility.financeAgreementStatus,               type: "financeAgreement",               rejectionReason: facility.financeAgreementRejectionReason,               mandatory: false },
+    { name: "Solar Installation Contract",        url: facility.solarInstallationContractUrl,      status: facility.solarInstallationContractStatus,      type: "solarInstallationContract",      rejectionReason: facility.solarInstallationContractRejectionReason,      mandatory: true  },
+    { name: "Utility Interconnection Agreement",  url: facility.interconnectionAgreementUrl,       status: facility.interconnectionAgreementStatus,       type: "interconnectionAgreement",       rejectionReason: facility.interconnectionAgreementRejectionReason,       mandatory: false },
+    { name: "Utility PTO Letter",                 url: facility.ptoLetterUrl,                      status: facility.ptoLetterStatus,                      type: "ptoLetter",                      rejectionReason: facility.ptoLetterRejectionReason,                      mandatory: true  },
+    { name: "Single Line Diagram",                url: facility.singleLineDiagramUrl,              status: facility.singleLineDiagramStatus,              type: "singleLineDiagram",              rejectionReason: facility.singleLineDiagramRejectionReason,              mandatory: true  },
+    { name: "Installation Site Plan",             url: facility.sitePlanUrl,                       status: facility.sitePlanStatus,                       type: "sitePlan",                       rejectionReason: facility.sitePlanRejectionReason,                       mandatory: true  },
+    { name: "Panel/Inverter Datasheet",           url: facility.panelInverterDatasheetUrl,         status: facility.panelInverterDatasheetStatus,         type: "panelInverterDatasheet",         rejectionReason: facility.panelInverterDatasheetRejectionReason,         mandatory: false },
+    { name: "Revenue Meter Datasheet",            url: facility.revenueMeterDataUrl,               status: facility.revenueMeterDataStatus,               type: "revenueMeterData",               rejectionReason: facility.revenueMeterDataRejectionReason,               mandatory: false },
+    { name: "Utility Meter Photo",                url: facility.utilityMeterPhotoUrl,              status: facility.utilityMeterPhotoStatus,              type: "utilityMeterPhoto",              rejectionReason: facility.utilityMeterPhotoRejectionReason,              mandatory: true  },
+    { name: "Assignment of Registration Right",   url: facility.assignmentOfRegistrationRightUrl,  status: facility.assignmentOfRegistrationRightStatus,  type: "assignmentOfRegistrationRight",  rejectionReason: facility.assignmentOfRegistrationRightRejectionReason,  mandatory: true  },
+    { name: "Acknowledgement of Station Service", url: facility.acknowledgementOfStationServiceUrl, status: facility.acknowledgementOfStationServiceStatus, type: "acknowledgementOfStationService", rejectionReason: facility.acknowledgementOfStationServiceRejectionReason, mandatory: true  },
   ];
 
-  const allDocumentsApproved = documents.every(doc => doc.status === "APPROVED");
-  const canVerifyFacility = allDocumentsApproved && facility.status !== "VERIFIED";
+  // A mandatory document passes verification only after regulator approval.
+  // Internal approval (APPROVED) and WREGIS submission are intermediate steps — not sufficient for verification.
+  // Optional documents (Finance Agreement, Interconnection Agreement, Panel Datasheet, Revenue Datasheet)
+  // are displayed but never block facility verification.
+  const docPassesVerification = (status) => status === "REGULATOR_APPROVED";
+
+  const mandatoryDocsApproved = documents
+    .filter(doc => doc.mandatory)
+    .every(doc => docPassesVerification(doc.status));
+
+  const canVerifyFacility = mandatoryDocsApproved && facility.status !== "VERIFIED";
 
   const getFileExtension = (url) => {
     if (!url) return '';
@@ -237,9 +350,17 @@ export default function DocumentsModal({ facility, onVerifyFacility, verifyingFa
 
       const endpoint = `${CONFIG.API_BASE_URL}/api/admin/commercial-facility/${facility.id}/document/${currentDocument.type}/status`;
 
+      const statusMap = {
+        "APPROVE": "APPROVED",
+        "REJECT": "REJECTED",
+        "WREGIS_SUBMIT": "WREGIS_SUBMITTED",
+        "REG_APPROVE": "REGULATOR_APPROVED",
+        "REG_REJECT": "REGULATOR_REJECTED",
+      };
+
       const body = {
-        status: actionType === "APPROVE" ? "APPROVED" : "REJECTED",
-        ...(actionType === "REJECT" && {
+        status: statusMap[actionType] || "APPROVED",
+        ...((actionType === "REJECT" || actionType === "REG_REJECT") && {
           rejectionReason: rejectionReason || "No reason provided"
         })
       };
@@ -294,8 +415,8 @@ export default function DocumentsModal({ facility, onVerifyFacility, verifyingFa
 
         const updatedFacility = {
           ...facility,
-          [statusFieldMap[currentDocument.type]]: actionType === "APPROVE" ? "APPROVED" : "REJECTED",
-          ...(actionType === "REJECT" && {
+          [statusFieldMap[currentDocument.type]]: statusMap[actionType],
+          ...((actionType === "REJECT" || actionType === "REG_REJECT") && {
             [rejectionFieldMap[currentDocument.type]]: rejectionReason || "No reason provided"
           })
         };
@@ -345,19 +466,25 @@ export default function DocumentsModal({ facility, onVerifyFacility, verifyingFa
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {actionType === "APPROVE" ? "Approve Document" : "Reject Document"}
+              {actionType === "APPROVE" && "Approve Document"}
+              {actionType === "REJECT" && "Reject Document"}
+              {actionType === "WREGIS_SUBMIT" && "Submit to WREGIS"}
+              {actionType === "REG_APPROVE" && "Regulator Approved"}
+              {actionType === "REG_REJECT" && "Regulator Rejected"}
             </DialogTitle>
             <DialogDescription>
-              {actionType === "APPROVE"
-                ? "Are you sure you want to approve this document?"
-                : "Please provide a reason for rejecting this document"}
+              {actionType === "APPROVE" && "Are you sure you want to internally approve this document?"}
+              {actionType === "REJECT" && "Please provide a reason for rejecting this document."}
+              {actionType === "WREGIS_SUBMIT" && "Mark this document as submitted to WREGIS for regulator review."}
+              {actionType === "REG_APPROVE" && "Confirm the regulator has approved this document."}
+              {actionType === "REG_REJECT" && "Provide the regulator's rejection reason for this document."}
             </DialogDescription>
           </DialogHeader>
 
-          {actionType === "REJECT" && (
+          {(actionType === "REJECT" || actionType === "REG_REJECT") && (
             <div className="py-4">
               <Input
-                placeholder="Enter rejection reason"
+                placeholder={actionType === "REG_REJECT" ? "Enter regulator rejection reason" : "Enter rejection reason"}
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
               />
@@ -370,8 +497,14 @@ export default function DocumentsModal({ facility, onVerifyFacility, verifyingFa
             </Button>
             <Button
               onClick={handleDocumentStatusChange}
-              disabled={approvingDoc === `${facility?.id}-${currentDocument?.type}` || (actionType === "REJECT" && !rejectionReason)}
-              className={actionType === "APPROVE" ? "bg-[#039994] hover:bg-[#02857f]" : "bg-red-500 hover:bg-red-600"}
+              disabled={approvingDoc === `${facility?.id}-${currentDocument?.type}` || ((actionType === "REJECT" || actionType === "REG_REJECT") && !rejectionReason)}
+              className={
+                actionType === "REJECT" || actionType === "REG_REJECT"
+                  ? "bg-red-500 hover:bg-red-600"
+                  : actionType === "WREGIS_SUBMIT"
+                  ? "bg-purple-600 hover:bg-purple-700"
+                  : "bg-[#039994] hover:bg-[#02857f]"
+              }
             >
               {approvingDoc === `${facility?.id}-${currentDocument?.type}` ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -380,7 +513,11 @@ export default function DocumentsModal({ facility, onVerifyFacility, verifyingFa
               ) : (
                 <AlertTriangle className="h-4 w-4 mr-2" />
               )}
-              {actionType === "APPROVE" ? "Approve" : "Reject"}
+              {actionType === "APPROVE" && "Approve"}
+              {actionType === "REJECT" && "Reject"}
+              {actionType === "WREGIS_SUBMIT" && "Submit to WREGIS"}
+              {actionType === "REG_APPROVE" && "Confirm Approved"}
+              {actionType === "REG_REJECT" && "Confirm Rejected"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -455,113 +592,160 @@ export default function DocumentsModal({ facility, onVerifyFacility, verifyingFa
         </div>
 
         <div>
-          <h5 className="text-md font-semibold text-[#039994] mb-3">Facility Documents</h5>
+          {/* Document summary bar */}
+          <div className="flex items-center justify-between mb-3">
+            <h5 className="text-md font-semibold text-[#039994]">Facility Documents</h5>
+            <div className="flex items-center gap-3 text-xs font-sfpro">
+              <span className="text-gray-500">
+                {documents.filter(d => d.url).length}/{documents.length} uploaded
+              </span>
+              <span className="text-[#039994]">
+                {documents.filter(d => d.status === "APPROVED" || d.status === "WREGIS_SUBMITTED" || d.status === "REGULATOR_APPROVED").length} approved
+              </span>
+              {documents.some(d => !d.url) && (
+                <span className="text-amber-500">
+                  {documents.filter(d => !d.url).length} missing
+                </span>
+              )}
+            </div>
+          </div>
+
           <div className="border rounded-lg overflow-hidden">
-            <div className="grid grid-cols-12 bg-gray-50 p-3 border-b text-sm">
-              <div className="col-span-5 font-medium">Document Name</div>
-              <div className="col-span-3 font-medium">File</div>
-              <div className="col-span-2 font-medium">Status</div>
-              <div className="col-span-2 font-medium">Actions</div>
+            <div className="grid grid-cols-12 bg-gray-50 p-3 border-b text-xs font-medium text-gray-600 uppercase tracking-wide">
+              <div className="col-span-3">Document</div>
+              <div className="col-span-2">File</div>
+              <div className="col-span-2">Internal Status</div>
+              <div className="col-span-2">Regulator Status</div>
+              <div className="col-span-3">Actions</div>
             </div>
 
             {documents.map((doc, index) => {
               const docKey = `${facility.id}-${doc.type}`;
               const isApproving = approvingDoc === docKey;
+              const inRegTrack = isInRegulatorTrack(doc.status);
 
               return (
-                <div key={index} className="grid grid-cols-12 p-3 border-b last:border-b-0 items-center text-sm">
-                  <div className="col-span-5">
-                    <p className="font-medium">{doc.name}</p>
-                    {doc.status === "REJECTED" && doc.rejectionReason && (
-                      <p className="text-xs text-red-500 mt-1">Reason: {doc.rejectionReason}</p>
+                <div key={index} className={`grid grid-cols-12 p-3 border-b last:border-b-0 items-center text-sm ${!doc.url ? "bg-amber-50" : ""}`}>
+                  {/* Document name + rejection reason */}
+                  <div className="col-span-3">
+                    <p className="font-medium text-xs">{doc.name}</p>
+                    {(doc.status === "REJECTED" || doc.status === "REGULATOR_REJECTED") && doc.rejectionReason && (
+                      <p className="text-xs text-red-500 mt-0.5 leading-tight">Reason: {doc.rejectionReason}</p>
+                    )}
+                    {!doc.url && (
+                      <p className="text-xs text-amber-500 mt-0.5">Not yet uploaded by user</p>
                     )}
                   </div>
 
-                  <div className="col-span-3">
+                  {/* File view/download */}
+                  <div className="col-span-2">
                     {doc.url ? (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={() => openPdfModal(doc.url, doc)}
-                                disabled={isApproving}
-                              >
-                                <Eye className="h-4 w-4" />
+                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openPdfModal(doc.url, doc)} disabled={isApproving}>
+                                <Eye className="h-3.5 w-3.5" />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>
-                              <p>View document</p>
-                            </TooltipContent>
+                            <TooltipContent><p>View</p></TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={() => {
-                                  const link = document.createElement('a');
-                                  link.href = doc.url;
-                                  link.download = doc.name;
-                                  document.body.appendChild(link);
-                                  link.click();
-                                  document.body.removeChild(link);
-                                }}
-                                disabled={isApproving}
-                              >
-                                <Download className="h-4 w-4" />
+                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
+                                const link = document.createElement('a');
+                                link.href = doc.url;
+                                link.download = doc.name;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }} disabled={isApproving}>
+                                <Download className="h-3.5 w-3.5" />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Download document</p>
-                            </TooltipContent>
+                            <TooltipContent><p>Download</p></TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                       </div>
                     ) : (
-                      <span className="text-sm text-gray-400">No document uploaded</span>
+                      <span className="text-xs text-gray-400">—</span>
                     )}
                   </div>
 
+                  {/* Internal Status */}
                   <div className="col-span-2">
-                    <span className={`text-xs font-semibold px-3 py-1 rounded-full ${getStatusColor(doc.status)}`}>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${getStatusColor(
+                      inRegTrack ? "APPROVED" : doc.status
+                    )}`}>
                       {isApproving ? (
                         <span className="flex items-center gap-1">
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                          Processing...
+                          <Loader2 className="h-2.5 w-2.5 animate-spin" /> ...
                         </span>
+                      ) : inRegTrack ? (
+                        "Approved"
                       ) : (
-                        doc.status || 'Required'
+                        doc.status || "Not Uploaded"
                       )}
                     </span>
                   </div>
 
-                  <div className="col-span-2 flex gap-2">
-                    {doc.url && doc.status !== "APPROVED" && (
+                  {/* Regulator Status */}
+                  <div className="col-span-2">
+                    {inRegTrack ? (
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${getStatusColor(doc.status)}`}>
+                        {getStatusLabel(doc.status)}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-300">—</span>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="col-span-3 flex flex-wrap gap-1">
+                    {/* Upload button — for docs not yet uploaded or rejected */}
+                    {(!doc.url || doc.status === "REJECTED" || doc.status === "REGULATOR_REJECTED") && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs px-3 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                        onClick={() => handleUploadClick(doc)}
+                        disabled={uploadingDoc === `${facility.id}-${doc.type}`}
+                      >
+                        {uploadingDoc === `${facility.id}-${doc.type}` ? (
+                          <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                        ) : (
+                          <Upload className="h-3 w-3 mr-1" />
+                        )}
+                        Upload
+                      </Button>
+                    )}
+                    {/* Internal approve/reject — only for uploaded docs not yet internally approved */}
+                    {doc.url && !inRegTrack && doc.status !== "APPROVED" && (
                       <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-8 text-xs"
-                          onClick={() => openStatusModal("APPROVE", doc)}
-                          disabled={isApproving}
-                        >
+                        <Button variant="outline" size="sm" className="h-8 text-xs px-3" onClick={() => openStatusModal("APPROVE", doc)} disabled={isApproving}>
                           Approve
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-8 text-xs bg-red-50 text-red-600 hover:bg-red-100"
-                          onClick={() => openStatusModal("REJECT", doc)}
-                          disabled={isApproving}
-                        >
+                        <Button variant="outline" size="sm" className="h-8 text-xs px-3 bg-red-50 text-red-600 hover:bg-red-100" onClick={() => openStatusModal("REJECT", doc)} disabled={isApproving}>
                           Reject
+                        </Button>
+                      </>
+                    )}
+
+                    {/* Regulator track actions — only for internally approved docs */}
+                    {doc.status === "APPROVED" && (
+                      <Button variant="outline" size="sm" className="h-8 text-xs px-3 bg-purple-50 text-purple-700 hover:bg-purple-100" onClick={() => openStatusModal("WREGIS_SUBMIT", doc)} disabled={isApproving}>
+                        Submit to WREGIS
+                      </Button>
+                    )}
+                    {doc.status === "WREGIS_SUBMITTED" && (
+                      <>
+                        <Button variant="outline" size="sm" className="h-8 text-xs px-3 bg-green-50 text-green-700 hover:bg-green-100" onClick={() => openStatusModal("REG_APPROVE", doc)} disabled={isApproving}>
+                          Regulator Approved
+                        </Button>
+                        <Button variant="outline" size="sm" className="h-8 text-xs px-3 bg-red-50 text-red-600 hover:bg-red-100" onClick={() => openStatusModal("REG_REJECT", doc)} disabled={isApproving}>
+                          Regulator Rejected
                         </Button>
                       </>
                     )}
@@ -581,6 +765,14 @@ export default function DocumentsModal({ facility, onVerifyFacility, verifyingFa
           </div>
         )}
       </div>
+      {/* Hidden file input for document uploads */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileSelected}
+        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+        className="hidden"
+      />
     </>
   );
 }

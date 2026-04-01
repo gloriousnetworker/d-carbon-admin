@@ -1,4 +1,5 @@
 "use client";
+import CONFIG from '@/lib/config';
 
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
@@ -27,7 +28,7 @@ const DashboardContactSupport = () => {
     const loadingToast = toast.loading('Submitting your request...');
 
     try {
-      const response = await fetch(`https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/contact/${userId}`, {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/contact/${userId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

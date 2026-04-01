@@ -1,12 +1,14 @@
 "use client";
+import CONFIG from '@/lib/config';
 import React, { useState, useEffect } from "react";
+import { Loader2 } from "lucide-react";
 import CommissionTable from "./CommissionTable";
 import CommissionSetupModal from "./CommissionSetupModal";
 import ManageTiersModal from "./ManageTiersModal";
 import BonusCommissionStructure from "./commission/BonusCommissionStructure";
 import BonusCommissionSetup from "./setupModals/BonusCommissionSetup";
 import ContractTermsTab from "./ContractTermsTab";
-import CalculationTriggers from "./CalculationTriggers";
+
 
 const CommissionStructure = () => {
   const [activeTab, setActiveTab] = useState("COMMISSION");
@@ -37,7 +39,7 @@ const CommissionStructure = () => {
   const fetchTiers = async () => {
     try {
       const authToken = localStorage.getItem("authToken");
-      const response = await fetch("https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-tier", {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-tier`, {
         headers: { Authorization: `Bearer ${authToken}` },
       });
       if (response.ok) {
@@ -52,7 +54,7 @@ const CommissionStructure = () => {
   const fetchModes = async () => {
     try {
       const authToken = localStorage.getItem("authToken");
-      const response = await fetch("https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-structure/modes", {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-structure/modes`, {
         headers: { Authorization: `Bearer ${authToken}` },
       });
       if (response.ok) {
@@ -81,11 +83,11 @@ const CommissionStructure = () => {
       
       let url;
       if (activePropertyTab === "ACCOUNT_LEVEL") {
-        url = "https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-structure/";
+        url = `${CONFIG.API_BASE_URL}/api/commission-structure/`;
       } else {
         const property = activePropertyTab;
         const mode = activeMode;
-        url = `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-structure/filter/mode-property?mode=${mode}&property=${property}`;
+        url = `${CONFIG.API_BASE_URL}/api/commission-structure/filter/mode-property?mode=${mode}&property=${property}`;
       }
       
       const response = await fetch(url, {
@@ -125,7 +127,7 @@ const CommissionStructure = () => {
     
     try {
       const authToken = localStorage.getItem("authToken");
-      const response = await fetch(`https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-structure/${id}`, {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-structure/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${authToken}` },
       });
@@ -158,7 +160,7 @@ const CommissionStructure = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F7F7F7] py-8 px-4">
+    <div className="min-h-screen w-full flex flex-col py-6 px-0 bg-white">
       {showSetupModal && (
         <CommissionSetupModal
           onClose={() => setShowSetupModal(false)}
@@ -186,8 +188,8 @@ const CommissionStructure = () => {
         />
       )}
 
-      <div className="max-w-6xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-sm border border-[#E8E8E8]">
+      <div>
+        <div className="bg-white border border-gray-200 rounded-xl">
           <div className="border-b border-gray-200">
             <div className="flex">
               <button
@@ -279,16 +281,19 @@ const CommissionStructure = () => {
                     </button>
                     <button
                       onClick={() => setShowTiersModal(true)}
-                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+                      className="px-4 py-2 border border-[#039994] text-[#039994] rounded-md hover:bg-[#039994] hover:text-white transition-colors"
                     >
                       Manage Tiers
                     </button>
                   </div>
-                  <CalculationTriggers />
+                  {/* Commission/bonus triggers moved to System Jobs */}
                 </div>
 
                 {loading ? (
-                  <div className="text-center py-8">Loading...</div>
+                  <div className="flex flex-col items-center justify-center py-16 border border-gray-200 rounded-xl">
+                    <Loader2 className="h-8 w-8 animate-spin text-[#039994]" />
+                    <span className="text-sm text-gray-500 font-sfpro mt-3">Loading commission data...</span>
+                  </div>
                 ) : (
                   <CommissionTable
                     data={commissionData}

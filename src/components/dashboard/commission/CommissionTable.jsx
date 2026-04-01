@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { FiEdit, FiTrash2 } from "react-icons/fi";
+import { Pencil, Trash2 } from "lucide-react";
 
 const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
   const sortedTiers = tiers.sort((a, b) => a.order - b.order);
@@ -154,9 +154,9 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
       
       if (partnerFinanceTotal > 0) {
         shares.push(
-          <div key="partner-total" className="py-1.5 px-2 bg-blue-50 rounded">
-            <span className="font-semibold text-blue-900">Partner Finance Total:</span>
-            <span className="ml-2 text-blue-700 font-bold text-sm">{partnerFinanceTotal.toFixed(2)}%</span>
+          <div key="partner-total" className="py-1.5 px-2 bg-[#03999415] rounded">
+            <span className="font-semibold text-[#039994]">Partner Finance Total:</span>
+            <span className="ml-2 text-[#039994] font-bold text-sm">{partnerFinanceTotal.toFixed(2)}%</span>
           </div>
         );
       }
@@ -172,8 +172,8 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
       
       shares.push(
         <div key="divider" className="border-t-2 border-dashed border-gray-300 pt-2 mt-2">
-          <div className="px-2 py-1 bg-gradient-to-r from-purple-50 to-pink-50 rounded-md">
-            <div className="text-xs font-bold text-purple-700 uppercase tracking-wider flex items-center gap-1.5">
+          <div className="px-2 py-1 bg-gray-50 rounded-md">
+            <div className="text-xs font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1.5">
               <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd"/>
               </svg>
@@ -185,18 +185,18 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
       
       if (tierData.financeShare !== null) {
         shares.push(
-          <div key="epc-finance" className="py-1.5 pl-4 pr-2 ml-1 border-l-2 border-purple-200 bg-purple-50/50 rounded-r">
-            <span className="font-medium text-purple-900 text-xs">EPC Finance:</span>
-            <span className="ml-2 text-purple-700 font-semibold text-xs">{tierData.financeShare}%</span>
+          <div key="epc-finance" className="py-1.5 pl-4 pr-2 ml-1 border-l-2 border-gray-300 bg-gray-50 rounded-r">
+            <span className="font-medium text-gray-700 text-xs">EPC Finance:</span>
+            <span className="ml-2 text-gray-600 font-semibold text-xs">{tierData.financeShare}%</span>
           </div>
         );
       }
       
       if (tierData.installerShare !== null) {
         shares.push(
-          <div key="epc-installer" className="py-1.5 pl-4 pr-2 ml-1 border-l-2 border-pink-200 bg-pink-50/50 rounded-r">
-            <span className="font-medium text-pink-900 text-xs">EPC Installer:</span>
-            <span className="ml-2 text-pink-700 font-semibold text-xs">{tierData.installerShare}%</span>
+          <div key="epc-installer" className="py-1.5 pl-4 pr-2 ml-1 border-l-2 border-gray-300 bg-gray-50 rounded-r">
+            <span className="font-medium text-gray-700 text-xs">EPC Installer:</span>
+            <span className="ml-2 text-gray-600 font-semibold text-xs">{tierData.installerShare}%</span>
           </div>
         );
       }
@@ -209,8 +209,8 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
         const partnerFinanceTotal = 100 - referredCustomerValue - dcarbonRemainderValue;
         shares.push(
           <div key="epc-finance" className="py-1">
-            <span className="font-medium text-purple-900">EPC Finance:</span>
-            <span className="ml-1 text-purple-700 font-semibold">{tierData.financeShare}%</span>
+            <span className="font-medium text-gray-700">EPC Finance:</span>
+            <span className="ml-1 text-gray-600 font-semibold">{tierData.financeShare}%</span>
           </div>
         );
         shares.push(
@@ -221,8 +221,8 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
       } else {
         shares.push(
           <div key="epc-finance" className="py-1">
-            <span className="font-medium text-purple-900">EPC Finance:</span>
-            <span className="ml-1 text-purple-700 font-semibold">{tierData.financeShare}%</span>
+            <span className="font-medium text-gray-700">EPC Finance:</span>
+            <span className="ml-1 text-gray-600 font-semibold">{tierData.financeShare}%</span>
           </div>
         );
       }
@@ -235,8 +235,8 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
         const partnerFinanceTotal = 100 - referredCustomerValue - dcarbonRemainderValue;
         shares.push(
           <div key="epc-installer" className="py-1">
-            <span className="font-medium text-pink-900">EPC Installer:</span>
-            <span className="ml-1 text-pink-700 font-semibold">{tierData.installerShare}%</span>
+            <span className="font-medium text-gray-700">EPC Installer:</span>
+            <span className="ml-1 text-gray-600 font-semibold">{tierData.installerShare}%</span>
           </div>
         );
         shares.push(
@@ -247,8 +247,8 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
       } else {
         shares.push(
           <div key="epc-installer" className="py-1">
-            <span className="font-medium text-pink-900">EPC Installer:</span>
-            <span className="ml-1 text-pink-700 font-semibold">{tierData.installerShare}%</span>
+            <span className="font-medium text-gray-700">EPC Installer:</span>
+            <span className="ml-1 text-gray-600 font-semibold">{tierData.installerShare}%</span>
           </div>
         );
       }
@@ -412,14 +412,14 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
   const headers = buildHeaders();
 
   return (
-    <div className="overflow-x-auto bg-white rounded-xl shadow-lg border border-gray-200">
+    <div className="border border-gray-200 rounded-xl overflow-hidden">
       <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
-          <tr>
+        <thead>
+          <tr className="border-y text-sm">
             {headers.map((header, index) => (
               <th
                 key={index}
-                className="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-b-2 border-gray-300"
+                className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]"
               >
                 {header}
               </th>
@@ -429,7 +429,7 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
         <tbody className="bg-white divide-y divide-gray-100">
           {Object.values(groupedData).map((group, groupIndex) => (
             <React.Fragment key={groupIndex}>
-              <tr className="hover:bg-gradient-to-r hover:from-gray-50 hover:to-transparent transition-all duration-150">
+              <tr className="hover:bg-gray-50 transition-colors duration-100">
                 <td className="px-4 py-5 text-sm font-medium text-gray-900 whitespace-nowrap">
                   <div className="flex flex-col gap-1">
                     <span className="font-bold text-gray-900">{group.propertyType === "ACCOUNT_LEVEL" ? "Account Level" : group.propertyType}</span>
@@ -454,14 +454,14 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
                               className="text-[#039994] hover:text-[#028884] p-1.5 rounded-md hover:bg-[#039994]/10 transition-colors duration-150"
                               title="Edit"
                             >
-                              <FiEdit size={16} />
+                              <Pencil size={16} />
                             </button>
                             <button
                               onClick={() => handleDelete(commissionItem, group)}
                               className="text-red-600 hover:text-red-800 p-1.5 rounded-md hover:bg-red-50 transition-colors duration-150"
                               title="Delete"
                             >
-                              <FiTrash2 size={16} />
+                              <Trash2 size={16} />
                             </button>
                           </div>
                         )}
@@ -472,7 +472,7 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
                               className="text-red-600 hover:text-red-800 p-1.5 rounded-md hover:bg-red-50 transition-colors duration-150"
                               title="Delete"
                             >
-                              <FiTrash2 size={16} />
+                              <Trash2 size={16} />
                             </button>
                           </div>
                         )}
@@ -487,7 +487,7 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
                 })}
                 <td className="px-4 py-5 text-sm text-gray-900 whitespace-nowrap font-medium">
                   {group.items[0]?.label ? (
-                    <span className="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-md font-medium">{group.items[0].label}</span>
+                    <span className="bg-[#03999415] text-[#039994] px-2 py-0.5 rounded-full text-xs font-medium font-sfpro">{group.items[0].label}</span>
                   ) : (
                     <span className="text-gray-400">-</span>
                   )}

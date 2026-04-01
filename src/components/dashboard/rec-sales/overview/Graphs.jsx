@@ -10,8 +10,7 @@ import {
   LineChart,
   Line,
 } from "recharts";
-import { ChevronDown } from "lucide-react";
-import Image from "next/image";
+import { Loader2 } from "lucide-react";
 import CONFIG from "../../../../../lib/config";
 
 const MONTHS = [
@@ -19,258 +18,108 @@ const MONTHS = [
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 
-const COLORS = {
-  customers: "#039994",
-  salesReport: "#039994",
-  recsGenerated: "#039994",
-  partners: "#039994",
-  resiGroups: "#039994",
-};
+const BRAND_COLOR = "#039994";
 
-export default function DashboardCharts() {
-  const [leftChartView, setLeftChartView] = useState("Yearly");
-  const [leftChartYear, setLeftChartYear] = useState(new Date().getFullYear().toString());
-  const [salesYear, setSalesYear] = useState(new Date().getFullYear().toString());
-  
-  const [loadingLeftChartData, setLoadingLeftChartData] = useState(true);
-  const [loadingSalesData, setLoadingSalesData] = useState(true);
-  
-  const [displayType, setDisplayType] = useState("Customers");
-  
-  const [customersData, setCustomersData] = useState([]);
-  const [recsGeneratedData, setRecsGeneratedData] = useState([]);
-  const [partnersData, setPartnersData] = useState([]);
-  const [resiGroupsData, setResiGroupsData] = useState([]);
+export default function RecSalesCharts() {
+  const [year, setYear] = useState(new Date().getFullYear().toString());
+  const [loadingGenerated, setLoadingGenerated] = useState(true);
+  const [loadingSales, setLoadingSales] = useState(true);
+  const [generatedData, setGeneratedData] = useState([]);
   const [salesData, setSalesData] = useState([]);
 
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-
   useEffect(() => {
-    setLoadingLeftChartData(true);
-    
-    setTimeout(() => {
-      const customers = MONTHS.map((month, index) => {
-        const monthIndex = index;
-        let value = 50 + Math.sin((monthIndex / 11) * Math.PI * 2) * 30;
-        value += Math.floor(Math.random() * 15);
-        return {
-          month,
-          value: Math.max(0, Math.min(100, Math.floor(value))),
-        };
-      });
-      setCustomersData(customers);
-      
-      const recsData = MONTHS.map((month, index) => {
-        const monthIndex = index;
-        let value = 60 + Math.cos((monthIndex / 11) * Math.PI * 2) * 25;
-        value += Math.floor(Math.random() * 10);
-        return {
-          month,
-          value: Math.max(0, Math.min(100, Math.floor(value))),
-        };
-      });
-      setRecsGeneratedData(recsData);
-      
-      const partners = MONTHS.map((month, index) => {
-        const monthIndex = index;
-        let value = 40 + Math.sin((monthIndex / 11) * Math.PI * 1.5) * 35;
-        value += Math.floor(Math.random() * 12);
-        return {
-          month,
-          value: Math.max(0, Math.min(100, Math.floor(value))),
-        };
-      });
-      setPartnersData(partners);
-      
-      const resiGroups = MONTHS.map((month, index) => {
-        const monthIndex = index;
-        let value = 30 + Math.cos((monthIndex / 11) * Math.PI * 1.8) * 30;
-        value += Math.floor(Math.random() * 8);
-        return {
-          month,
-          value: Math.max(0, Math.min(100, Math.floor(value))),
-        };
-      });
-      setResiGroupsData(resiGroups);
-      
-      setLoadingLeftChartData(false);
-    }, 600);
-  }, [leftChartYear, leftChartView]);
+    fetchRecGenerated();
+    fetchRecSales();
+  }, [year]);
 
-  useEffect(() => {
-    setLoadingSalesData(true);
-    
-    setTimeout(() => {
-      const data = MONTHS.map((month, index) => {
-        let value;
-        
-        switch (month) {
-          case "Jan": value = 20; break;
-          case "Feb": value = 35; break;
-          case "Mar": value = 45; break;
-          case "Apr": value = 30; break;
-          case "May": value = 65; break;
-          case "Jun": value = 50; break;
-          case "Jul": value = 75; break;
-          case "Aug": value = 60; break;
-          case "Sep": value = 85; break;
-          case "Oct": value = 90; break;
-          case "Nov": value = 95; break;
-          case "Dec": value = 70; break;
-          default: value = 50;
-        }
-        
-        value += Math.floor(Math.random() * 10) - 5;
-        
-        return {
-          month,
-          value: Math.max(0, Math.min(100, value))
-        };
-      });
-      
-      setSalesData(data);
-      setLoadingSalesData(false);
-    }, 600);
-  }, [salesYear]);
-
-  const getCurrentChartData = () => {
-    switch (displayType) {
-      case "Customers":
-        return customersData;
-      case "RECs Generated":
-        return recsGeneratedData;
-      case "Partners":
-        return partnersData;
-      case "Resi Groups":
-        return resiGroupsData;
-      default:
-        return customersData;
+  const fetchRecGenerated = async () => {
+    setLoadingGenerated(true);
+    try {
+      const authToken = localStorage.getItem("authToken");
+      const response = await fetch(
+        `${CONFIG.API_BASE_URL}/api/rec/statistics?year=${year}`,
+        { headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" } }
+      );
+      const result = await response.json();
+      if (result.status === "success" && result.data) {
+        const data = MONTHS.map((month, index) => {
+          const monthNumber = index + 1;
+          const monthData = result.data.find((item) => parseInt(item.month) === monthNumber);
+          return { month, value: monthData ? monthData.count : 0 };
+        });
+        setGeneratedData(data);
+      } else {
+        setGeneratedData(MONTHS.map((month) => ({ month, value: 0 })));
+      }
+    } catch (error) {
+      console.error("Error fetching REC generated data:", error);
+      setGeneratedData(MONTHS.map((month) => ({ month, value: 0 })));
+    } finally {
+      setLoadingGenerated(false);
     }
   };
 
-  const getCurrentChartColor = () => {
-    switch (displayType) {
-      case "Customers":
-        return COLORS.customers;
-      case "RECs Generated":
-        return COLORS.recsGenerated;
-      case "Partners":
-        return COLORS.partners;
-      case "Resi Groups":
-        return COLORS.resiGroups;
-      default:
-        return COLORS.customers;
+  const fetchRecSales = async () => {
+    setLoadingSales(true);
+    try {
+      const authToken = localStorage.getItem("authToken");
+      const response = await fetch(
+        `${CONFIG.API_BASE_URL}/api/rec/statistics?year=${year}&type=sales`,
+        { headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" } }
+      );
+      const result = await response.json();
+      if (result.status === "success" && result.data) {
+        const data = MONTHS.map((month, index) => {
+          const monthNumber = index + 1;
+          const monthData = result.data.find((item) => parseInt(item.month) === monthNumber);
+          return { month, value: monthData ? monthData.count : 0 };
+        });
+        setSalesData(data);
+      } else {
+        setSalesData(MONTHS.map((month) => ({ month, value: 0 })));
+      }
+    } catch (error) {
+      console.error("Error fetching REC sales data:", error);
+      setSalesData(MONTHS.map((month) => ({ month, value: 0 })));
+    } finally {
+      setLoadingSales(false);
     }
   };
 
-  const getCurrentChartUnit = () => {
-    switch (displayType) {
-      case "Customers":
-        return "Customers";
-      case "RECs Generated":
-        return "RECs";
-      case "Partners":
-        return "Partners";
-      case "Resi Groups":
-        return "Groups";
-      default:
-        return "";
-    }
-  };
-
-  const toggleDropdown = () => {
-    setDropdownOpen(!dropdownOpen);
-  };
-
-  const selectDisplayType = (type) => {
-    setDisplayType(type);
-    setDropdownOpen(false);
-  };
+  const yearOptions = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
 
   return (
     <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div className="bg-white rounded-2xl shadow-lg p-6 flex flex-col">
+      {/* RECs Generated */}
+      <div className="border border-gray-200 rounded-xl p-6 flex flex-col bg-white">
         <div className="flex justify-between items-center">
-          <div className="relative">
-            <h3 
-              className="text-lg font-semibold flex items-center cursor-pointer"
-              style={{ color: getCurrentChartColor() }}
-              onClick={toggleDropdown}
-            >
-              {displayType}
-              <ChevronDown className="h-5 w-5 ml-1" />
-            </h3>
-            
-            {dropdownOpen && (
-              <div className="absolute z-10 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200">
-                <div className="py-1">
-                  <div 
-                    className="px-4 py-2 text-sm hover:bg-gray-100 cursor-pointer"
-                    onClick={() => selectDisplayType("Customers")}
-                    style={{ color: COLORS.customers }}
-                  >
-                    Customers
-                  </div>
-                  <div 
-                    className="px-4 py-2 text-sm hover:bg-gray-100 cursor-pointer"
-                    onClick={() => selectDisplayType("RECs Generated")}
-                    style={{ color: COLORS.recsGenerated }}
-                  >
-                    RECs Generated
-                  </div>
-                  <div 
-                    className="px-4 py-2 text-sm hover:bg-gray-100 cursor-pointer"
-                    onClick={() => selectDisplayType("Partners")}
-                    style={{ color: COLORS.partners }}
-                  >
-                    Partners
-                  </div>
-                  <div 
-                    className="px-4 py-2 text-sm hover:bg-gray-100 cursor-pointer"
-                    onClick={() => selectDisplayType("Resi Groups")}
-                    style={{ color: COLORS.resiGroups }}
-                  >
-                    Resi Groups
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-          
-          <div className="flex items-center space-x-2 text-xs">
-            <select
-              value={leftChartView}
-              onChange={(e) => setLeftChartView(e.target.value)}
-              className="px-2 py-1 border rounded text-xs"
-            >
-              <option>Yearly</option>
-              <option>Monthly</option>
-            </select>
-            
-            <select
-              value={leftChartYear}
-              onChange={(e) => setLeftChartYear(e.target.value)}
-              className="px-2 py-1 border rounded text-xs"
-            >
-              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
-                <option key={year} value={year}>{year}</option>
-              ))}
-            </select>
-          </div>
+          <h3 className="text-sm font-semibold text-[#039994] font-sfpro">
+            RECs Generated
+          </h3>
+          <select
+            value={year}
+            onChange={(e) => setYear(e.target.value)}
+            className="px-2 py-1 border border-gray-300 rounded-md text-xs font-sfpro focus:outline-none focus:ring-1 focus:ring-[#039994]"
+          >
+            {yearOptions.map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
         </div>
 
-        <hr className="my-4" />
+        <hr className="my-4 border-gray-100" />
 
-        {loadingLeftChartData ? (
-          <div className="flex-1 flex items-center justify-center">
-            <p className="text-gray-500 animate-pulse text-xs">Loading…</p>
+        {loadingGenerated ? (
+          <div className="flex-1 flex flex-col items-center justify-center py-10">
+            <Loader2 className="h-6 w-6 animate-spin text-[#039994]" />
+            <span className="text-xs text-gray-500 font-sfpro mt-2">Loading data...</span>
           </div>
         ) : (
           <>
-            <div className="text-xs ml-2 mb-2">{getCurrentChartUnit()}</div>
+            <div className="text-xs text-gray-500 font-sfpro mb-2">RECs</div>
             <ResponsiveContainer width="100%" height={250}>
-              <BarChart 
-                data={getCurrentChartData()} 
+              <BarChart
+                data={generatedData}
                 margin={{ top: 10, right: 10, left: 0, bottom: 10 }}
               >
                 <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#f5f5f5" />
@@ -281,8 +130,6 @@ export default function DashboardCharts() {
                   tickLine={false}
                 />
                 <YAxis
-                  domain={[0, 100]}
-                  ticks={[0, 25, 50, 75, 100]}
                   tick={{ fontSize: 10 }}
                   axisLine={false}
                   tickLine={false}
@@ -290,13 +137,11 @@ export default function DashboardCharts() {
                 <Tooltip
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
-                      const data = payload[0].payload;
+                      const d = payload[0].payload;
                       return (
-                        <div className="bg-white p-2 border rounded shadow text-xs">
-                          <p>Month: {data.month}</p>
-                          <p style={{ color: getCurrentChartColor() }}>
-                            {displayType}: {data.value} {getCurrentChartUnit()}
-                          </p>
+                        <div className="bg-white p-2 border border-gray-200 rounded-lg shadow text-xs font-sfpro">
+                          <p className="text-gray-500">{d.month}</p>
+                          <p style={{ color: BRAND_COLOR }}>RECs: {d.value}</p>
                         </div>
                       );
                     }
@@ -305,9 +150,9 @@ export default function DashboardCharts() {
                 />
                 <Bar
                   dataKey="value"
-                  fill={getCurrentChartColor()}
+                  fill={BRAND_COLOR}
                   radius={[8, 8, 0, 0]}
-                  background={{ fill: '#f5f5f5', radius: [8, 8, 0, 0] }}
+                  background={{ fill: "#f5f5f5", radius: [8, 8, 0, 0] }}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -315,48 +160,33 @@ export default function DashboardCharts() {
         )}
       </div>
 
-      <div className="bg-white rounded-2xl shadow-lg p-6 flex flex-col">
+      {/* REC Sales Report */}
+      <div className="border border-gray-200 rounded-xl p-6 flex flex-col bg-white">
         <div className="flex justify-between items-center">
-          <h3 
-            className="text-lg font-semibold flex items-center"
-            style={{ color: COLORS.salesReport }}
-          >
-            <div className="w-5 h-5 mr-2 relative">
-              <Image
-                src="/vectors/ChartLineUp.png"
-                alt="Sales Icon"
-                width={20}
-                height={20}
-                className="w-full h-full object-contain"
-              />
-            </div>
-            Sales Report
+          <h3 className="text-sm font-semibold text-[#039994] font-sfpro">
+            REC Sales Report
           </h3>
-          
-          <div className="flex items-center space-x-2 text-xs">
-            <select
-              value={salesYear}
-              onChange={(e) => setSalesYear(e.target.value)}
-              className="px-2 py-1 border rounded text-xs"
-            >
-              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
-                <option key={year} value={year}>{year}</option>
-              ))}
-            </select>
-          </div>
+          <select
+            value={year}
+            onChange={(e) => setYear(e.target.value)}
+            className="px-2 py-1 border border-gray-300 rounded-md text-xs font-sfpro focus:outline-none focus:ring-1 focus:ring-[#039994]"
+          >
+            {yearOptions.map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
         </div>
 
-        <hr className="my-4" />
+        <hr className="my-4 border-gray-100" />
 
-        {loadingSalesData ? (
-          <div className="flex-1 flex items-center justify-center">
-            <p className="text-gray-500 animate-pulse text-xs">Loading…</p>
+        {loadingSales ? (
+          <div className="flex-1 flex flex-col items-center justify-center py-10">
+            <Loader2 className="h-6 w-6 animate-spin text-[#039994]" />
+            <span className="text-xs text-gray-500 font-sfpro mt-2">Loading data...</span>
           </div>
         ) : (
           <>
-            <div className="text-xs mb-2">
-              <div>Revenue (in thousands)</div>
-            </div>
+            <div className="text-xs text-gray-500 font-sfpro mb-2">RECs Sold</div>
             <ResponsiveContainer width="100%" height={250}>
               <LineChart
                 data={salesData}
@@ -366,30 +196,28 @@ export default function DashboardCharts() {
                 <XAxis
                   dataKey="month"
                   tick={{ fontSize: 10 }}
-                  axisLine={{ stroke: '#E0E0E0' }}
+                  axisLine={{ stroke: "#E0E0E0" }}
                   tickLine={false}
                 />
-                <YAxis 
+                <YAxis
                   width={30}
                   orientation="right"
                   tick={{ fontSize: 10 }}
-                  axisLine={{ stroke: '#E0E0E0' }}
+                  axisLine={{ stroke: "#E0E0E0" }}
                   tickLine={false}
-                  domain={[0, 100]}
-                  ticks={[0, 25, 50, 75, 100]}
-                  tickFormatter={(v) => `$${v}k`}
                 />
                 <Tooltip
-                  formatter={(v) => [`$${v}k`, "Revenue"]}
+                  formatter={(v) => [`${v} RECs`, "Sold"]}
                   labelFormatter={(label) => `Month: ${label}`}
+                  contentStyle={{ fontSize: 11, borderRadius: 8 }}
                 />
                 <Line
                   type="monotone"
                   dataKey="value"
-                  stroke={COLORS.salesReport}
+                  stroke={BRAND_COLOR}
                   strokeWidth={2}
-                  dot={{ r: 3, fill: COLORS.salesReport }}
-                  activeDot={{ r: 5, fill: COLORS.salesReport }}
+                  dot={{ r: 3, fill: BRAND_COLOR }}
+                  activeDot={{ r: 5, fill: BRAND_COLOR }}
                 />
               </LineChart>
             </ResponsiveContainer>

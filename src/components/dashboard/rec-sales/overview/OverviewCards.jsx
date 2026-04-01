@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiChevronDown } from 'react-icons/fi';
+import { ChevronDown, Loader2 } from 'lucide-react';
 import CONFIG from '../../../../../lib/config';
 
 export default function QuickActions() {
@@ -94,15 +94,18 @@ export default function QuickActions() {
             className="flex items-center text-black text-sm font-semibold"
           >
             {filter === 'total' ? 'Total' : filter}
-            <FiChevronDown className="ml-1 w-4 h-4" />
+            <ChevronDown className="ml-1 h-4 w-4" />
           </button>
         </div>
       </div>
 
       {loading ? (
-        <div className="text-center py-8">Loading overview…</div>
+        <div className="flex flex-col items-center justify-center py-16 border border-gray-200 rounded-xl">
+          <Loader2 className="h-8 w-8 animate-spin text-[#039994]" />
+          <span className="text-sm text-gray-500 font-sfpro mt-3">Loading overview...</span>
+        </div>
       ) : error ? (
-        <div className="text-red-500 text-center py-8">
+        <div className="text-red-600 text-center py-8 border border-red-200 rounded-xl text-sm font-sfpro">
           Error: {error}
         </div>
       ) : (
@@ -110,7 +113,7 @@ export default function QuickActions() {
           {visibleCards.map(({ key, icon, label, value }) => (
             <div
               key={key}
-              className="p-4 bg-white rounded-2xl flex flex-col"
+              className="p-4 bg-white border border-gray-200 rounded-xl flex flex-col"
             >
               <div className="flex items-center mb-2">
                 <img
@@ -118,12 +121,12 @@ export default function QuickActions() {
                   alt={label}
                   className="h-6 w-6 object-contain mr-2"
                 />
-                <span className="text-[#1E1E1E] font-sfpro font-medium text-[14px] leading-[100%] tracking-[-0.05em]">
+                <span className="text-[#1E1E1E] font-sfpro font-medium text-xs leading-[100%] tracking-[-0.05em]">
                   {label}
                 </span>
               </div>
               <hr className="border-gray-200 w-full my-2" />
-              <span className="text-[#056C69] font-sfpro font-bold text-[18px] leading-tight">
+              <span className="text-[#039994] font-sfpro font-bold text-xl leading-tight">
                 {value}
               </span>
             </div>

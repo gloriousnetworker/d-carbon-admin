@@ -1,4 +1,5 @@
 "use client";
+import CONFIG from '@/lib/config';
 import React, { useEffect, useState } from "react";
 import { FaChevronDown, FaChevronUp } from "react-icons/fa";
 import axios from "axios";
@@ -16,55 +17,30 @@ const ContactInformation = () => {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
-  const [userType, setUserType] = useState("");
-  const [referralCode, setReferralCode] = useState("");
+  const [role, setRole] = useState("");
+  const [userId, setUserId] = useState("");
   const [loading, setLoading] = useState(true);
 
-  const baseUrl = "https://naijatrips-app-dcarbon-server.cafyit.easypanel.host";
+  const baseUrl = `${CONFIG.API_BASE_URL}`;
 
   useEffect(() => {
-    const fetchUserInfo = async () => {
-      const userId = localStorage.getItem("userId");
+    if (typeof window !== "undefined") {
       const authToken = localStorage.getItem("authToken");
-
-      if (!userId || !authToken) {
+      if (!authToken) {
         toast.error("Authentication required");
         setLoading(false);
         return;
       }
-
-      try {
-        const response = await axios.get(
-          `${baseUrl}/api/user/get-one-user/${userId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-            },
-          }
-        );
-
-        const user = response.data.data;
-
-        setFirstName(user.firstName || "");
-        setLastName(user.lastName || "");
-        setEmail(user.email || "");
-        setUserType(user.userType || "");
-        setReferralCode(user.referralCode || "");
-      } catch (error) {
-        toast.error(
-          error.response?.data?.message || "Failed to fetch user information"
-        );
-        console.error("Error fetching user data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUserInfo();
+      setUserId(localStorage.getItem("userId") || "");
+      setFirstName(localStorage.getItem("userFirstName") || "");
+      setLastName(localStorage.getItem("userLastName") || "");
+      setEmail(localStorage.getItem("userEmail") || "");
+      setRole(localStorage.getItem("userRole") || "");
+      setLoading(false);
+    }
   }, []);
 
   const handleUpdate = async () => {
-    const userId = localStorage.getItem("userId");
     const authToken = localStorage.getItem("authToken");
 
     if (!userId || !authToken) {
@@ -80,7 +56,7 @@ const ContactInformation = () => {
 
     try {
       await axios.put(
-        `${baseUrl}/api/user/${userId}`,
+        `${baseUrl}/api/admin/${userId}`,
         payload,
         {
           headers: {
@@ -102,7 +78,7 @@ const ContactInformation = () => {
     return (
       <div className="border-b border-gray-200 pb-4 mb-4">
         <div className={sectionHeader} onClick={() => setIsOpen(!isOpen)}>
-          <h2 className={sectionTitle}>Contact Information</h2>
+          <h2 className={sectionTitle}>Personal Information</h2>
           {isOpen ? (
             <FaChevronUp className="text-[#039994]" size={20} />
           ) : (
@@ -134,7 +110,6 @@ const ContactInformation = () => {
 
       {isOpen && (
         <div className="mt-4 space-y-4">
-          {/* First and Last Name in a single row */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>First Name</label>
@@ -160,7 +135,6 @@ const ContactInformation = () => {
             </div>
           </div>
 
-          {/* Email */}
           <div>
             <label className={labelClass}>Email</label>
             <input
@@ -173,23 +147,22 @@ const ContactInformation = () => {
             />
           </div>
 
-          {/* User Type & Referral Code */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={labelClass}>User Type</label>
+              <label className={labelClass}>Role</label>
               <input
                 type="text"
-                value={userType}
+                value={role}
                 readOnly
                 className={inputClass}
                 style={inputStyle}
               />
             </div>
             <div>
-              <label className={labelClass}>Referral Code</label>
+              <label className={labelClass}>User ID</label>
               <input
                 type="text"
-                value={referralCode}
+                value={userId}
                 readOnly
                 className={inputClass}
                 style={inputStyle}
@@ -197,13 +170,12 @@ const ContactInformation = () => {
             </div>
           </div>
 
-          {/* Update Button */}
           <div>
             <button
               onClick={handleUpdate}
               className="w-full rounded-md bg-[#039994] text-white font-semibold py-2 hover:bg-[#02857f] focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro"
             >
-              Update Contact Information
+              Update Personal Information
             </button>
           </div>
         </div>

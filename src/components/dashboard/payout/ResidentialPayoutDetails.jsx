@@ -1,7 +1,8 @@
 "use client"
+import CONFIG from '@/lib/config'
 
 import { useState, useEffect } from 'react'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Loader2, Wallet } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import toast from 'react-hot-toast'
 
@@ -9,6 +10,8 @@ export default function ResidentialPayoutDetails({ payoutDetails, onBack, onPayo
   const [userPayouts, setUserPayouts] = useState([])
   const [loading, setLoading] = useState(false)
   const [processingAction, setProcessingAction] = useState(null)
+  const [walletData, setWalletData] = useState(null)
+  const [walletLoading, setWalletLoading] = useState(false)
 
   const getAuthToken = () => {
     return localStorage.getItem('authToken')
@@ -21,7 +24,7 @@ export default function ResidentialPayoutDetails({ payoutDetails, onBack, onPayo
   const fetchUserPayouts = async () => {
     setLoading(true)
     try {
-      const response = await fetch(`https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/payout-request?userId=${payoutDetails.id}&userType=RESIDENTIAL`, {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/payout-request?userId=${payoutDetails.id}&userType=RESIDENTIAL`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${getAuthToken()}`
@@ -45,7 +48,7 @@ export default function ResidentialPayoutDetails({ payoutDetails, onBack, onPayo
   const approvePayout = async (payoutId) => {
     setProcessingAction(payoutId)
     try {
-      const response = await fetch(`https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/payout-request/approve`, {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/payout-request/approve`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -61,8 +64,8 @@ export default function ResidentialPayoutDetails({ payoutDetails, onBack, onPayo
       
       if (result.status === "success") {
         toast.success('Payout approved successfully')
-        const updatedPayout = { id: payoutId, status: "PAID" }
-        setUserPayouts(prev => prev.map(p => p.id === payoutId ? { ...p, status: "PAID" } : p))
+        const updatedPayout = { id: payoutId, status: "APPROVED" }
+        setUserPayouts(prev => prev.map(p => p.id === payoutId ? { ...p, status: "APPROVED" } : p))
         onPayoutUpdate(payoutDetails.id, updatedPayout)
       } else {
         toast.error('Failed to approve payout')
@@ -77,7 +80,7 @@ export default function ResidentialPayoutDetails({ payoutDetails, onBack, onPayo
   const rejectPayout = async (payoutId) => {
     setProcessingAction(payoutId)
     try {
-      const response = await fetch(`https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/payout-request/reject`, {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/payout-request/reject`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -119,72 +122,105 @@ export default function ResidentialPayoutDetails({ payoutDetails, onBack, onPayo
     }
   }
 
+  const fetchWalletData = async () => {
+    setWalletLoading(true)
+    try {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/revenue/${payoutDetails.id}`, {
+        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
+      })
+      const result = await response.json()
+      if (result.status === "success") setWalletData(result.data)
+    } catch {
+      // Wallet data is supplementary, fail silently
+    } finally {
+      setWalletLoading(false)
+    }
+  }
+
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-GB')
+  }
+
+  const formatCurrency = (amount) => {
+    if (amount == null) return '$0.00'
+    return `$${Number(amount).toFixed(2)}`
   }
 
   useEffect(() => {
     if (payoutDetails.id) {
       fetchUserPayouts()
+      fetchWalletData()
     }
   }, [payoutDetails.id])
 
   return (
     <div className="p-4">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center mb-6">
         <div className="flex items-center gap-3">
-          <ChevronLeft 
-            className="h-5 w-5 text-[#039994] cursor-pointer" 
+          <ChevronLeft
+            className="h-5 w-5 text-[#039994] cursor-pointer"
             onClick={onBack}
           />
           <h1 className="font-sfpro text-[20px] font-[600] text-[#039994]">Residential Payout Details</h1>
         </div>
-        
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="font-sfpro text-[14px] text-[#1E1E1E]">User ID:</span>
-            <span className="font-sfpro text-[14px] text-[#626060]">
-              {payoutDetails.id}
-            </span>
+      </div>
+
+      <div className="bg-[#E8F5F4] rounded-lg px-4 py-3 border border-[#C1E8E5] mb-5">
+        <div className="divide-y divide-[#C1E8E5]">
+          <div className="flex justify-between items-center py-2">
+            <span className="font-sfpro text-xs text-[#1E1E1E]">Name</span>
+            <span className="font-sfpro text-xs text-[#626060]">{`${payoutDetails.firstName || ''} ${payoutDetails.lastName || ''}`.trim() || '—'}</span>
+          </div>
+          <div className="flex justify-between items-center py-2">
+            <span className="font-sfpro text-xs text-[#1E1E1E]">Email</span>
+            <span className="font-sfpro text-xs text-[#626060]">{payoutDetails.email || '—'}</span>
+          </div>
+          <div className="flex justify-between items-center py-2">
+            <span className="font-sfpro text-xs text-[#1E1E1E]">Phone</span>
+            <span className="font-sfpro text-xs text-[#626060]">{payoutDetails.phoneNumber || '—'}</span>
+          </div>
+          <div className="flex justify-between items-center py-2">
+            <span className="font-sfpro text-xs text-[#1E1E1E]">User Type</span>
+            <span className="font-sfpro text-xs text-[#626060]">{payoutDetails.userType || '—'}</span>
+          </div>
+          <div className="flex justify-between items-center py-2">
+            <span className="font-sfpro text-xs text-[#1E1E1E]">User ID</span>
+            <span className="font-sfpro text-xs text-[#626060] truncate max-w-[50%] text-right">{payoutDetails.id || '—'}</span>
           </div>
         </div>
       </div>
 
-      <div className="bg-[#E8F5F4] rounded-lg p-6 border border-[#C1E8E5] mb-6">
-        <div className="space-y-4">
-          <div className="flex justify-between items-center py-3 border-b">
-            <span className="font-sfpro text-[14px] text-[#1E1E1E]">User ID</span>
-            <span className="font-sfpro text-[14px] text-[#626060]">{payoutDetails.id}</span>
+      {/* Revenue Wallet */}
+      {walletLoading ? (
+        <div className="flex justify-center py-4 mb-6">
+          <Loader2 className="h-5 w-5 animate-spin text-[#039994]" />
+        </div>
+      ) : walletData && (
+        <div className="border border-gray-200 rounded-xl p-4 mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Wallet className="h-4 w-4 text-[#039994]" />
+            <h4 className="font-sfpro text-[14px] font-semibold text-[#1E1E1E]">Revenue Wallet</h4>
           </div>
-          <div className="flex justify-between items-center py-3 border-b">
-            <span className="font-sfpro text-[14px] text-[#1E1E1E]">First Name</span>
-            <span className="font-sfpro text-[14px] text-[#626060]">{payoutDetails.firstName}</span>
-          </div>
-          <div className="flex justify-between items-center py-3 border-b">
-            <span className="font-sfpro text-[14px] text-[#1E1E1E]">Last Name</span>
-            <span className="font-sfpro text-[14px] text-[#626060]">{payoutDetails.lastName}</span>
-          </div>
-          <div className="flex justify-between items-center py-3 border-b">
-            <span className="font-sfpro text-[14px] text-[#1E1E1E]">Email Address</span>
-            <span className="font-sfpro text-[14px] text-[#626060]">{payoutDetails.email}</span>
-          </div>
-          <div className="flex justify-between items-center py-3 border-b">
-            <span className="font-sfpro text-[14px] text-[#1E1E1E]">Phone number</span>
-            <span className="font-sfpro text-[14px] text-[#626060]">{payoutDetails.phoneNumber || '-'}</span>
-          </div>
-          <div className="flex justify-between items-center py-3 border-b">
-            <span className="font-sfpro text-[14px] text-[#1E1E1E]">User Type</span>
-            <span className="font-sfpro text-[14px] text-[#626060]">{payoutDetails.userType}</span>
+          <div className="flex items-center gap-8">
+            <div>
+              <span className="font-sfpro text-xs text-[#626060] block">Total Earnings</span>
+              <span className="font-sfpro text-lg font-semibold text-[#1E1E1E]">{formatCurrency(walletData.totalEarnings)}</span>
+            </div>
+            <div className="h-8 w-px bg-gray-200" />
+            <div>
+              <span className="font-sfpro text-xs text-[#626060] block">Available Balance</span>
+              <span className="font-sfpro text-lg font-semibold text-[#039994]">{formatCurrency(walletData.availableBalance)}</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="bg-white rounded-lg p-6 border">
         <h3 className="font-sfpro text-[18px] font-[600] mb-4">Payout Requests</h3>
-        
+
         {loading ? (
           <div className="flex justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-2 border-[#039994] border-t-transparent"></div>
+            <Loader2 className="h-8 w-8 animate-spin text-[#039994]" />
           </div>
         ) : userPayouts.length > 0 ? (
           <div className="overflow-x-auto">
@@ -205,7 +241,7 @@ export default function ResidentialPayoutDetails({ payoutDetails, onBack, onPayo
                       {payout.id}
                     </td>
                     <td className="py-3 font-sfpro p-3">
-                      ${payout.amountRequested.toFixed(2)}
+                      ${(payout.amountRequested ?? 0).toFixed(2)}
                     </td>
                     <td className="py-3 p-3">
                       <span className={`px-3 py-1 rounded-full text-xs font-sfpro font-semibold ${getStatusColor(payout.status)}`}>

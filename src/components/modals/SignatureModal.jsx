@@ -1,3 +1,4 @@
+import CONFIG from '@/lib/config';
 import React, { useState, useRef, useEffect } from "react";
 import { FaTimes } from "react-icons/fa";
 import toast from "react-hot-toast";
@@ -168,7 +169,7 @@ const SignatureModal = ({ isOpen, onClose, onSaveSignature }) => {
       }
 
       const response = await fetch(
-        `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/user/update-user-agreement/${userId}`,
+        `${CONFIG.API_BASE_URL}/api/user/update-user-agreement/${userId}`,
         {
           method: "PUT",
           headers: {
@@ -196,7 +197,7 @@ const SignatureModal = ({ isOpen, onClose, onSaveSignature }) => {
 
   return (
     <div className={spinnerOverlay}>
-      <div className="relative w-full max-w-xl bg-white rounded-md shadow-md font-sfpro">
+      <div className="relative w-full max-w-xl bg-white rounded-xl shadow-xl font-sfpro">
         {/* Header */}
         <div className="flex justify-between items-center px-6 py-4">
           <h2 className={uploadHeading}>Upload Signature</h2>

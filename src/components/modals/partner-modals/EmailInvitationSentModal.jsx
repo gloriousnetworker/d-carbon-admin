@@ -13,7 +13,7 @@ export default function EmailVerificationModal({ closeModal }) {
 
   return (
     <div className={spinnerOverlay}>
-      <div className={`relative w-full max-w-md bg-white rounded-md shadow-md p-6 space-y-6 ${modalContent}`}>
+      <div className={`relative w-full max-w-md bg-white rounded-xl shadow-xl p-6 space-y-6 ${modalContent}`}>
         {/* Email Sent Icon */}
         <div className="flex justify-center">
           <Image 

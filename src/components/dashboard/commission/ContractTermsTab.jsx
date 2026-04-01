@@ -1,6 +1,7 @@
 "use client";
+import CONFIG from '@/lib/config';
 import React, { useState, useEffect } from "react";
-import { FiEdit, FiTrash2 } from "react-icons/fi";
+import { Edit, Trash2, Loader2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 const ContractTermsTab = () => {
@@ -27,7 +28,7 @@ const ContractTermsTab = () => {
     try {
       setLoading(true);
       const authToken = localStorage.getItem("authToken");
-      const response = await fetch("https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-contract-terms", {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-contract-terms`, {
         headers: { Authorization: `Bearer ${authToken}` },
       });
       
@@ -46,7 +47,7 @@ const ContractTermsTab = () => {
   const fetchModes = async () => {
     try {
       const authToken = localStorage.getItem("authToken");
-      const response = await fetch("https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-structure/modes", {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-structure/modes`, {
         headers: { Authorization: `Bearer ${authToken}` },
       });
       
@@ -122,7 +123,7 @@ const ContractTermsTab = () => {
     
     try {
       const authToken = localStorage.getItem("authToken");
-      const response = await fetch(`https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-contract-terms/${id}`, {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-contract-terms/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${authToken}` },
       });
@@ -188,7 +189,7 @@ const ContractTermsTab = () => {
       let response;
       
       if (editingTerm) {
-        response = await fetch(`https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-contract-terms/${editingTerm.id}`, {
+        response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-contract-terms/${editingTerm.id}`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
@@ -197,7 +198,7 @@ const ContractTermsTab = () => {
           body: JSON.stringify(payload),
         });
       } else {
-        response = await fetch("https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/commission-contract-terms", {
+        response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-contract-terms`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -259,7 +260,7 @@ const ContractTermsTab = () => {
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">Commission Contract Terms</h3>
+        <h3 className="text-sm font-semibold text-[#039994] font-sfpro">Commission Contract Terms</h3>
         <button
           onClick={handleCreateNew}
           className="px-4 py-2 bg-[#039994] text-white rounded-md hover:bg-[#028884] transition-colors"
@@ -269,11 +270,11 @@ const ContractTermsTab = () => {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl">
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-gray-900">
+                <h2 className="text-sm font-semibold text-[#1E1E1E] font-sfpro">
                   {editingTerm ? "Edit Contract Term" : "Create New Contract Term"}
                 </h2>
                 <button 
@@ -425,56 +426,46 @@ const ContractTermsTab = () => {
       )}
 
       {loading ? (
-        <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#039994]"></div>
-          <p className="mt-3 text-gray-600">Loading contract terms...</p>
+        <div className="flex flex-col items-center justify-center py-16 border border-gray-200 rounded-xl">
+          <Loader2 className="h-8 w-8 animate-spin text-[#039994]" />
+          <span className="text-sm text-gray-500 font-sfpro mt-3">Loading contract terms...</span>
         </div>
       ) : (
         <div className="space-y-8">
-          <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-            <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-blue-100 border-b border-gray-200">
-              <h4 className="text-lg font-semibold text-blue-900">Commercial Property Terms</h4>
+          <div className="border border-gray-200 rounded-xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-[#039994] font-sfpro">Commercial Property Terms</h4>
             </div>
             {commercialTerms.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                        Mode
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                        Max Duration
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                        Agreement Years
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                        Cancellation Fee
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                        Actions
-                      </th>
+                  <thead>
+                    <tr className="border-y bg-gray-50/60">
+                      <th className="px-6 py-3 text-left text-xs font-medium font-sfpro text-[#1E1E1E]">Mode</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium font-sfpro text-[#1E1E1E]">Max Duration</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium font-sfpro text-[#1E1E1E]">Agreement Years</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium font-sfpro text-[#1E1E1E]">Cancellation Fee</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium font-sfpro text-[#1E1E1E]">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-white">
                     {commercialTerms.map((term) => (
-                      <tr key={term.id} className="hover:bg-gray-50 transition-colors">
+                      <tr key={term.id} className="border-t border-gray-100 hover:bg-gray-50 transition-colors duration-100">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-sm font-medium text-gray-900">{term.mode.replace(/_/g, ' ')}</span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                            {term.maxDuration} years
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium font-sfpro bg-[#03999415] text-[#039994]">
+                            {term.maxDuration} yrs
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                            {term.agreementYrs} years
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium font-sfpro bg-green-100 text-green-700">
+                            {term.agreementYrs} yrs
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium font-sfpro bg-amber-100 text-amber-700">
                             ${term.cancellationFee}
                           </span>
                         </td>
@@ -485,14 +476,14 @@ const ContractTermsTab = () => {
                               className="text-[#039994] hover:text-[#028884] transition-colors p-1.5 rounded-md hover:bg-[#039994]/10"
                               title="Edit"
                             >
-                              <FiEdit size={18} />
+                              <Edit className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => handleDelete(term.id)}
                               className="text-red-600 hover:text-red-800 transition-colors p-1.5 rounded-md hover:bg-red-50"
                               title="Delete"
                             >
-                              <FiTrash2 size={18} />
+                              <Trash2 className="h-4 w-4" />
                             </button>
                           </div>
                         </td>
@@ -514,50 +505,40 @@ const ContractTermsTab = () => {
             )}
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-            <div className="px-6 py-4 bg-gradient-to-r from-green-50 to-emerald-100 border-b border-gray-200">
-              <h4 className="text-lg font-semibold text-green-900">Residential Property Terms</h4>
+          <div className="border border-gray-200 rounded-xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-[#039994] font-sfpro">Residential Property Terms</h4>
             </div>
             {residentialTerms.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                        Mode
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                        Max Duration
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                        Agreement Years
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                        Cancellation Fee
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                        Actions
-                      </th>
+                  <thead>
+                    <tr className="border-y bg-gray-50/60">
+                      <th className="px-6 py-3 text-left text-xs font-medium font-sfpro text-[#1E1E1E]">Mode</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium font-sfpro text-[#1E1E1E]">Max Duration</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium font-sfpro text-[#1E1E1E]">Agreement Years</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium font-sfpro text-[#1E1E1E]">Cancellation Fee</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium font-sfpro text-[#1E1E1E]">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-white">
                     {residentialTerms.map((term) => (
-                      <tr key={term.id} className="hover:bg-gray-50 transition-colors">
+                      <tr key={term.id} className="border-t border-gray-100 hover:bg-gray-50 transition-colors duration-100">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-sm font-medium text-gray-900">{term.mode.replace(/_/g, ' ')}</span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                            {term.maxDuration} years
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium font-sfpro bg-[#03999415] text-[#039994]">
+                            {term.maxDuration} yrs
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                            {term.agreementYrs} years
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium font-sfpro bg-green-100 text-green-700">
+                            {term.agreementYrs} yrs
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium font-sfpro bg-amber-100 text-amber-700">
                             ${term.cancellationFee}
                           </span>
                         </td>
@@ -568,14 +549,14 @@ const ContractTermsTab = () => {
                               className="text-[#039994] hover:text-[#028884] transition-colors p-1.5 rounded-md hover:bg-[#039994]/10"
                               title="Edit"
                             >
-                              <FiEdit size={18} />
+                              <Edit className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => handleDelete(term.id)}
                               className="text-red-600 hover:text-red-800 transition-colors p-1.5 rounded-md hover:bg-red-50"
                               title="Delete"
                             >
-                              <FiTrash2 size={18} />
+                              <Trash2 className="h-4 w-4" />
                             </button>
                           </div>
                         </td>
@@ -597,50 +578,40 @@ const ContractTermsTab = () => {
             )}
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-            <div className="px-6 py-4 bg-gradient-to-r from-purple-50 to-violet-100 border-b border-gray-200">
-              <h4 className="text-lg font-semibold text-purple-900">Account Level Terms</h4>
+          <div className="border border-gray-200 rounded-xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-[#039994] font-sfpro">Account Level Terms</h4>
             </div>
             {accountLevelTerms.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                        Mode
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                        Max Duration
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                        Agreement Years
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                        Cancellation Fee
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                        Actions
-                      </th>
+                  <thead>
+                    <tr className="border-y bg-gray-50/60">
+                      <th className="px-6 py-3 text-left text-xs font-medium font-sfpro text-[#1E1E1E]">Mode</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium font-sfpro text-[#1E1E1E]">Max Duration</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium font-sfpro text-[#1E1E1E]">Agreement Years</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium font-sfpro text-[#1E1E1E]">Cancellation Fee</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium font-sfpro text-[#1E1E1E]">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-white">
                     {accountLevelTerms.map((term) => (
-                      <tr key={term.id} className="hover:bg-gray-50 transition-colors">
+                      <tr key={term.id} className="border-t border-gray-100 hover:bg-gray-50 transition-colors duration-100">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-sm font-medium text-gray-900">{term.mode.replace(/_/g, ' ')}</span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                            {term.maxDuration} years
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium font-sfpro bg-[#03999415] text-[#039994]">
+                            {term.maxDuration} yrs
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                            {term.agreementYrs} years
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium font-sfpro bg-green-100 text-green-700">
+                            {term.agreementYrs} yrs
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium font-sfpro bg-amber-100 text-amber-700">
                             ${term.cancellationFee}
                           </span>
                         </td>
@@ -651,14 +622,14 @@ const ContractTermsTab = () => {
                               className="text-[#039994] hover:text-[#028884] transition-colors p-1.5 rounded-md hover:bg-[#039994]/10"
                               title="Edit"
                             >
-                              <FiEdit size={18} />
+                              <Edit className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => handleDelete(term.id)}
                               className="text-red-600 hover:text-red-800 transition-colors p-1.5 rounded-md hover:bg-red-50"
                               title="Delete"
                             >
-                              <FiTrash2 size={18} />
+                              <Trash2 className="h-4 w-4" />
                             </button>
                           </div>
                         </td>

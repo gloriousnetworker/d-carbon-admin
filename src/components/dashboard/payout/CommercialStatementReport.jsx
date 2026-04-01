@@ -1,4 +1,5 @@
 "use client"
+import CONFIG from '@/lib/config'
 
 import { useState, useEffect } from "react"
 import { ChevronLeft, ChevronRight, Filter } from 'lucide-react'
@@ -25,7 +26,7 @@ export default function CommercialStatementReport() {
     try {
       const authToken = localStorage.getItem('authToken')
       const userResponse = await fetch(
-        `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/user/${email}`,
+        `${CONFIG.API_BASE_URL}/api/user/${email}`,
         {
           method: 'GET',
           headers: {
@@ -43,7 +44,7 @@ export default function CommercialStatementReport() {
       const userId = userResult.data.id
       
       const payoutResponse = await fetch(
-        `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/payout-request?userId=${userId}&userType=COMMERCIAL`,
+        `${CONFIG.API_BASE_URL}/api/payout-request?userId=${userId}&userType=COMMERCIAL`,
         {
           method: 'GET',
           headers: {
@@ -90,7 +91,7 @@ export default function CommercialStatementReport() {
 
       while (hasMore) {
         const response = await fetch(
-          `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/user/get-all-users?page=${currentPage}&limit=50`,
+          `${CONFIG.API_BASE_URL}/api/admin/get-all-users?page=${currentPage}&limit=50`,
           {
             method: 'GET',
             headers: {
@@ -125,10 +126,14 @@ export default function CommercialStatementReport() {
           
           return {
             id: user.id || '-',
-            name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : '-',
+            name: user.companyName || (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : '-'),
+            companyName: user.companyName || '',
+            ownerFullName: user.ownerFullName || '',
             firstName: user.firstName || '-',
             lastName: user.lastName || '-',
             email: user.email || '-',
+            phoneNumber: user.phoneNumber || '',
+            address: user.address || '',
             userType: user.userType || '-',
             date: user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-GB').replace(/\//g, '-') : '-',
             status: user.isActive ? "Completed" : "Pending",
@@ -250,25 +255,41 @@ export default function CommercialStatementReport() {
   const handleRowClick = async (item) => {
     try {
       const authToken = localStorage.getItem('authToken')
-      const response = await fetch(
-        `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/user/${item.email}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authToken}`
+      const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` }
+
+      // Fetch basic user data + commercial details in parallel
+      const [userRes, commercialRes] = await Promise.all([
+        fetch(`${CONFIG.API_BASE_URL}/api/user/${item.email}`, { headers }),
+        fetch(`${CONFIG.API_BASE_URL}/api/admin/customer/${encodeURIComponent(item.email)}`, { headers }).catch(() => null),
+      ])
+
+      let userData = {}
+      if (userRes.ok) {
+        const result = await userRes.json()
+        if (result.status === "success") userData = result.data || {}
+      }
+
+      // Flatten commercial user data (companyName, ownerFullName, etc.)
+      let commercialData = {}
+      if (commercialRes?.ok) {
+        const cResult = await commercialRes.json()
+        if (cResult.status === "success" && cResult.data) {
+          const cu = cResult.data.commercialUser || {}
+          commercialData = {
+            companyName: cu.companyName || cResult.data.companyName,
+            ownerFullName: cu.ownerFullName || cResult.data.ownerFullName,
+            businessAddress: cu.companyAddress || cResult.data.companyAddress,
+            companyPhone: cu.phoneNumber,
           }
         }
-      )
-      if (!response.ok) throw new Error('Failed to fetch user details')
-      const result = await response.json()
-      if (result.status === "success") {
-        setSelectedPayout({
-          ...item,
-          ...result.data,
-          payouts: item.payouts
-        })
       }
+
+      setSelectedPayout({
+        ...item,
+        ...userData,
+        ...commercialData,
+        payouts: item.payouts,
+      })
     } catch (err) {
       console.error(err)
     }

@@ -1,12 +1,15 @@
 'use client';
+import CONFIG from '@/lib/config';
 
 import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import Loader from '../../../components/loader/Loader';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 export default function ResetPasswordCard() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [otp, setOtp] = useState(Array(6).fill(''));
   const [newPassword, setNewPassword] = useState('');
@@ -55,13 +58,13 @@ export default function ResetPasswordCard() {
     setLoading(true);
     try {
       await axios.post(
-        'https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/auth/reset-password',
+        `${CONFIG.API_BASE_URL}/api/auth/reset-password`,
         { email, otp: Number(enteredOtp), password: newPassword },
         { headers: { 'Content-Type': 'application/json' } }
       );
       toast.success('Password reset successfully');
       setTimeout(() => {
-        window.location.href = '/login';
+        router.push('/login');
       }, 1500);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to reset password');

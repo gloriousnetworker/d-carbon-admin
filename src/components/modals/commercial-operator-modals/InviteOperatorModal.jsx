@@ -1,3 +1,4 @@
+import CONFIG from '@/lib/config';
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
@@ -68,7 +69,7 @@ export default function EmailVerificationModal({ closeModal, onSkip }) {
 
     try {
       const response = await axios.post(
-        `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/user/invite-user/${userId}`,
+        `${CONFIG.API_BASE_URL}/api/user/invite-user/${userId}`,
         payload,
         {
           headers: {
@@ -105,7 +106,7 @@ export default function EmailVerificationModal({ closeModal, onSkip }) {
 
   return (
     <div className={spinnerOverlay}>
-      <div className="relative w-full max-w-md bg-white rounded-md shadow-md p-6 space-y-4">
+      <div className="relative w-full max-w-md bg-white rounded-xl shadow-xl p-6 space-y-4">
         {/* Invite Owner Icon */}
         <div className="flex justify-center">
           <Image 

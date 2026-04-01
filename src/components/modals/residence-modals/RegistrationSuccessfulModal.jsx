@@ -20,7 +20,7 @@ export default function RegistrationSuccessfulModal({ closeModal }) {
 
   return (
     <div className={spinnerOverlay}>
-      <div className={`relative bg-white rounded-md shadow-md p-6 space-y-6 w-full max-w-md ${modalContent}`}>
+      <div className={`relative bg-white rounded-xl shadow-xl p-6 space-y-6 w-full max-w-md ${modalContent}`}>
         {/* Loader Overlay */}
         {isRedirecting && (
           <div className={loaderOverlay}>

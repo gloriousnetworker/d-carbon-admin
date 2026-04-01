@@ -1,4 +1,5 @@
 "use client"
+import CONFIG from '@/lib/config'
 
 import { useState, useEffect } from "react"
 import { ChevronLeft, ChevronRight, Filter } from 'lucide-react'
@@ -25,7 +26,7 @@ export default function PartnerCommissionPayout() {
     try {
       const authToken = localStorage.getItem('authToken')
       const userResponse = await fetch(
-        `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/user/${email}`,
+        `${CONFIG.API_BASE_URL}/api/user/${email}`,
         {
           method: 'GET',
           headers: {
@@ -43,7 +44,7 @@ export default function PartnerCommissionPayout() {
       const userId = userResult.data.id
       
       const payoutResponse = await fetch(
-        `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/payout-request?userId=${userId}&userType=PARTNER`,
+        `${CONFIG.API_BASE_URL}/api/payout-request?userId=${userId}&userType=PARTNER`,
         {
           method: 'GET',
           headers: {
@@ -90,7 +91,7 @@ export default function PartnerCommissionPayout() {
 
       while (hasMore) {
         const response = await fetch(
-          `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/user/get-all-users?page=${currentPage}&limit=50`,
+          `${CONFIG.API_BASE_URL}/api/admin/get-all-users?page=${currentPage}&limit=50`,
           {
             method: 'GET',
             headers: {
@@ -125,10 +126,14 @@ export default function PartnerCommissionPayout() {
           
           return {
             id: user.id || '-',
-            name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : '-',
+            name: user.companyName || (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : '-'),
+            companyName: user.companyName || '',
+            ownerFullName: user.ownerFullName || '',
             firstName: user.firstName || '-',
             lastName: user.lastName || '-',
             email: user.email || '-',
+            phoneNumber: user.phoneNumber || '',
+            address: user.address || '',
             userType: user.userType || '-',
             date: user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-GB').replace(/\//g, '-') : '-',
             status: user.isActive ? "Completed" : "Pending",
@@ -251,7 +256,7 @@ export default function PartnerCommissionPayout() {
     try {
       const authToken = localStorage.getItem('authToken')
       const response = await fetch(
-        `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/user/${item.email}`,
+        `${CONFIG.API_BASE_URL}/api/user/${item.email}`,
         {
           method: 'GET',
           headers: {
@@ -266,6 +271,11 @@ export default function PartnerCommissionPayout() {
         setSelectedPayout({
           ...item,
           ...result.data,
+          // Preserve company fields from list data (get-all-users) since /api/user/:email doesn't return them
+          companyName: item.companyName || result.data?.companyName || '',
+          ownerFullName: item.ownerFullName || result.data?.ownerFullName || '',
+          address: item.address || result.data?.address || '',
+          phoneNumber: item.phoneNumber || result.data?.phoneNumber || '',
           payouts: item.payouts
         })
       }

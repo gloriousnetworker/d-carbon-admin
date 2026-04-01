@@ -1,4 +1,5 @@
 "use client";
+import CONFIG from '@/lib/config';
 import React, { useState } from "react";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
@@ -10,11 +11,9 @@ const ChangePasswordCard = ({ onClose }) => {
   const [showOldPassword, setShowOldPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
 
-  // Handle password change
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
 
-    // Retrieve userId and authToken from localStorage
     const userId = localStorage.getItem("userId");
     const authToken = localStorage.getItem("authToken");
 
@@ -23,16 +22,14 @@ const ChangePasswordCard = ({ onClose }) => {
       return;
     }
 
-    // Prepare the payload
     const payload = {
       oldPassword,
       newPassword,
     };
 
     try {
-      // Make the POST request
       const response = await axios.post(
-        `https://naijatrips-app-dcarbon-server.cafyit.easypanel.host/api/auth/change-password/${userId}`,
+        `${CONFIG.API_BASE_URL}/api/auth/change-password/${userId}`,
         payload,
         {
           headers: {
@@ -43,8 +40,6 @@ const ChangePasswordCard = ({ onClose }) => {
       );
 
       toast.success(response.data.message || "Password changed successfully");
-
-      // Close the modal (if you want that behavior)
       onClose && onClose();
     } catch (error) {
       const errorMessage =
@@ -54,11 +49,10 @@ const ChangePasswordCard = ({ onClose }) => {
     }
   };
 
-  // Inline styles
   const styles = {
     mainContainer: "min-h-screen w-full flex flex-col items-center justify-center py-8 px-4 bg-white",
-    modalOverlay: "fixed inset-0 z-50 bg-black bg-opacity-40 flex justify-center items-center",
-    modalContent: "relative bg-white rounded-md shadow-md w-full max-w-md p-6",
+    modalOverlay: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4",
+    modalContent: "relative bg-white rounded-xl shadow-xl w-full max-w-md p-6",
     pageTitle: "mb-4 font-[600] text-[24px] leading-normal tracking-[-0.05em] text-[#039994] font-sfpro text-center",
     formWrapper: "w-full max-w-md space-y-6",
     labelClass: "block mb-2 font-sfpro text-[14px] leading-[100%] tracking-[-0.05em] font-[400] text-[#1E1E1E]",
@@ -78,7 +72,6 @@ const ChangePasswordCard = ({ onClose }) => {
           Change Password
         </h2>
         <form onSubmit={handlePasswordSubmit} className={styles.formWrapper}>
-          {/* Old Password */}
           <div>
             <label className={styles.labelClass}>
               Old Password
@@ -90,7 +83,6 @@ const ChangePasswordCard = ({ onClose }) => {
                 value={oldPassword}
                 onChange={(e) => setOldPassword(e.target.value)}
               />
-              {/* Eye Icon Toggle */}
               <div
                 className={styles.eyeIcon}
                 onClick={() => setShowOldPassword(!showOldPassword)}
@@ -98,17 +90,13 @@ const ChangePasswordCard = ({ onClose }) => {
                 {showOldPassword ? <FaEyeSlash /> : <FaEye />}
               </div>
             </div>
-            {/* Forgot Password Link */}
             <div className={styles.forgotPasswordLink}>
-              <a
-                href="/forgot-password"
-              >
+              <a href="/forgot-password">
                 Forgot Password?
               </a>
             </div>
           </div>
 
-          {/* New Password */}
           <div>
             <label className={styles.labelClass}>
               New Password
@@ -120,7 +108,6 @@ const ChangePasswordCard = ({ onClose }) => {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
               />
-              {/* Eye Icon Toggle */}
               <div
                 className={styles.eyeIcon}
                 onClick={() => setShowNewPassword(!showNewPassword)}
@@ -130,7 +117,6 @@ const ChangePasswordCard = ({ onClose }) => {
             </div>
           </div>
 
-          {/* Save Button */}
           <button
             type="submit"
             className={`mt-4 ${styles.buttonPrimary}`}
@@ -139,7 +125,6 @@ const ChangePasswordCard = ({ onClose }) => {
           </button>
         </form>
 
-        {/* Optional "Cancel" button if you want a modal-like behavior */}
         {onClose && (
           <button
             type="button"
