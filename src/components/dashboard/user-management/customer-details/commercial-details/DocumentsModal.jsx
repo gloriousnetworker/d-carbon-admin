@@ -118,6 +118,22 @@ export default function DocumentsModal({ facility, onVerifyFacility, verifyingFa
     acknowledgementOfStationService: "update-acknowledgement-of-station-service",
   };
 
+  // Map doc types to the multer field name the backend expects (must match uploadToGCS first arg)
+  const docFieldNames = {
+    wregisAssignment: "wregisAssignmentUrl",
+    financeAgreement: "financeAgreementUrl",
+    solarInstallationContract: "solarInstallationContractUrl",
+    interconnectionAgreement: "interconnectionAgreementUrl",
+    ptoLetter: "ptoLetterUrl",
+    singleLineDiagram: "singleLineDiagramUrl",
+    sitePlan: "file",
+    panelInverterDatasheet: "file",
+    revenueMeterData: "file",
+    utilityMeterPhoto: "utilityMeterPhotoUrl",
+    assignmentOfRegistrationRight: "file",
+    acknowledgementOfStationService: "file",
+  };
+
   const handleUploadClick = (doc) => {
     setUploadTargetDoc(doc);
     fileInputRef.current?.click();
@@ -139,8 +155,9 @@ export default function DocumentsModal({ facility, onVerifyFacility, verifyingFa
       const authToken = localStorage.getItem('authToken');
       if (!authToken) throw new Error('No authentication token found');
 
+      const fieldName = docFieldNames[uploadTargetDoc.type] || 'file';
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append(fieldName, file);
 
       const response = await fetch(
         `${CONFIG.API_BASE_URL}/api/facility/${endpoint}/${facility.id}`,
