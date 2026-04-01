@@ -181,8 +181,13 @@ export default function DocumentsModal({ facility, documents, onVerifyFacility, 
     panelInverterDatasheet: "update-facility-inverter-datasheet",
     revenueMeterData: "update-facility-revenue-meter-data",
     utilityMeterPhoto: "update-commercial-utility-meter-photo",
-    assignmentOfRegistrationRight: "update-facility-assignment-of-registration-right",
+    assignmentOfRegistrationRight: "update-assignment-of-registration-right",
     acknowledgementOfStationService: "update-acknowledgement-of-station-service",
+  };
+
+  // Full URL overrides for endpoints that don't live under /api/facility/
+  const docUploadFullUrls = {
+    acknowledgementOfStationService: `${CONFIG.API_BASE_URL}/api/admin/residential-docs/acknowledgement-of-station-service`,
   };
 
   // Map doc types to the multer field name the backend expects (must match uploadToGCS first arg)
@@ -229,14 +234,16 @@ export default function DocumentsModal({ facility, documents, onVerifyFacility, 
       const formData = new FormData();
       formData.append(fieldName, file);
 
-      const response = await fetch(
-        `${CONFIG.API_BASE_URL}/api/facility/${endpoint}/${facility.id}`,
-        {
-          method: 'PUT',
-          headers: { 'Authorization': `Bearer ${authToken}` },
-          body: formData,
-        }
-      );
+      const fullUrlBase = docUploadFullUrls[uploadTargetDoc.type];
+      const apiUrl = fullUrlBase
+        ? `${fullUrlBase}/${facility.id}`
+        : `${CONFIG.API_BASE_URL}/api/facility/${endpoint}/${facility.id}`;
+
+      const response = await fetch(apiUrl, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${authToken}` },
+        body: formData,
+      });
 
       if (!response.ok) {
         const errorData = await response.json();
