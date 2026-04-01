@@ -289,112 +289,106 @@ export default function ReportsDashboard() {
           setFilteredData([])
         }
 
-      // Partner Customers — individual customers referred by each partner, enriched with live profile data
+      // Partner Customers — individual customers per partner, using the same
+      // data sources as PartnerManagement (partners endpoint) and CustomerManagement
+      // (get-all-users?email=X for full user profile data)
       } else if (type === "Partner Customers") {
         const authToken = localStorage.getItem("authToken")
-        // Step 1: fetch all partners
-        const partnersRes = await fetch(`${CONFIG.API_BASE_URL}/api/admin/partner-performance?page=1&limit=200`, {
-          headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
-        })
-        if (!partnersRes.ok) { setAllData([]); setFilteredData([]); return }
-        const partnersJson = await partnersRes.json()
-        const partners = partnersJson.status === "success"
-          ? Array.isArray(partnersJson.data) ? partnersJson.data : partnersJson.data?.partners || partnersJson.data?.data || []
-          : []
+        const PARTNER_TYPES = new Set(["PARTNER", "SALES_AGENT", "INSTALLER", "FINANCE_COMPANY"])
 
-        // Step 2: fetch referrals for each partner in parallel (only those with referrals)
-        const activePartners = partners.filter((p) => (p.totalReferrals ?? 0) > 0 && (p.id || p.userId))
+        // Step 1: fetch registered partners (same as PartnerManagement.jsx)
+        const [partnersRes, allUsersRes] = await Promise.allSettled([
+          fetch(`${CONFIG.API_BASE_URL}/api/admin/partners?page=1&limit=200`, {
+            headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+          }).then((r) => r.ok ? r.json() : null),
+          fetch(`${CONFIG.API_BASE_URL}/api/admin/get-all-users?page=1&limit=200`, {
+            headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+          }).then((r) => r.ok ? r.json() : null),
+        ])
+
+        // Registered partners — use user.id as the userId for referral lookup
+        let partnerList = []
+        if (partnersRes.status === "fulfilled" && partnersRes.value?.status === "success") {
+          const raw = partnersRes.value.data?.partners || partnersRes.value.data?.data || []
+          partnerList = raw.map((p) => ({
+            userId: p.user?.id || p.userId || p.id,
+            label: p.name || p.companyName || p.user?.email || p.email || "—",
+          }))
+        }
+        // Invited partner-type users not yet in partners table (same logic as PartnerManagement)
+        const registeredIds = new Set(partnerList.map((p) => p.userId).filter(Boolean))
+        if (allUsersRes.status === "fulfilled" && allUsersRes.value?.data?.users) {
+          allUsersRes.value.data.users
+            .filter((u) => PARTNER_TYPES.has(u.userType) && !registeredIds.has(u.id))
+            .forEach((u) => {
+              partnerList.push({
+                userId: u.id,
+                label: u.name || `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.email || "—",
+              })
+            })
+        }
+
+        // Step 2: fetch referrals per partner in parallel
         const referralResults = await Promise.allSettled(
-          activePartners.map((p) => {
-            const uid = p.id || p.userId
-            return fetch(`${CONFIG.API_BASE_URL}/api/user/get-users-referrals/${uid}`, {
-              headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
-            }).then((r) => r.ok ? r.json() : null)
-          })
+          partnerList.map(({ userId }) =>
+            userId
+              ? fetch(`${CONFIG.API_BASE_URL}/api/user/get-users-referrals/${userId}`, {
+                  headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+                }).then((r) => r.ok ? r.json() : null)
+              : Promise.resolve(null)
+          )
         )
 
-        // Step 3: enrich + flatten
-        const allRows = []
-        for (let i = 0; i < activePartners.length; i++) {
-          const partner = activePartners[i]
+        // Step 3: for every referred email, look up the full user via
+        // get-all-users?email=X (same endpoint customer management uses)
+        // so all fields — userType, phoneNumber, name — come from the User record directly
+        const allEmails = new Set()
+        const partnerByEmail = new Map() // email → partner label
+        for (let i = 0; i < partnerList.length; i++) {
           const result = referralResults[i]
           if (result.status !== "fulfilled" || !result.value) continue
           const json = result.value
-          let rawRefs = json.status === "success"
-            ? Array.isArray(json.data) ? json.data : json.data?.referrals ?? []
+          const refs = json.status === "success"
+            ? (Array.isArray(json.data) ? json.data : json.data?.referrals ?? [])
             : []
-
-          // Enrich missing name/type/phone from registered User profile
-          const needsEnrichment = rawRefs.filter(
-            (r) => r.inviteeEmail && ((!r.firstName && !r.name) || !r.phoneNumber || (!r.userType && !r.customerType))
-          )
-          if (needsEnrichment.length) {
-            const profileResults = await Promise.allSettled(
-              needsEnrichment.map((r) =>
-                fetch(`${CONFIG.API_BASE_URL}/api/user/${encodeURIComponent(r.inviteeEmail.trim())}`, {
-                  headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
-                }).then((res) => res.ok ? res.json() : null)
-              )
-            )
-            const profileMap = new Map()
-            needsEnrichment.forEach((r, idx) => {
-              const pr = profileResults[idx]
-              if (pr.status === "fulfilled" && pr.value?.status === "success") {
-                const d = pr.value.data
-                const nested = d?.user || d?.userDetails || d || {}
-                profileMap.set(r.inviteeEmail.toLowerCase(), {
-                  firstName: d?.firstName || nested?.firstName || null,
-                  lastName: d?.lastName || nested?.lastName || null,
-                  userType: d?.userType || nested?.userType || null,
-                  phoneNumber: d?.phoneNumber || nested?.phoneNumber || null,
-                })
-              }
-            })
-            rawRefs = rawRefs.map((ref) => {
-              if (!ref.inviteeEmail) return ref
-              const profile = profileMap.get(ref.inviteeEmail.toLowerCase())
-              if (!profile) return ref
-              return {
-                ...ref,
-                firstName: profile.firstName || ref.name?.split(" ")[0] || null,
-                lastName: profile.lastName || ref.name?.split(" ").slice(1).join(" ") || null,
-                userType: profile.userType || ref.customerType || null,
-                phoneNumber: profile.phoneNumber || ref.phoneNumber || null,
-              }
-            })
-          }
-
-          // Deduplicate by inviteeEmail
-          const seen = new Map()
-          for (const ref of rawRefs) {
-            const key = ref.inviteeEmail?.toLowerCase() ?? ref.id
-            if (!seen.has(key)) {
-              seen.set(key, { ...ref })
-            } else {
-              const merged = { ...seen.get(key) }
-              for (const [k, v] of Object.entries(ref)) {
-                if (merged[k] === null || merged[k] === undefined || merged[k] === "") merged[k] = v
-              }
-              seen.set(key, merged)
-            }
-          }
-
-          for (const ref of seen.values()) {
-            const name = ref.firstName
-              ? `${ref.firstName} ${ref.lastName || ""}`.trim()
-              : ref.name || "—"
-            allRows.push({
-              id: ref.id || `${partner.id}-${ref.inviteeEmail}`,
-              _partnerName: partner.companyName || partner.email || "—",
-              _customerName: name,
-              _email: ref.email || ref.inviteeEmail || "—",
-              _customerType: ref.userType || ref.customerType || ref.role || "—",
-              _phone: ref.phoneNumber || "—",
-              _status: ref.status || "—",
-              _date: ref.createdAt ? formatDate(ref.createdAt) : "—",
-            })
+          for (const ref of refs) {
+            const email = (ref.inviteeEmail || ref.email || "").toLowerCase().trim()
+            if (!email) continue
+            allEmails.add(email)
+            if (!partnerByEmail.has(email)) partnerByEmail.set(email, partnerList[i].label)
           }
         }
+
+        // Batch lookup all unique customer emails via get-all-users?email=X
+        const emailList = Array.from(allEmails)
+        const userLookups = await Promise.allSettled(
+          emailList.map((email) =>
+            fetch(`${CONFIG.API_BASE_URL}/api/admin/get-all-users?email=${encodeURIComponent(email)}&limit=1`, {
+              headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+            }).then((r) => r.ok ? r.json() : null)
+          )
+        )
+
+        // Step 4: build final rows — one per customer, with full profile data
+        const allRows = []
+        emailList.forEach((email, idx) => {
+          const result = userLookups[idx]
+          if (result.status !== "fulfilled" || !result.value) return
+          const users = result.value.data?.users || []
+          const user = users[0]
+          if (!user) return
+          const name = user.name || `${user.firstName || ""} ${user.lastName || ""}`.trim() || "—"
+          allRows.push({
+            id: user.id || email,
+            _partnerName: partnerByEmail.get(email) || "—",
+            _customerName: name,
+            _email: user.email || email,
+            _customerType: user.userType || "—",
+            _phone: user.phoneNumber || "—",
+            _status: user.status || "—",
+            _date: user.createdAt ? formatDate(user.createdAt) : "—",
+          })
+        })
         setAllData(allRows)
         setFilteredData(allRows)
 
