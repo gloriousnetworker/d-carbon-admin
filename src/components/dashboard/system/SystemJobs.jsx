@@ -16,6 +16,7 @@ export default function SystemJobs() {
     year: new Date().getFullYear(),
     quarter: Math.ceil((new Date().getMonth() + 1) / 3),
     month: new Date().getMonth() + 1,
+    meterUid: "",
   })
 
   const getAuthToken = () => localStorage.getItem("authToken")
@@ -43,13 +44,18 @@ export default function SystemJobs() {
     setTriggering(jobId)
     try {
       const job = jobs.find((j) => j.id === jobId)
-      const res = await fetch(`${CONFIG.API_BASE_URL}${job.endpoint}`, {
-        method: "POST",
+      const method = job.method || "POST"
+      let url = `${CONFIG.API_BASE_URL}${job.endpoint}`
+      if (job.paramType === "meterUid" && body?.meterUid) {
+        url = `${CONFIG.API_BASE_URL}${job.endpoint}/${encodeURIComponent(body.meterUid.trim())}`
+      }
+      const res = await fetch(url, {
+        method,
         headers: {
           Authorization: `Bearer ${getAuthToken()}`,
           "Content-Type": "application/json",
         },
-        body: body ? JSON.stringify(body) : undefined,
+        body: method !== "GET" && body ? JSON.stringify(body) : undefined,
       })
 
       if (res.ok) {
@@ -122,8 +128,11 @@ export default function SystemJobs() {
     {
       id: "historical",
       label: "Historical Data Collection",
-      description: "Collects and processes historical meter data",
-      endpoint: "/api/historical-collection/start",
+      description: "Collects and processes historical meter data for a specific meter",
+      endpoint: "/api/facility/manually/historical-collection-data",
+      method: "GET",
+      hasParams: true,
+      paramType: "meterUid",
     },
   ]
 
@@ -134,6 +143,7 @@ export default function SystemJobs() {
         year: new Date().getFullYear(),
         quarter: Math.ceil((new Date().getMonth() + 1) / 3),
         month: new Date().getMonth() + 1,
+        meterUid: "",
       })
     } else {
       triggerJob(job.id)
@@ -142,7 +152,13 @@ export default function SystemJobs() {
 
   const handleModalSubmit = () => {
     const job = jobs.find((j) => j.id === modalJob)
-    if (job?.paramType === "month-year") {
+    if (job?.paramType === "meterUid") {
+      if (!jobParams.meterUid?.trim()) {
+        toast.error("Meter UID is required")
+        return
+      }
+      triggerJob(modalJob, { meterUid: jobParams.meterUid })
+    } else if (job?.paramType === "month-year") {
       triggerJob(modalJob, { month: jobParams.month, year: jobParams.year })
     } else {
       triggerJob(modalJob, { year: jobParams.year, quarter: jobParams.quarter })
@@ -245,53 +261,68 @@ export default function SystemJobs() {
             </div>
 
             <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-[#626060] mb-1 font-sfpro">Year</label>
-                <input
-                  type="number"
-                  value={jobParams.year}
-                  onChange={(e) => setJobParams((p) => ({ ...p, year: parseInt(e.target.value) }))}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro"
-                  min="2020"
-                  max="2030"
-                />
-              </div>
-              {jobs.find((j) => j.id === modalJob)?.paramType === "month-year" ? (
+              {jobs.find((j) => j.id === modalJob)?.paramType === "meterUid" ? (
                 <div>
-                  <label className="block text-xs font-medium text-[#626060] mb-1 font-sfpro">Month</label>
-                  <select
-                    value={jobParams.month}
-                    onChange={(e) => setJobParams((p) => ({ ...p, month: parseInt(e.target.value) }))}
+                  <label className="block text-xs font-medium text-[#626060] mb-1 font-sfpro">Meter UID</label>
+                  <input
+                    type="text"
+                    value={jobParams.meterUid}
+                    onChange={(e) => setJobParams((p) => ({ ...p, meterUid: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro"
-                  >
-                    <option value={1}>January</option>
-                    <option value={2}>February</option>
-                    <option value={3}>March</option>
-                    <option value={4}>April</option>
-                    <option value={5}>May</option>
-                    <option value={6}>June</option>
-                    <option value={7}>July</option>
-                    <option value={8}>August</option>
-                    <option value={9}>September</option>
-                    <option value={10}>October</option>
-                    <option value={11}>November</option>
-                    <option value={12}>December</option>
-                  </select>
+                    placeholder="Enter meter UID"
+                  />
                 </div>
               ) : (
-                <div>
-                  <label className="block text-xs font-medium text-[#626060] mb-1 font-sfpro">Quarter</label>
-                  <select
-                    value={jobParams.quarter}
-                    onChange={(e) => setJobParams((p) => ({ ...p, quarter: parseInt(e.target.value) }))}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro"
-                  >
-                    <option value={1}>Q1 (Jan - Mar)</option>
-                    <option value={2}>Q2 (Apr - Jun)</option>
-                    <option value={3}>Q3 (Jul - Sep)</option>
-                    <option value={4}>Q4 (Oct - Dec)</option>
-                  </select>
-                </div>
+                <>
+                  <div>
+                    <label className="block text-xs font-medium text-[#626060] mb-1 font-sfpro">Year</label>
+                    <input
+                      type="number"
+                      value={jobParams.year}
+                      onChange={(e) => setJobParams((p) => ({ ...p, year: parseInt(e.target.value) }))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro"
+                      min="2020"
+                      max="2030"
+                    />
+                  </div>
+                  {jobs.find((j) => j.id === modalJob)?.paramType === "month-year" ? (
+                    <div>
+                      <label className="block text-xs font-medium text-[#626060] mb-1 font-sfpro">Month</label>
+                      <select
+                        value={jobParams.month}
+                        onChange={(e) => setJobParams((p) => ({ ...p, month: parseInt(e.target.value) }))}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro"
+                      >
+                        <option value={1}>January</option>
+                        <option value={2}>February</option>
+                        <option value={3}>March</option>
+                        <option value={4}>April</option>
+                        <option value={5}>May</option>
+                        <option value={6}>June</option>
+                        <option value={7}>July</option>
+                        <option value={8}>August</option>
+                        <option value={9}>September</option>
+                        <option value={10}>October</option>
+                        <option value={11}>November</option>
+                        <option value={12}>December</option>
+                      </select>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-xs font-medium text-[#626060] mb-1 font-sfpro">Quarter</label>
+                      <select
+                        value={jobParams.quarter}
+                        onChange={(e) => setJobParams((p) => ({ ...p, quarter: parseInt(e.target.value) }))}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#039994] font-sfpro"
+                      >
+                        <option value={1}>Q1 (Jan - Mar)</option>
+                        <option value={2}>Q2 (Apr - Jun)</option>
+                        <option value={3}>Q3 (Jul - Sep)</option>
+                        <option value={4}>Q4 (Oct - Dec)</option>
+                      </select>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 

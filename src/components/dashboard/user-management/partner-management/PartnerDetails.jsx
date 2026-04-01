@@ -15,6 +15,74 @@ import { exportToExcel, exportToCSV } from "@/lib/exportUtils";
 import * as styles from "../styles";
 
 
+// Enriches referral records that are missing name/type/phone by fetching the
+// registered User profile for each inviteeEmail. Runs in parallel and merges
+// results back. Also deduplicates by inviteeEmail using a merge strategy so
+// partners who invited the same address twice don't produce two rows.
+async function enrichReferralsWithUserProfiles(rawReferrals, authToken) {
+  const needsEnrichment = rawReferrals.filter(
+    (r) => r.inviteeEmail && (
+      (!r.firstName && !r.name) || !r.phoneNumber || (!r.userType && !r.customerType)
+    )
+  );
+  if (!needsEnrichment.length) return rawReferrals;
+
+  const profiles = await Promise.allSettled(
+    needsEnrichment.map((r) =>
+      fetch(`${CONFIG.API_BASE_URL}/api/user/${encodeURIComponent(r.inviteeEmail.trim())}`, {
+        headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+      }).then((res) => (res.ok ? res.json() : null))
+    )
+  );
+
+  const profileMap = new Map();
+  needsEnrichment.forEach((r, i) => {
+    const result = profiles[i];
+    if (result.status === "fulfilled" && result.value?.status === "success") {
+      const d = result.value.data;
+      const nested = d?.user || d?.userDetails || d || {};
+      profileMap.set(r.inviteeEmail.toLowerCase(), {
+        firstName: d?.firstName || nested?.firstName || null,
+        lastName: d?.lastName || nested?.lastName || null,
+        userType: d?.userType || nested?.userType || null,
+        phoneNumber: d?.phoneNumber || nested?.phoneNumber || null,
+      });
+    }
+  });
+
+  const enriched = rawReferrals.map((ref) => {
+    if (!ref.inviteeEmail) return ref;
+    const profile = profileMap.get(ref.inviteeEmail.toLowerCase());
+    if (!profile) return ref;
+    return {
+      ...ref,
+      firstName: profile.firstName || ref.name?.split(" ")[0] || null,
+      lastName: profile.lastName || ref.name?.split(" ").slice(1).join(" ") || null,
+      userType: profile.userType || ref.customerType || null,
+      phoneNumber: profile.phoneNumber || ref.phoneNumber || null,
+    };
+  });
+
+  // Deduplicate by inviteeEmail — merge strategy: fill missing fields from duplicates
+  const seen = new Map();
+  for (const ref of enriched) {
+    const key = ref.inviteeEmail?.toLowerCase() ?? ref.id;
+    if (!seen.has(key)) {
+      seen.set(key, { ...ref });
+    } else {
+      const existing = seen.get(key);
+      const merged = { ...existing };
+      for (const [k, v] of Object.entries(ref)) {
+        if (merged[k] === null || merged[k] === undefined || merged[k] === "") {
+          merged[k] = v;
+        }
+      }
+      seen.set(key, merged);
+    }
+  }
+  return Array.from(seen.values());
+}
+
 const PARTNER_PROGRESS = [
   { key: "invited", label: "Invited" },
   { key: "registered", label: "Registered" },
@@ -105,29 +173,50 @@ export default function PartnerDetails({ partner, onBack, onCustomerSelect }) {
   }, [partnerDetails, partner]);
 
   const fetchReferrals = useCallback(async () => {
+    const userId = partnerDetails?.id || partnerDetails?.userId || partner?.id || partner?.userId;
     const email = partnerDetails?.email || partner?.email;
-    if (!email) return;
+    if (!userId && !email) return;
     try {
       setReferralsLoading(true);
       const authToken = localStorage.getItem("authToken");
-      const response = await fetch(
-        `${CONFIG.API_BASE_URL}/api/admin/customer/${encodeURIComponent(email.trim())}`,
-        { headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" } }
-      );
-      if (response.ok) {
-        const data = await response.json();
-        if (data.status === "success" && data.data) {
-          setReferrals(Array.isArray(data.data.referrals) ? data.data.referrals : []);
-          return;
+      let rawReferrals = null;
+
+      // Primary: get referrals by inviter userId
+      if (userId) {
+        const res = await fetch(
+          `${CONFIG.API_BASE_URL}/api/user/get-users-referrals/${userId}`,
+          { headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" } }
+        );
+        if (res.ok) {
+          const json = await res.json();
+          if (json.status === "success") {
+            rawReferrals = Array.isArray(json.data) ? json.data : (json.data?.referrals ?? []);
+          }
         }
       }
-      // Fallback: use referrals embedded in partnerDetails
-      if (partnerDetails?.referrals) {
-        setReferrals(partnerDetails.referrals);
+
+      // Fallback: customer endpoint by email
+      if (!rawReferrals && email) {
+        const res = await fetch(
+          `${CONFIG.API_BASE_URL}/api/admin/customer/${encodeURIComponent(email.trim())}`,
+          { headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" } }
+        );
+        if (res.ok) {
+          const json = await res.json();
+          if (json.status === "success" && json.data) {
+            rawReferrals = Array.isArray(json.data.referrals) ? json.data.referrals : [];
+          }
+        }
       }
+
+      // Last resort: embedded data
+      if (!rawReferrals) rawReferrals = partnerDetails?.referrals ?? [];
+
+      const enriched = await enrichReferralsWithUserProfiles(rawReferrals, authToken);
+      setReferrals(enriched);
     } catch (err) {
       console.error("Error fetching referrals:", err);
-      if (partnerDetails?.referrals) setReferrals(partnerDetails.referrals);
+      setReferrals(partnerDetails?.referrals ?? []);
     } finally {
       setReferralsLoading(false);
     }
