@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ChevronLeft, Upload, Loader2, CheckCircle, Package, FileSpreadsheet, History } from "lucide-react";
+import { ChevronLeft, Upload, Loader2, CheckCircle, Package, FileSpreadsheet, History, Copy, Check } from "lucide-react";
 import { exportDocumentPackage, downloadDocumentsIndividually } from "@/lib/documentExport";
 import { exportWregisCoverSheet, exportPreApprovalWorksheet } from "@/lib/exportUtils";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,7 @@ export default function ResidentialDetails({ customer, onBack }) {
   const fileInputRef = useRef(null);
   // FIX-12: selected facility for REC generation history
   const [recHistoryFacility, setRecHistoryFacility] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (customer?.id) {
@@ -69,10 +70,29 @@ export default function ResidentialDetails({ customer, onBack }) {
     }
   };
 
+  const copyAllDetails = () => {
+    const cd = customerDetails || customer || {};
+    const fullName = `${cd.firstName || cd.name || ""}${cd.lastName ? ` ${cd.lastName}` : ""}`.trim();
+    const lines = [
+      `Name: ${fullName || "—"}`,
+      `Email: ${cd.email || "—"}`,
+      `Phone: ${cd.phoneNumber || "—"}`,
+      `Address: ${cd.address || "—"}`,
+      `User Type: RESIDENTIAL`,
+      `User ID: ${cd.id || customer?.id || "—"}`,
+      `Utility: ${cd.utility || "—"}`,
+      `Facilities: ${facilities.length}`,
+    ];
+    navigator.clipboard.writeText(lines.join("\n")).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    });
+  };
+
   const fetchFacilities = async () => {
     setFacilitiesLoading(true);
     setFacilitiesError(null);
-    
+
     try {
       const authToken = localStorage.getItem('authToken');
       if (!authToken) throw new Error('No authentication token found');
@@ -782,7 +802,7 @@ export default function ResidentialDetails({ customer, onBack }) {
         </DialogContent>
       </Dialog>
 
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-4">
         <button className="flex items-center text-[#039994] hover:text-[#02857f] pl-0" onClick={onBack}>
           <ChevronLeft className="h-5 w-5 mr-1" />
           <span>Customer Details</span>
@@ -800,6 +820,30 @@ export default function ResidentialDetails({ customer, onBack }) {
         )}
       </div>
 
+      <div className="border border-gray-200 rounded-lg px-4 py-3 mb-4 bg-white flex items-start justify-between w-full max-w-7xl">
+        <div>
+          <p className="text-base font-bold text-[#1E1E1E] font-sfpro leading-tight">
+            {(() => {
+              const cd = customerDetails || customer || {};
+              const full = `${cd.firstName || ""}${cd.lastName ? ` ${cd.lastName}` : ""}`.trim();
+              return full || cd.name || "—";
+            })()}
+          </p>
+          <p className="text-xs text-gray-400 font-sfpro mt-0.5">
+            Email: {customer?.email || "—"}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0 ml-4">
+          <Button variant="outline" size="sm" className="h-7 text-xs font-sfpro gap-1" onClick={copyAllDetails}>
+            {copied ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+            {copied ? "Copied" : "Copy Details"}
+          </Button>
+          <span className="text-xs font-medium bg-teal-50 text-teal-700 border border-teal-200 rounded-full px-2.5 py-0.5 font-sfpro">
+            RESIDENTIAL
+          </span>
+        </div>
+      </div>
+
       {/* ─── Registration Progress ───────────────────────────── */}
       {(() => {
         const status = (customerDetails?.status || customer?.status || "Invited").toLowerCase();
@@ -811,20 +855,20 @@ export default function ResidentialDetails({ customer, onBack }) {
         const isTerminated = status === "terminated" || status === "inactive";
 
         const steps = [
-          { label: "Registered", done: status !== "invited" },
-          { label: "Agreement Signed", done: hasAgreement },
-          { label: "Utility Authorized", done: hasUtilityAuth },
-          { label: "Facility Added", done: hasFacility },
-          { label: "Facility Verified", done: facilityVerified },
-          { label: "Active", done: isActive && facilityVerified },
+          { label: "Registered", done: status !== "invited", current: status === "registered" && !hasAgreement, tooltip: "User created an account" },
+          { label: "Agreement Signed", done: hasAgreement, current: !hasAgreement && status === "registered", tooltip: "User accepted DCarbon terms & service agreements" },
+          { label: "Utility Authorized", done: hasUtilityAuth, current: hasAgreement && !hasUtilityAuth, tooltip: "User authorized their utility account via utilityapi.com" },
+          { label: "Facility Added", done: hasFacility, current: hasUtilityAuth && !hasFacility, tooltip: "User uploaded required facility documents" },
+          { label: "Facility Verified", done: facilityVerified, current: hasFacility && !facilityVerified, tooltip: "Admin verified the facility after document approval" },
+          { label: "Active", done: isActive && facilityVerified, current: isActive, tooltip: "Facility is active and generating RECs" },
         ];
 
         return (
-          <div className="mb-6 px-5 py-4 border border-gray-200 rounded-xl bg-white">
+          <div className="mb-6 w-full max-w-7xl px-5 py-4 border border-gray-200 rounded-xl bg-white">
             <div className="flex items-center justify-between mb-3">
               <div className="text-xs font-medium font-sfpro text-gray-500 uppercase tracking-wide">Registration Progress</div>
               {isTerminated && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-sfpro font-medium bg-red-100 text-red-600">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-sfpro font-medium bg-red-100 text-red-600">
                   Terminated
                 </span>
               )}
@@ -832,14 +876,15 @@ export default function ResidentialDetails({ customer, onBack }) {
             <div className="flex items-center">
               {steps.map((step, i, arr) => {
                 const isDone = !isTerminated && step.done;
+                const isCurrent = !isTerminated && step.current;
                 return (
                   <React.Fragment key={step.label}>
-                    <div className="flex flex-col items-center flex-shrink-0">
-                      <div className={`h-3.5 w-3.5 rounded-full border-2 transition-colors ${
+                    <div className="flex flex-col items-center flex-shrink-0" title={step.tooltip}>
+                      <div className={`h-3.5 w-3.5 rounded-full border-2 transition-colors cursor-help ${
                         isDone ? "bg-[#039994] border-[#039994]" : "bg-white border-gray-300"
-                      }`} />
+                      } ${isCurrent ? "ring-2 ring-[#039994]/30" : ""}`} />
                       <span className={`text-[10px] mt-1 font-sfpro whitespace-nowrap ${
-                        isDone ? "text-[#039994] font-medium" : "text-gray-400"
+                        isDone ? "text-[#039994] font-medium" : isCurrent ? "text-[#039994] font-medium" : "text-gray-400"
                       }`}>{step.label}</span>
                     </div>
                     {i < arr.length - 1 && (
@@ -853,61 +898,95 @@ export default function ResidentialDetails({ customer, onBack }) {
         );
       })()}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div className="border border-gray-200 rounded-lg bg-[#069B960D] p-6">
-          <h3 className="text-lg font-semibold text-[#039994] mb-4">Residential Information</h3>
-          <div className="grid grid-cols-2 gap-y-4 gap-x-6">
-            <div className="space-y-1">
-              <p className="text-sm text-gray-500">User ID</p>
-              <p className="font-medium">{customer?.id || "Not specified"}</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 w-full max-w-7xl">
+        <div className="border border-gray-200 rounded-lg bg-[#069B960D] p-4 overflow-hidden">
+          <h3 className="text-lg font-semibold text-[#039994] mb-3">Customer Information</h3>
+          <div className="space-y-2.5">
+            <div className="flex justify-between items-start gap-2">
+              <span className="text-xs text-gray-500 font-sfpro shrink-0">User ID</span>
+              <span className="text-xs font-medium text-right truncate max-w-[60%]">{customer?.id || "—"}</span>
             </div>
-            <div className="space-y-1">
-              <p className="text-sm text-gray-500">Name</p>
-              <p className="font-medium">{customer?.name || "Not specified"}</p>
+            <div className="flex justify-between items-start gap-2">
+              <span className="text-xs text-gray-500 font-sfpro shrink-0">Name</span>
+              <span className="text-xs font-medium text-right truncate max-w-[60%]">
+                {(() => {
+                  const cd = customerDetails || customer || {};
+                  const full = `${cd.firstName || ""}${cd.lastName ? ` ${cd.lastName}` : ""}`.trim();
+                  return full || cd.name || "—";
+                })()}
+              </span>
             </div>
-            <div className="space-y-1">
-              <p className="text-sm text-gray-500">Email</p>
-              <p className="font-medium truncate" title={customer?.email || customerDetails?.email || "Not specified"}>{customer?.email || customerDetails?.email || "Not specified"}</p>
+            <div className="flex justify-between items-start gap-2">
+              <span className="text-xs text-gray-500 font-sfpro shrink-0">Email</span>
+              <span className="text-xs font-medium text-right truncate max-w-[60%]">{customer?.email || customerDetails?.email || "—"}</span>
             </div>
-            <div className="space-y-1">
-              <p className="text-sm text-gray-500">Phone</p>
-              <p className="font-medium truncate" title={customer?.phoneNumber || customerDetails?.phoneNumber || "Not specified"}>{customer?.phoneNumber || customerDetails?.phoneNumber || "Not specified"}</p>
+            <div className="flex justify-between items-start gap-2">
+              <span className="text-xs text-gray-500 font-sfpro shrink-0">Phone</span>
+              <span className="text-xs font-medium text-right truncate max-w-[60%]">{customerDetails?.phoneNumber || customer?.phoneNumber || "—"}</span>
             </div>
-            <div className="space-y-1">
-              <p className="text-sm text-gray-500">Customer Type</p>
-              <p className="font-medium">Residential</p>
+            <div className="flex justify-between items-start gap-2">
+              <span className="text-xs text-gray-500 font-sfpro shrink-0">Address</span>
+              <span className="text-xs font-medium text-right truncate max-w-[60%]">{customerDetails?.address || customer?.address || "—"}</span>
             </div>
-            <div className="space-y-1">
-              <p className="text-sm text-gray-500">Utility Provider</p>
-              <p className="font-medium">{customer?.utility || "Not specified"}</p>
+            <div className="flex justify-between items-start gap-2">
+              <span className="text-xs text-gray-500 font-sfpro shrink-0">Customer Type</span>
+              <span className="text-xs font-medium">RESIDENTIAL</span>
             </div>
-            <div className="space-y-1">
-              <p className="text-sm text-gray-500">Address</p>
-              <p className="font-medium">{customer?.address || "Not specified"}</p>
+            <div className="flex justify-between items-start gap-2">
+              <span className="text-xs text-gray-500 font-sfpro shrink-0">Utility Provider</span>
+              <span className="text-xs font-medium text-right truncate max-w-[60%]">{customerDetails?.utility || customer?.utility || "—"}</span>
             </div>
-            <div className="space-y-1">
-              <p className="text-sm text-gray-500">Date Registered</p>
-              <p className="font-medium">{formatDate(customer?.date)}</p>
+            <div className="flex justify-between items-start gap-2">
+              <span className="text-xs text-gray-500 font-sfpro shrink-0">Date Registered</span>
+              <span className="text-xs font-medium">{formatDate(customer?.date)}</span>
+            </div>
+            <div className="flex justify-between items-start gap-2">
+              <span className="text-xs text-gray-500 font-sfpro shrink-0">Status</span>
+              <StatusBadge status={customer?.status || "Not specified"} />
             </div>
           </div>
         </div>
 
-        <div className="border border-gray-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-[#039994] mb-4">System Information</h3>
-          <div className="grid grid-cols-2 gap-y-4 gap-x-6">
+        <div className="border border-gray-200 rounded-lg p-4 overflow-hidden">
+          <h3 className="text-lg font-semibold text-[#039994] mb-3">System Information</h3>
+          <div className="grid grid-cols-2 gap-y-3 gap-x-6 mb-3">
             <div className="space-y-1">
-              <p className="text-sm text-gray-500">Total Facilities</p>
+              <p className="block mb-2 font-sfpro text-[14px] leading-[100%] tracking-[-0.05em] font-[400] text-[#1E1E1E]">Total Facilities</p>
               <p className="font-medium">{facilities.length}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-sm text-gray-500">Active Facilities</p>
+              <p className="block mb-2 font-sfpro text-[14px] leading-[100%] tracking-[-0.05em] font-[400] text-[#1E1E1E]">Active Facilities</p>
               <p className="font-medium">{facilities.filter(f => f.status === 'VERIFIED' || f.status === 'ACTIVE').length}</p>
             </div>
           </div>
+          {facilities.length > 0 && (
+            <div className="space-y-2">
+              <p className="block mb-2 font-sfpro text-[14px] leading-[100%] tracking-[-0.05em] font-[400] text-[#1E1E1E] border-t pt-2">Facility Variables</p>
+              {facilities.map(f => (
+                <div key={f.id} className="bg-gray-50 rounded-md p-2 text-xs space-y-1">
+                  <p className="font-semibold text-[#039994] truncate">{f.facilityName}</p>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
+                    <span className="text-gray-500">Capacity</span>
+                    <span className="font-medium">{f.systemCapacity ? `${f.systemCapacity} kW` : "—"}</span>
+                    <span className="text-gray-500">WREGIS ID</span>
+                    <span className="font-medium truncate">{f.wregisId || "—"}</span>
+                    <span className="text-gray-500">RPS ID</span>
+                    <span className="font-medium truncate">{f.rpsId || "—"}</span>
+                    <span className="text-gray-500">COD</span>
+                    <span className="font-medium">{f.commercialOperationDate ? formatDate(f.commercialOperationDate) : "—"}</span>
+                    <span className="text-gray-500">Total RECs</span>
+                    <span className="font-medium">{f.totalRecs ?? "—"}</span>
+                    <span className="text-gray-500">Utility</span>
+                    <span className="font-medium truncate">{f.utilityProvider || "—"}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="mb-8">
+      <div className="mb-8 w-full max-w-7xl">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-[#039994]">Facilities</h3>
           {facilitiesLoading && (

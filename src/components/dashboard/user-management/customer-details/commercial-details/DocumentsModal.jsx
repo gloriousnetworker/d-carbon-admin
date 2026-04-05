@@ -111,11 +111,30 @@ export default function DocumentsModal({ facility, onVerifyFacility, verifyingFa
     ptoLetter: "update-commercial-pto-letter",
     singleLineDiagram: "update-commercial-single-line-diagram",
     sitePlan: "update-facility-site-plan",
-    panelInverterDatasheet: "update-facility-inverter-datasheet",
+    panelInverterDatasheet: "update-commercial-panel-inverter-datasheet",
     revenueMeterData: "update-facility-revenue-meter-data",
     utilityMeterPhoto: "update-commercial-utility-meter-photo",
-    assignmentOfRegistrationRight: "update-facility-assignment-of-registration-right",
+    assignmentOfRegistrationRight: "update-assignment-of-registration-right",
     acknowledgementOfStationService: "update-acknowledgement-of-station-service",
+  };
+
+  // Endpoints that live under /api/admin/ instead of /api/facility/
+  const adminRouteEndpoints = new Set(['acknowledgementOfStationService']);
+
+  // Map doc types to the multer field name the backend expects (must match uploadToGCS first arg)
+  const docFieldNames = {
+    wregisAssignment: "wregisAssignmentUrl",
+    financeAgreement: "financeAgreementUrl",
+    solarInstallationContract: "solarInstallationContractUrl",
+    interconnectionAgreement: "interconnectionAgreementUrl",
+    ptoLetter: "ptoLetterUrl",
+    singleLineDiagram: "singleLineDiagramUrl",
+    sitePlan: "file",
+    panelInverterDatasheet: "panelInverterDatasheetUrl",
+    revenueMeterData: "file",
+    utilityMeterPhoto: "utilityMeterPhotoUrl",
+    assignmentOfRegistrationRight: "file",
+    acknowledgementOfStationService: "file",
   };
 
   const handleUploadClick = (doc) => {
@@ -139,11 +158,13 @@ export default function DocumentsModal({ facility, onVerifyFacility, verifyingFa
       const authToken = localStorage.getItem('authToken');
       if (!authToken) throw new Error('No authentication token found');
 
+      const fieldName = docFieldNames[uploadTargetDoc.type] || 'file';
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append(fieldName, file);
 
+      const apiBase = adminRouteEndpoints.has(uploadTargetDoc.type) ? 'admin' : 'facility';
       const response = await fetch(
-        `${CONFIG.API_BASE_URL}/api/facility/${endpoint}/${facility.id}`,
+        `${CONFIG.API_BASE_URL}/api/${apiBase}/${endpoint}/${facility.id}`,
         {
           method: 'PUT',
           headers: { 'Authorization': `Bearer ${authToken}` },
@@ -180,19 +201,21 @@ export default function DocumentsModal({ facility, onVerifyFacility, verifyingFa
     );
   }
 
+  const deriveStatus = (status, url) => status || (url ? "SUBMITTED" : "REQUIRED");
+
   const documents = [
-    { name: "WREGIS Assignment",                  url: facility.wregisAssignmentUrl,               status: facility.wregisAssignmentStatus,               type: "wregisAssignment",               rejectionReason: facility.wregisAssignmentRejectionReason,               mandatory: true  },
-    { name: "Finance Agreement",                  url: facility.financeAgreementUrl,               status: facility.financeAgreementStatus,               type: "financeAgreement",               rejectionReason: facility.financeAgreementRejectionReason,               mandatory: false },
-    { name: "Solar Installation Contract",        url: facility.solarInstallationContractUrl,      status: facility.solarInstallationContractStatus,      type: "solarInstallationContract",      rejectionReason: facility.solarInstallationContractRejectionReason,      mandatory: true  },
-    { name: "Utility Interconnection Agreement",  url: facility.interconnectionAgreementUrl,       status: facility.interconnectionAgreementStatus,       type: "interconnectionAgreement",       rejectionReason: facility.interconnectionAgreementRejectionReason,       mandatory: false },
-    { name: "Utility PTO Letter",                 url: facility.ptoLetterUrl,                      status: facility.ptoLetterStatus,                      type: "ptoLetter",                      rejectionReason: facility.ptoLetterRejectionReason,                      mandatory: true  },
-    { name: "Single Line Diagram",                url: facility.singleLineDiagramUrl,              status: facility.singleLineDiagramStatus,              type: "singleLineDiagram",              rejectionReason: facility.singleLineDiagramRejectionReason,              mandatory: true  },
-    { name: "Installation Site Plan",             url: facility.sitePlanUrl,                       status: facility.sitePlanStatus,                       type: "sitePlan",                       rejectionReason: facility.sitePlanRejectionReason,                       mandatory: true  },
-    { name: "Panel/Inverter Datasheet",           url: facility.panelInverterDatasheetUrl,         status: facility.panelInverterDatasheetStatus,         type: "panelInverterDatasheet",         rejectionReason: facility.panelInverterDatasheetRejectionReason,         mandatory: false },
-    { name: "Revenue Meter Datasheet",            url: facility.revenueMeterDataUrl,               status: facility.revenueMeterDataStatus,               type: "revenueMeterData",               rejectionReason: facility.revenueMeterDataRejectionReason,               mandatory: false },
-    { name: "Utility Meter Photo",                url: facility.utilityMeterPhotoUrl,              status: facility.utilityMeterPhotoStatus,              type: "utilityMeterPhoto",              rejectionReason: facility.utilityMeterPhotoRejectionReason,              mandatory: true  },
-    { name: "Assignment of Registration Right",   url: facility.assignmentOfRegistrationRightUrl,  status: facility.assignmentOfRegistrationRightStatus,  type: "assignmentOfRegistrationRight",  rejectionReason: facility.assignmentOfRegistrationRightRejectionReason,  mandatory: true  },
-    { name: "Acknowledgement of Station Service", url: facility.acknowledgementOfStationServiceUrl, status: facility.acknowledgementOfStationServiceStatus, type: "acknowledgementOfStationService", rejectionReason: facility.acknowledgementOfStationServiceRejectionReason, mandatory: true  },
+    { name: "WREGIS Assignment",                  url: facility.wregisAssignmentUrl,               status: deriveStatus(facility.wregisAssignmentStatus, facility.wregisAssignmentUrl),                           type: "wregisAssignment",               rejectionReason: facility.wregisAssignmentRejectionReason,               mandatory: true  },
+    { name: "Finance Agreement",                  url: facility.financeAgreementUrl,               status: deriveStatus(facility.financeAgreementStatus, facility.financeAgreementUrl),                           type: "financeAgreement",               rejectionReason: facility.financeAgreementRejectionReason,               mandatory: false },
+    { name: "Solar Installation Contract",        url: facility.solarInstallationContractUrl,      status: deriveStatus(facility.solarInstallationContractStatus, facility.solarInstallationContractUrl),         type: "solarInstallationContract",      rejectionReason: facility.solarInstallationContractRejectionReason,      mandatory: true  },
+    { name: "Utility Interconnection Agreement",  url: facility.interconnectionAgreementUrl,       status: deriveStatus(facility.interconnectionAgreementStatus, facility.interconnectionAgreementUrl),           type: "interconnectionAgreement",       rejectionReason: facility.interconnectionAgreementRejectionReason,       mandatory: false },
+    { name: "Utility PTO Letter",                 url: facility.ptoLetterUrl,                      status: deriveStatus(facility.ptoLetterStatus, facility.ptoLetterUrl),                                         type: "ptoLetter",                      rejectionReason: facility.ptoLetterRejectionReason,                      mandatory: true  },
+    { name: "Single Line Diagram",                url: facility.singleLineDiagramUrl,              status: deriveStatus(facility.singleLineDiagramStatus, facility.singleLineDiagramUrl),                         type: "singleLineDiagram",              rejectionReason: facility.singleLineDiagramRejectionReason,              mandatory: true  },
+    { name: "Installation Site Plan",             url: facility.sitePlanUrl,                       status: deriveStatus(facility.sitePlanStatus, facility.sitePlanUrl),                                           type: "sitePlan",                       rejectionReason: facility.sitePlanRejectionReason,                       mandatory: true  },
+    { name: "Panel/Inverter Datasheet",           url: facility.panelInverterDatasheetUrl,         status: deriveStatus(facility.panelInverterDatasheetStatus, facility.panelInverterDatasheetUrl),               type: "panelInverterDatasheet",         rejectionReason: facility.panelInverterDatasheetRejectionReason,         mandatory: false },
+    { name: "Revenue Meter Datasheet",            url: facility.revenueMeterDataUrl,               status: deriveStatus(facility.revenueMeterDataStatus, facility.revenueMeterDataUrl),                           type: "revenueMeterData",               rejectionReason: facility.revenueMeterDataRejectionReason,               mandatory: false },
+    { name: "Utility Meter Photo",                url: facility.utilityMeterPhotoUrl,              status: deriveStatus(facility.utilityMeterPhotoStatus, facility.utilityMeterPhotoUrl),                         type: "utilityMeterPhoto",              rejectionReason: facility.utilityMeterPhotoRejectionReason,              mandatory: true  },
+    { name: "Assignment of Registration Right",   url: facility.assignmentOfRegistrationRightUrl,  status: deriveStatus(facility.assignmentOfRegistrationRightStatus, facility.assignmentOfRegistrationRightUrl), type: "assignmentOfRegistrationRight",  rejectionReason: facility.assignmentOfRegistrationRightRejectionReason,  mandatory: true  },
+    { name: "Acknowledgement of Station Service", url: facility.acknowledgementOfStationServiceUrl, status: deriveStatus(facility.acknowledgementOfStationServiceStatus, facility.acknowledgementOfStationServiceUrl), type: "acknowledgementOfStationService", rejectionReason: facility.acknowledgementOfStationServiceRejectionReason, mandatory: true  },
   ];
 
   // A mandatory document passes verification only after regulator approval.

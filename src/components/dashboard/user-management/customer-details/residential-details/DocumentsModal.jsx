@@ -166,24 +166,29 @@ export default function DocumentsModal({ facility, documents, onVerifyFacility, 
   const fileInputRef = useRef(null);
   const [uploadTargetDoc, setUploadTargetDoc] = useState(null);
 
-  // Map doc types to their upload endpoint paths (residential endpoints)
+  // All residential doc uploads go to /api/residential-facility/residential-docs/{endpoint}/{id}
+  // All residential routes use uploadToGCS("file", ...) so field name is always "file"
   const docUploadEndpoints = {
-    wregisAssignment: "update-wregis-assignment",
-    financeAgreement: "update-facility-financial-agreement",
-    solarInstallationContract: "update-commercial-solar-installation-contract",
-    proofOfAddress: "update-facility-proof-of-address",
-    infoReleaseAuth: "update-info-release-auth",
-    multipleOwnerDecl: "update-multiple-owner-decl",
-    sysOpDataAccess: "update-sys-op-data-access",
-    ptoLetter: "update-commercial-pto-letter",
-    singleLineDiagram: "update-commercial-single-line-diagram",
-    sitePlan: "update-facility-site-plan",
-    panelInverterDatasheet: "update-facility-inverter-datasheet",
-    revenueMeterData: "update-facility-revenue-meter-data",
-    utilityMeterPhoto: "update-commercial-utility-meter-photo",
-    assignmentOfRegistrationRight: "update-facility-assignment-of-registration-right",
-    acknowledgementOfStationService: "update-acknowledgement-of-station-service",
+    wregisAssignment: "wregis-assignment",
+    financeAgreement: "finance-agreement",
+    solarInstallationContract: "installation-contract",
+    ptoLetter: "pto-letter",
+    singleLineDiagram: "single-line",
+    sitePlan: "site-plan",
+    panelInverterDatasheet: "panel-inverter-datasheet",
+    revenueMeterData: "revenue-meter-data",
+    utilityMeterPhoto: "meter-photo",
+    assignmentOfRegistrationRight: "assignment-of-registration-right",
+    acknowledgementOfStationService: "acknowledgement-of-station-service",
   };
+
+  // Acknowledgement of Station Service lives under /api/admin/ — all others under /api/residential-facility/residential-docs/
+  const docUploadFullUrls = {
+    acknowledgementOfStationService: `${CONFIG.API_BASE_URL}/api/admin/residential-docs/acknowledgement-of-station-service`,
+  };
+
+  // All residential upload routes use uploadToGCS("file", ...) — field name is always "file"
+  const docFieldNames = {}; // default fallback "file" in handleFileSelected covers all cases
 
   const handleUploadClick = (doc) => {
     setUploadTargetDoc(doc);
@@ -206,17 +211,20 @@ export default function DocumentsModal({ facility, documents, onVerifyFacility, 
       const authToken = localStorage.getItem('authToken');
       if (!authToken) throw new Error('No authentication token found');
 
+      const fieldName = docFieldNames[uploadTargetDoc.type] || 'file';
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append(fieldName, file);
 
-      const response = await fetch(
-        `${CONFIG.API_BASE_URL}/api/facility/${endpoint}/${facility.id}`,
-        {
-          method: 'PUT',
-          headers: { 'Authorization': `Bearer ${authToken}` },
-          body: formData,
-        }
-      );
+      const fullUrlBase = docUploadFullUrls[uploadTargetDoc.type];
+      const apiUrl = fullUrlBase
+        ? `${fullUrlBase}/${facility.id}`
+        : `${CONFIG.API_BASE_URL}/api/residential-facility/residential-docs/${endpoint}/${facility.id}`;
+
+      const response = await fetch(apiUrl, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${authToken}` },
+        body: formData,
+      });
 
       if (!response.ok) {
         const errorData = await response.json();
