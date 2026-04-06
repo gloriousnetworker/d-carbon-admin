@@ -182,10 +182,12 @@ export default function UtilityAuthManagement({ onBack }) {
       if (response.ok) {
         const result = await response.json();
         if (result.status === 'success' && result.data && result.data.length > 0) {
-          const hasMeters = result.data.some(authData => 
-            authData.meters && authData.meters.length > 0 && 
-            authData.meters.some(meter => meter.uid && meter.meterNumbers && meter.meterNumbers.length > 0)
-          );
+          const hasMeters = result.data.some(authData => {
+            const meters = authData.meters?.meters || (Array.isArray(authData.meters) ? authData.meters : []);
+            return meters.length > 0 && meters.some(meter =>
+              (meter.uid || meter.meterUid) && (meter.base?.meter_numbers?.length > 0 || meter.utilityMeterNumber)
+            );
+          });
           
           setMeterStatuses(prev => ({
             ...prev,
