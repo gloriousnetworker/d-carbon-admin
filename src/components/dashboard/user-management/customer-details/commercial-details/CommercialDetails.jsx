@@ -93,6 +93,7 @@ export default function CommercialDetails({ customer, onBack }) {
             ownerFullName: commercial.ownerFullName || d.ownerFullName || prev?.ownerFullName,
             companyAddress: commercial.companyAddress || d.companyAddress || prev?.companyAddress,
             companyPhone: commercial.phoneNumber || d.phoneNumber || prev?.phoneNumber,
+            entityType: commercial.entityType || d.entityType || prev?.entityType,
           }));
         }
       }

@@ -706,9 +706,9 @@ function NewRecSaleModal({
                 placeholder="200" 
                 type="number"
                 min="0"
-                step="0.01"
+                step="1"
                 value={newRecData.amountOfRecs || ''}
-                onChange={(e) => setNewRecData({...newRecData, amountOfRecs: parseFloat(e.target.value) || 0})}
+                onChange={(e) => setNewRecData({...newRecData, amountOfRecs: parseInt(e.target.value, 10) || 0})}
                 className={styles.inputClass}
               />
             </div>
