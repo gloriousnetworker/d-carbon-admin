@@ -558,6 +558,7 @@ export default function PartnerDetails({ partner, onBack, onCustomerSelect }) {
                       userType: ref.userType || ref.customerType || ref.role || "N/A",
                       phoneNumber: ref.phoneNumber || "N/A",
                       status: ref.status || "N/A",
+                      assignedStatus: ref.installerId ? "ASSIGNED" : "UNASSIGNED",
                       dateRegistered: ref.createdAt ? new Date(ref.createdAt).toLocaleDateString() : "N/A",
                     }))
                     const columns = [
@@ -566,6 +567,7 @@ export default function PartnerDetails({ partner, onBack, onCustomerSelect }) {
                       { header: "Type", key: "userType", width: 14 },
                       { header: "Phone", key: "phoneNumber", width: 16 },
                       { header: "Status", key: "status", width: 12 },
+                      { header: "EPC Assigned", key: "assignedStatus", width: 14 },
                       { header: "Date Registered", key: "dateRegistered", width: 16 },
                     ]
                     const partnerName = (partnerDetails?.user?.firstName || partnerDetails?.name || "partner").replace(/[^a-zA-Z0-9]/g, "_")
@@ -584,6 +586,7 @@ export default function PartnerDetails({ partner, onBack, onCustomerSelect }) {
                     <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Type</th>
                     <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Phone</th>
                     <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Status</th>
+                    <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">EPC Assigned</th>
                     <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">Date</th>
                   </tr>
                 </thead>
@@ -615,6 +618,13 @@ export default function PartnerDetails({ partner, onBack, onCustomerSelect }) {
                         <td className="py-3 px-4">
                           <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-sfpro font-medium ${getReferralStatusStyle(status)}`}>
                             {status}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-sfpro font-medium ${
+                            ref.installerId ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                          }`}>
+                            {ref.installerId ? 'ASSIGNED' : 'UNASSIGNED'}
                           </span>
                         </td>
                         <td className="py-3 px-4 text-sm font-sfpro text-[#1E1E1E]">{formatDate(ref.createdAt)}</td>

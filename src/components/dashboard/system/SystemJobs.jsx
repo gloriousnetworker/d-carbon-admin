@@ -48,6 +48,8 @@ export default function SystemJobs() {
       let url = `${CONFIG.API_BASE_URL}${job.endpoint}`
       if (job.paramType === "meterUid" && body?.meterUid) {
         url = `${CONFIG.API_BASE_URL}${job.endpoint}/${encodeURIComponent(body.meterUid.trim())}`
+      } else if (job.paramType === "month-year" && body?.month && body?.year) {
+        url = `${CONFIG.API_BASE_URL}${job.endpoint}?month=${body.month}&year=${body.year}`
       }
       const res = await fetch(url, {
         method,
@@ -121,7 +123,8 @@ export default function SystemJobs() {
       id: "monthly-rec",
       label: "Monthly REC Aggregation",
       description: "Aggregates facility REC data for a specific month and year",
-      endpoint: "/api/monthly-rec-data/start",
+      endpoint: "/api/rec/calculate-per-month",
+      method: "GET",
       hasParams: true,
       paramType: "month-year",
     },
