@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { ChevronDown } from "lucide-react";
-import CONFIG from "../../../../lib/config";
+import CONFIG from "@/lib/config";
 
 export default function CustomerVisualizationCard() {
   const [partnerType, setPartnerType] = useState("Partner");

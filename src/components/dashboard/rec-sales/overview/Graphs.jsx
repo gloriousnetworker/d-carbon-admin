@@ -11,7 +11,7 @@ import {
   Line,
 } from "recharts";
 import { Loader2 } from "lucide-react";
-import CONFIG from "../../../../../lib/config";
+import CONFIG from "@/lib/config";
 
 const MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",

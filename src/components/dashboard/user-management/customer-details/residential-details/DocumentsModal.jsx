@@ -5,7 +5,7 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/comp
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { toast } from "react-hot-toast";
-import CONFIG from "../../../../../../lib/config";
+import CONFIG from "@/lib/config";
 
 const DOCUMENT_TYPES = {
   wregisAssignment: { 

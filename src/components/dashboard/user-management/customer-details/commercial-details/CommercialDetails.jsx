@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from "@/components/ui/input";
 import DocumentsModal from "./DocumentsModal";
 import FacilityRECHistory from "../FacilityRECHistory";
-import CONFIG from "../../../../../../lib/config";
+import CONFIG from "@/lib/config";
 
 export const mainContainer = 'min-h-screen w-full flex flex-col items-center justify-center py-8 px-4 bg-white';
 export const labelClass = 'block mb-2 font-sfpro text-[14px] leading-[100%] tracking-[-0.05em] font-[400] text-[#1E1E1E]';

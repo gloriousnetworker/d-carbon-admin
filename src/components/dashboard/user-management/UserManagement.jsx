@@ -31,7 +31,7 @@ import UtilityProviderManagement from "./utility-provider-management/UtilityProv
 import FinanceTypes from "./partner-management/finance-types/FinanceType";
 import UtilityAuthManagement from "./utility-provider-management/UtilityAuthManagement";
 import * as styles from "./styles";
-import CONFIG from "../../../../lib/config";
+import CONFIG from "@/lib/config";
 
 export default function CustomerManagement() {
   const router = useRouter();

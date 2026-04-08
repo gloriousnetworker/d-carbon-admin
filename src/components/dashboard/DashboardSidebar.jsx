@@ -17,7 +17,7 @@ import {
 } from 'react-icons/fi';
 import Image from 'next/image';
 import { useProfile } from '@/components/contexts/ProfileContext';
-import CONFIG from '../../../lib/config';
+import CONFIG from '@/lib/config';
 
 const DashboardSidebar = ({
   onSectionChange,

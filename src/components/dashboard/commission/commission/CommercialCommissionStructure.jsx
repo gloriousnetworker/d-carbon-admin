@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { IoSettingsSharp } from "react-icons/io5";
 import { toast } from "react-hot-toast";
-import CONFIG from "../../../../../lib/config";
+import CONFIG from "@/lib/config";
 
 const CommercialCommissionStructure = ({ onSetupStructure, refreshData }) => {
   const [tableData, setTableData] = useState(null);

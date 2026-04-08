@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, Loader2 } from 'lucide-react';
-import CONFIG from '../../../../../lib/config';
+import CONFIG from '@/lib/config';
 
 export default function QuickActions() {
   const [filter, setFilter] = useState('total');

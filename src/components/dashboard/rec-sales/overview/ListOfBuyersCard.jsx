@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import CONFIG from "../../../../../lib/config";
+import CONFIG from "@/lib/config";
 
 export default function ListOfBuyersCard() {
   const [buyers, setBuyers] = useState([]);

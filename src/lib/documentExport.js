@@ -1,6 +1,6 @@
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
-import CONFIG from "../../lib/config";
+import CONFIG from "@/lib/config";
 
 /**
  * Fetches a file from a URL and returns it as a Blob.
