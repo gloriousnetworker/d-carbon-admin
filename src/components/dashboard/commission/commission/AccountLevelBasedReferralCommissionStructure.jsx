@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { IoSettingsSharp } from "react-icons/io5";
-import CONFIG from "../../../../../lib/config";
+import CONFIG from "@/lib/config";
 import { toast } from "react-hot-toast";
 
 const AccountLevelBasedCommissionStructure = ({ onSetupStructure, refreshData }) => {

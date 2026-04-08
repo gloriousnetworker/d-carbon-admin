@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronDown, Loader2 } from 'lucide-react';
 import axios from 'axios';
-import CONFIG from '../../../../lib/config';
+import CONFIG from '@/lib/config';
 
 export default function QuickActions() {
   const router = useRouter();

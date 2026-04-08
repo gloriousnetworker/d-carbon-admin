@@ -15,7 +15,7 @@ import {
 } from "recharts";
 import { ChevronDown, Users, Handshake, Building2, Zap } from "lucide-react";
 import Image from "next/image";
-import CONFIG from "../../../../lib/config";
+import CONFIG from "@/lib/config";
 
 const MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",

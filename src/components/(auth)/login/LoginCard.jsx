@@ -6,7 +6,7 @@ import axios from 'axios';
 import Loader from '../../../components/loader/Loader';
 import toast from 'react-hot-toast';
 // IMPORT CONFIG - NEW LINE
-import CONFIG from '../../../../lib/config';
+import CONFIG from '@/lib/config';
 
 export default function AdminLoginCard() {
   const router = useRouter();

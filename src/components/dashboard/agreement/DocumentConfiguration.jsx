@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "react-hot-toast";
-import CONFIG from "../../../../lib/config";
+import CONFIG from "@/lib/config";
 
 const ALL_USER_TYPES = [
   { key: "RESIDENTIAL", label: "Residential" },

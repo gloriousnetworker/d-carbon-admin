@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { toast } from "react-hot-toast";
 import { FaPlay, FaClock, FaPercentage, FaUserTie } from "react-icons/fa";
-import CONFIG from "../../../../lib/config";
+import CONFIG from "@/lib/config";
 
 const CalculationTriggers = () => {
   const [isLoading, setIsLoading] = useState(false);

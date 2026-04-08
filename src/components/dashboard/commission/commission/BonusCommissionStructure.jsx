@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { IoSettingsSharp } from "react-icons/io5";
 import { FiEdit, FiTrash2, FiSave, FiX } from "react-icons/fi";
 import { toast } from "react-hot-toast";
-import CONFIG from "../../../../../lib/config";
+import CONFIG from "@/lib/config";
 
 const BonusCommissionStructure = ({ onSetupStructure, refreshTrigger }) => {
   const [tableData, setTableData] = useState(null);

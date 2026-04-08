@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import BuyerManagement from "./BuyerManagement"
 import { format } from "date-fns"
 import toast from "react-hot-toast"
-import CONFIG from "../../../../../lib/config"
+import CONFIG from "@/lib/config"
 
 const styles = {
   mainContainer: 'min-h-screen w-full flex flex-col items-center justify-center py-8 px-4 bg-white',

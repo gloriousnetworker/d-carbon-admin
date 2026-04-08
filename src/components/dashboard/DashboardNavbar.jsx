@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { FaBars, FaSearch, FaBell, FaHeadset, FaComments } from "react-icons/fa";
-import CONFIG from '../../../lib/config';
+import CONFIG from '@/lib/config';
 
 const DashboardNavbar = ({
   toggleSidebar,

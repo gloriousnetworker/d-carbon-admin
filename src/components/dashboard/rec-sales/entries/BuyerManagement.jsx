@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/use-toast"
-import CONFIG from "../../../../../lib/config"
+import CONFIG from "@/lib/config"
 
 export default function BuyerManagement({ onBack }) {
   const { toast } = useToast()

@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from "@/components/ui/input";
 import DocumentsModal from "./DocumentsModal";
 import FacilityRECHistory from "../FacilityRECHistory";
-import CONFIG from "../../../../../../lib/config";
+import CONFIG from "@/lib/config";
 
 export default function ResidentialDetails({ customer, onBack }) {
   const [customerDetails, setCustomerDetails] = useState(customer);
