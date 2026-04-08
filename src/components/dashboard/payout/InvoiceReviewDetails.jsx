@@ -297,11 +297,19 @@ export default function InvoiceReviewDetails({ invoice, onBack, onAction }) {
                 ) : (
                   <>
                     {[
-                      ["Total RECs Generated", statementData.totalRecsGenerated ?? "—"],
-                      ["Total RECs Sold", statementData.totalRecsSold ?? "—"],
-                      ["RECs Balance", statementData.totalRecsBalance ?? "—"],
+                      ["Total RECs Generated", statementData.totalRecsGenerated || "—"],
+                      ["Total RECs Sold", statementData.totalRecsSold || "—"],
+                      ["RECs Balance", statementData.totalRecsBalance != null ? statementData.totalRecsBalance : "—"],
                       ["Avg REC Price", statementData.averageRecPrice ? formatCurrency(statementData.averageRecPrice) : "—"],
-                      ["Total REC Payout", statementData.totalRecPayout ? formatCurrency(statementData.totalRecPayout) : "—"],
+                      ["Total REC Payout", (() => {
+                        // Use earnings breakdown total if statement payout is 0
+                        if (statementData.totalRecPayout) return formatCurrency(statementData.totalRecPayout)
+                        if (earningsBreakdown && Array.isArray(earningsBreakdown) && earningsBreakdown.length > 0) {
+                          const total = earningsBreakdown.reduce((sum, row) => sum + Number(row.amountEarned ?? row.amount ?? 0), 0)
+                          return total > 0 ? formatCurrency(total) : "—"
+                        }
+                        return "—"
+                      })()],
                     ].map(([label, value]) => (
                       <div key={label} className="flex justify-between py-1.5 border-b border-gray-100 last:border-0">
                         <span className="font-sfpro text-xs text-[#626060]">{label}</span>
@@ -311,19 +319,26 @@ export default function InvoiceReviewDetails({ invoice, onBack, onAction }) {
                   </>
                 )}
 
-                {/* Compare invoice amount vs statement payout */}
+                {/* Compare invoice amount vs earnings breakdown or statement */}
                 {(() => {
-                  const expected = userType === "PARTNER"
-                    ? statementData.totalEarnings
-                    : statementData.totalRecPayout
-                  if (expected != null && invoice.amount != null) {
+                  // Use earnings breakdown total if available, otherwise fall back to statement
+                  let expected
+                  if (userType === "PARTNER") {
+                    expected = statementData.totalEarnings
+                  } else if (earningsBreakdown && Array.isArray(earningsBreakdown) && earningsBreakdown.length > 0) {
+                    expected = earningsBreakdown.reduce((sum, row) => sum + Number(row.amountEarned ?? row.amount ?? 0), 0)
+                  } else {
+                    // For commercial/residential, totalRecPayout may be 0 if no commissions — skip comparison
+                    expected = null
+                  }
+                  if (expected != null && expected > 0 && invoice.amount != null) {
                     const diff = Math.abs(Number(invoice.amount) - Number(expected))
                     const match = diff < 0.01
                     return (
                       <div className={`mt-3 p-2 rounded-lg text-xs font-sfpro ${match ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-700"}`}>
                         {match
-                          ? "Invoice amount matches statement data."
-                          : `Invoice amount (${formatCurrency(invoice.amount)}) differs from statement (${formatCurrency(expected)}) by ${formatCurrency(diff)}.`}
+                          ? "Invoice amount matches earnings data."
+                          : `Invoice amount (${formatCurrency(invoice.amount)}) differs from calculated earnings (${formatCurrency(expected)}) by ${formatCurrency(diff)}.`}
                       </div>
                     )
                   }
