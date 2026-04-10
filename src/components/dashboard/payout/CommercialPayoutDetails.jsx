@@ -97,9 +97,9 @@ export default function CommercialPayoutDetails({ payoutDetails, onBack, onPayou
       })
       const result = await response.json()
       if (result.status === "success") {
-        toast.success('Invoice approved — ready for payment')
-        setUserPayouts(prev => prev.map(p => p.id === payoutId ? { ...p, status: "APPROVED" } : p))
-        onPayoutUpdate(payoutDetails.id, { id: payoutId, status: "APPROVED" })
+        toast.success('Payout approved successfully')
+        setUserPayouts(prev => prev.map(p => p.id === payoutId ? { ...p, status: "PAID" } : p))
+        onPayoutUpdate(payoutDetails.id, { id: payoutId, status: "PAID" })
       } else {
         toast.error('Failed to approve payout')
       }

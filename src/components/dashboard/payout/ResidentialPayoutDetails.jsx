@@ -64,8 +64,8 @@ export default function ResidentialPayoutDetails({ payoutDetails, onBack, onPayo
       
       if (result.status === "success") {
         toast.success('Payout approved successfully')
-        const updatedPayout = { id: payoutId, status: "APPROVED" }
-        setUserPayouts(prev => prev.map(p => p.id === payoutId ? { ...p, status: "APPROVED" } : p))
+        const updatedPayout = { id: payoutId, status: "PAID" }
+        setUserPayouts(prev => prev.map(p => p.id === payoutId ? { ...p, status: "PAID" } : p))
         onPayoutUpdate(payoutDetails.id, updatedPayout)
       } else {
         toast.error('Failed to approve payout')
