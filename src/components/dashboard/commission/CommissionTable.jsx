@@ -83,7 +83,6 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete, onDelete
       salesAgentShare: item.salesAgentShare,
       financeShare: item.financeShare,
       dcarbonShare: item.dcarbonShare,
-      label: item.label,
       itemId: item.id,
     };
     acc[key].items.push(item);
@@ -559,9 +558,6 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete, onDelete
               );
             })}
             <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">
-              Label
-            </th>
-            <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">
               Actions
             </th>
           </tr>
@@ -637,15 +633,6 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete, onDelete
                   </td>
                 );
               })}
-              <td className="px-4 py-5 text-sm text-gray-900 whitespace-nowrap font-medium">
-                {group.items[0]?.label ? (
-                  <span className="bg-[#03999415] text-[#039994] px-2 py-0.5 rounded-full text-xs font-medium font-sfpro">
-                    {group.items[0].label}
-                  </span>
-                ) : (
-                  <span className="text-gray-400">-</span>
-                )}
-              </td>
               <td className="px-4 py-5 text-sm whitespace-nowrap">
                 <div className="flex flex-col space-y-2">
                   <button
