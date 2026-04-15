@@ -525,7 +525,17 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete, onDelete
               return (
                 <th
                   key={tier.id}
-                  className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]"
+                  /*
+                    QA 2026-04-15: tier columns that have no structures set
+                    yet were collapsing to badge width, causing the header
+                    text ("Tier 4: Direct T1") to wrap word-by-word onto
+                    multiple lines. `whitespace-nowrap` keeps the header on
+                    one line; `min-w-[160px]` sets a floor so newly-added
+                    tiers with no data still reserve readable column width;
+                    the surrounding <div overflow-x-auto> handles horizontal
+                    scroll when columns overflow the viewport.
+                  */
+                  className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E] whitespace-nowrap min-w-[160px]"
                 >
                   <div className="flex items-center gap-2">
                     <span>
