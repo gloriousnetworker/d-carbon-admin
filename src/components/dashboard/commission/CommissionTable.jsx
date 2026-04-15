@@ -465,14 +465,25 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
     "EPC_ASSISTED_FINANCE",
     "EPC_ASSISTED_INSTALLER",
   ];
-  const sortedGroups = Object.values(groupedData).sort((a, b) => {
-    const ai = modeOrder.indexOf(a.mode);
-    const bi = modeOrder.indexOf(b.mode);
-    if (ai === -1 && bi === -1) return a.mode.localeCompare(b.mode);
-    if (ai === -1) return 1;
-    if (bi === -1) return -1;
-    return ai - bi;
-  });
+  // QA 2026-04-15: EPC_ASSISTED_FINANCE and EPC_ASSISTED_INSTALLER are already
+  // rendered inline inside the PARTNER_FINANCE row under the "EPC Assisted Modes"
+  // sub-section, so standalone rows for them would duplicate the same numbers
+  // admins just read in the parent row. Hide them from the table but keep the
+  // data in the raw `data` array — edit/delete cascades from the Partner Finance
+  // row handle them (see getEditFunction and handleDelete for PARTNER_FINANCE).
+  const sortedGroups = Object.values(groupedData)
+    .filter(
+      (g) =>
+        g.mode !== "EPC_ASSISTED_FINANCE" && g.mode !== "EPC_ASSISTED_INSTALLER"
+    )
+    .sort((a, b) => {
+      const ai = modeOrder.indexOf(a.mode);
+      const bi = modeOrder.indexOf(b.mode);
+      if (ai === -1 && bi === -1) return a.mode.localeCompare(b.mode);
+      if (ai === -1) return 1;
+      if (bi === -1) return -1;
+      return ai - bi;
+    });
 
   if (sortedGroups.length === 0) {
     return (
