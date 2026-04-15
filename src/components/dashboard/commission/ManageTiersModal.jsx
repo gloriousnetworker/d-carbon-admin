@@ -9,15 +9,17 @@ const ManageTiersModal = ({ onClose, onSuccess, tiers: initialTiers }) => {
     minAmount: "",
     maxAmount: "",
     label: "",
-    order: ""
+    order: "",
+    isForSystemCapacity: false,
   });
   const [editingTier, setEditingTier] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: type === "checkbox" ? checked : value,
     });
   };
 
@@ -27,7 +29,8 @@ const ManageTiersModal = ({ onClose, onSuccess, tiers: initialTiers }) => {
       minAmount: tier.minAmount,
       maxAmount: tier.maxAmount || "",
       label: tier.label,
-      order: tier.order
+      order: tier.order,
+      isForSystemCapacity: !!tier.isForSystemCapacity,
     });
   };
 
@@ -63,7 +66,8 @@ const ManageTiersModal = ({ onClose, onSuccess, tiers: initialTiers }) => {
       minAmount: parseFloat(formData.minAmount),
       maxAmount: formData.maxAmount ? parseFloat(formData.maxAmount) : null,
       label: formData.label,
-      order: parseInt(formData.order)
+      order: parseInt(formData.order),
+      isForSystemCapacity: !!formData.isForSystemCapacity,
     };
 
     try {
@@ -105,7 +109,8 @@ const ManageTiersModal = ({ onClose, onSuccess, tiers: initialTiers }) => {
           minAmount: "",
           maxAmount: "",
           label: "",
-          order: ""
+          order: "",
+          isForSystemCapacity: false,
         });
         setEditingTier(null);
         onSuccess();
@@ -124,8 +129,22 @@ const ManageTiersModal = ({ onClose, onSuccess, tiers: initialTiers }) => {
       minAmount: "",
       maxAmount: "",
       label: "",
-      order: ""
+      order: "",
+      isForSystemCapacity: false,
     });
+  };
+
+  // Unit helpers — keep in sync with CommissionTable.formatTierRange.
+  const unitLabel = formData.isForSystemCapacity ? "MW" : "USD";
+  const amountPlaceholder = formData.isForSystemCapacity ? "e.g. 2" : "e.g. 500000";
+  const labelPlaceholder = formData.isForSystemCapacity
+    ? 'e.g. "2 – 3 MW"'
+    : 'e.g. "<500k"';
+  const formatTierAmount = (value, forCapacity) => {
+    if (value == null || value === "") return "∞";
+    return forCapacity
+      ? `${value} MW`
+      : `$${Number(value).toLocaleString()}`;
   };
 
   return (
@@ -145,9 +164,63 @@ const ManageTiersModal = ({ onClose, onSuccess, tiers: initialTiers }) => {
                 {editingTier ? "Edit Tier" : "Create New Tier"}
               </h3>
               <form onSubmit={handleSubmitTier} className="space-y-4">
+                {/*
+                  Tier Unit selector — new in 2026-04-15 (backend commit 9a3dc66).
+                  Capacity (MW) tiers drive commission for direct customers (no
+                  partner/installer/finance referral); Sales Volume (USD) tiers
+                  drive commission for partner-referred customers. See
+                  CAPACITY-TIER-INTEGRATION-PLAN.md at the d-carbon root.
+                */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Label (e.g., "2 - 3 megawatt", "5.1+ MW")
+                    Tier Unit
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label
+                      className={`flex items-center gap-2 px-3 py-2 border rounded-md cursor-pointer text-sm ${
+                        !formData.isForSystemCapacity
+                          ? "border-[#039994] bg-[#03999410] text-[#039994]"
+                          : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="isForSystemCapacity"
+                        checked={!formData.isForSystemCapacity}
+                        onChange={() =>
+                          setFormData({ ...formData, isForSystemCapacity: false })
+                        }
+                        className="accent-[#039994]"
+                      />
+                      Sales Volume (USD)
+                    </label>
+                    <label
+                      className={`flex items-center gap-2 px-3 py-2 border rounded-md cursor-pointer text-sm ${
+                        formData.isForSystemCapacity
+                          ? "border-[#039994] bg-[#03999410] text-[#039994]"
+                          : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="isForSystemCapacity"
+                        checked={formData.isForSystemCapacity}
+                        onChange={() =>
+                          setFormData({ ...formData, isForSystemCapacity: true })
+                        }
+                        className="accent-[#039994]"
+                      />
+                      System Capacity (MW)
+                    </label>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    MW tiers are applied to direct customers; USD tiers are applied
+                    to partner-referred customers.
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Label ({labelPlaceholder})
                   </label>
                   <input
                     type="text"
@@ -175,7 +248,7 @@ const ManageTiersModal = ({ onClose, onSuccess, tiers: initialTiers }) => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Min Amount
+                    Min Amount ({unitLabel})
                   </label>
                   <input
                     type="number"
@@ -185,11 +258,12 @@ const ManageTiersModal = ({ onClose, onSuccess, tiers: initialTiers }) => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                     required
                     step="0.01"
+                    placeholder={amountPlaceholder}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Max Amount (optional, leave empty for last range like "5.1+ MW")
+                    Max Amount ({unitLabel}, optional — leave empty for unbounded top tier)
                   </label>
                   <input
                     type="number"
@@ -198,6 +272,7 @@ const ManageTiersModal = ({ onClose, onSuccess, tiers: initialTiers }) => {
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                     step="0.01"
+                    placeholder={amountPlaceholder}
                   />
                 </div>
                 <div className="flex space-x-3 pt-2">
@@ -228,39 +303,54 @@ const ManageTiersModal = ({ onClose, onSuccess, tiers: initialTiers }) => {
                   <thead>
                     <tr>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Order</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Unit</th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Label</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Min Amount</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Max Amount</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Min</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Max</th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {tiers.sort((a, b) => a.order - b.order).map((tier) => (
-                      <tr key={tier.id}>
-                        <td className="px-3 py-2 text-sm text-gray-900">{tier.order}</td>
-                        <td className="px-3 py-2 text-sm text-gray-900">{tier.label}</td>
-                        <td className="px-3 py-2 text-sm text-gray-900">
-                          ${tier.minAmount.toLocaleString()}
-                        </td>
-                        <td className="px-3 py-2 text-sm text-gray-900">
-                          {tier.maxAmount ? `$${tier.maxAmount.toLocaleString()}` : "∞"}
-                        </td>
-                        <td className="px-3 py-2 text-sm">
-                          <button
-                            onClick={() => handleEditTier(tier)}
-                            className="text-[#039994] hover:text-[#028884] mr-3"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteTier(tier.id)}
-                            className="text-red-600 hover:text-red-800"
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {tiers.sort((a, b) => a.order - b.order).map((tier) => {
+                      const forCapacity = !!tier.isForSystemCapacity;
+                      return (
+                        <tr key={tier.id}>
+                          <td className="px-3 py-2 text-sm text-gray-900">{tier.order}</td>
+                          <td className="px-3 py-2 text-sm">
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                forCapacity
+                                  ? "bg-amber-50 text-amber-700 border border-amber-200"
+                                  : "bg-[#03999415] text-[#039994] border border-[#03999430]"
+                              }`}
+                            >
+                              {forCapacity ? "MW" : "USD"}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-sm text-gray-900">{tier.label}</td>
+                          <td className="px-3 py-2 text-sm text-gray-900">
+                            {formatTierAmount(tier.minAmount, forCapacity)}
+                          </td>
+                          <td className="px-3 py-2 text-sm text-gray-900">
+                            {formatTierAmount(tier.maxAmount, forCapacity)}
+                          </td>
+                          <td className="px-3 py-2 text-sm">
+                            <button
+                              onClick={() => handleEditTier(tier)}
+                              className="text-[#039994] hover:text-[#028884] mr-3"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteTier(tier.id)}
+                              className="text-red-600 hover:text-red-800"
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

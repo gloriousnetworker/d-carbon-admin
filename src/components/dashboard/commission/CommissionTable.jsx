@@ -15,15 +15,23 @@
 import React from "react";
 import { Pencil, Trash2 } from "lucide-react";
 
+/**
+ * Format a tier's min/max range for display under the Tier column header.
+ * Units follow `isForSystemCapacity`: MW for capacity tiers (direct customers),
+ * $ for sales-volume tiers (partner-referred customers). Open-ended top tiers
+ * (no maxAmount) render as `Min X – Max ∞`.
+ */
+const formatTierRange = (tier) => {
+  const forCapacity = !!tier.isForSystemCapacity;
+  const fmt = (v) =>
+    forCapacity ? `${v} MW` : `$${Number(v).toLocaleString()}`;
+  const min = tier.minAmount != null ? fmt(tier.minAmount) : "0";
+  const max = tier.maxAmount != null ? fmt(tier.maxAmount) : "∞";
+  return `Min ${min} – Max ${max}`;
+};
+
 const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
   const sortedTiers = [...tiers].sort((a, b) => a.order - b.order);
-
-  const buildHeaders = () => [
-    "Mode",
-    ...sortedTiers.map((t) => `Tier ${t.order}: ${t.label}`),
-    "Label",
-    "Actions",
-  ];
 
   const isEpcAssistedMode = (mode) =>
     mode === "EPC_ASSISTED_FINANCE" || mode === "EPC_ASSISTED_INSTALLER";
@@ -447,8 +455,6 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
     return () => onEdit(item);
   };
 
-  const headers = buildHeaders();
-
   // Stable sort so Partner Finance precedes its EPC-assisted children and
   // Direct / Referred appear consistently at the top of the table.
   const modeOrder = [
@@ -483,15 +489,44 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
     <div className="border border-gray-200 rounded-xl overflow-hidden">
       <table className="min-w-full divide-y divide-gray-200">
         <thead>
-          <tr className="border-y text-sm">
-            {headers.map((header, index) => (
-              <th
-                key={index}
-                className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]"
-              >
-                {header}
-              </th>
-            ))}
+          <tr className="border-y text-sm align-top">
+            <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">
+              Mode
+            </th>
+            {sortedTiers.map((tier) => {
+              const forCapacity = !!tier.isForSystemCapacity;
+              return (
+                <th
+                  key={tier.id}
+                  className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]"
+                >
+                  <div className="flex items-center gap-2">
+                    <span>
+                      Tier {tier.order}: {tier.label}
+                    </span>
+                    <span
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                        forCapacity
+                          ? "bg-amber-50 text-amber-700 border border-amber-200"
+                          : "bg-[#03999415] text-[#039994] border border-[#03999430]"
+                      }`}
+                    >
+                      {forCapacity ? "MW" : "USD"}
+                    </span>
+                  </div>
+                  {/* Phillip 2026-04-13: explicit min/max row under mode label */}
+                  <div className="text-[11px] font-normal text-gray-500 mt-0.5">
+                    {formatTierRange(tier)}
+                  </div>
+                </th>
+              );
+            })}
+            <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">
+              Label
+            </th>
+            <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">
+              Actions
+            </th>
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-100">

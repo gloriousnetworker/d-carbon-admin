@@ -921,13 +921,52 @@ const CommissionSetupModal = ({
                   disabled={!!editingCommission}
                 >
                   <option value="">Select a tier</option>
-                  {tiers.map((tier) => (
-                    <option key={tier.id} value={tier.id}>
-                      {tier.label} (Order: {tier.order})
-                    </option>
-                  ))}
+                  {tiers.map((tier) => {
+                    const forCapacity = !!tier.isForSystemCapacity;
+                    const fmt = (v) =>
+                      forCapacity
+                        ? `${v} MW`
+                        : `$${Number(v).toLocaleString()}`;
+                    const min = tier.minAmount != null ? fmt(tier.minAmount) : "0";
+                    const max = tier.maxAmount != null ? fmt(tier.maxAmount) : "∞";
+                    return (
+                      <option key={tier.id} value={tier.id}>
+                        [{forCapacity ? "MW" : "USD"}] {tier.label} — {min} – {max} (Order: {tier.order})
+                      </option>
+                    );
+                  })}
                 </select>
+                {/*
+                  Direct customers are tiered by system capacity (MW) per the
+                  2026-04-13 meeting. Partner-referred customers stay on
+                  sales-volume (USD) tiers. Admin must pick the right tier.
+                */}
+                <p className="text-xs text-gray-500 mt-1">
+                  Direct Customer modes use MW tiers; partner-referred modes use USD tiers.
+                </p>
               </div>
+
+              {/*
+                Prominent DCarbon Remainder banner when editing — Chimdinma's
+                ask at the 2026-04-13 meeting: editing an already-set structure
+                must clearly show how much of the 100% is left so admins don't
+                overshoot.
+              */}
+              {editingCommission && dcarbonRemainder !== null && (
+                <div className="px-4 py-3 rounded-lg bg-[#03999410] border border-[#03999440] flex items-center justify-between">
+                  <div>
+                    <div className="text-xs uppercase tracking-wider text-[#039994] font-semibold">
+                      Remaining DCarbon Allocation
+                    </div>
+                    <div className="text-xs text-gray-600 mt-0.5">
+                      Available for DCarbon after the shares you enter below.
+                    </div>
+                  </div>
+                  <div className="text-2xl font-bold text-[#039994]">
+                    {dcarbonRemainder}%
+                  </div>
+                </div>
+              )}
 
               <div>
                 <div className="flex justify-between items-center mb-1">
