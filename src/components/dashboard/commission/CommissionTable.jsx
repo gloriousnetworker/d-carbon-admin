@@ -497,8 +497,11 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
   }
 
   return (
-    <div className="border border-gray-200 rounded-xl overflow-hidden">
-      <table className="min-w-full divide-y divide-gray-200">
+    // QA 2026-04-15: the outer `overflow-hidden` was clipping tier columns
+    // beyond viewport width. Switch to `overflow-x-auto` so the table can
+    // scroll horizontally when there are more tiers than the viewport fits.
+    <div className="border border-gray-200 rounded-xl overflow-x-auto">
+      <table className="min-w-max divide-y divide-gray-200">
         <thead>
           <tr className="border-y text-sm align-top">
             <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">
