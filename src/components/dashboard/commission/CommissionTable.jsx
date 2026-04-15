@@ -30,7 +30,19 @@ const formatTierRange = (tier) => {
   return `Min ${min} – Max ${max}`;
 };
 
-const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
+const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete, onDeleteMany }) => {
+  // Delete many items in one server round-trip + single refetch. Falls back to
+  // looping onDelete if the parent hasn't wired onDeleteMany — keeps the
+  // component usable standalone, but the fallback path has the per-item
+  // refetch flicker described in CommissionStructure.handleDeleteCommissions.
+  const deleteMany = (ids) => {
+    if (!ids || ids.length === 0) return;
+    if (typeof onDeleteMany === "function") {
+      onDeleteMany(ids);
+    } else {
+      ids.forEach((id) => onDelete(id));
+    }
+  };
   const sortedTiers = [...tiers].sort((a, b) => a.order - b.order);
 
   const isEpcAssistedMode = (mode) =>
@@ -389,7 +401,7 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
           `Delete Partner Finance structure and ${allEpcItems.length} related EPC structures?`
         )
       ) {
-        allIds.forEach((id) => onDelete(id));
+        deleteMany(allIds);
       }
     } else if (window.confirm("Delete this commission structure?")) {
       onDelete(item.id);
@@ -398,14 +410,15 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
 
   const handleDeleteAll = (group) => {
     const isEpcAssisted = isEpcAssistedMode(group.mode);
+    const modeLabel = group.mode.replace(/_/g, " ");
 
     if (isEpcAssisted) {
       if (
         window.confirm(
-          `Delete all ${group.items.length} ${group.mode.replace(/_/g, " ")} structures for ${propertyType}?`
+          `Delete all ${group.items.length} ${modeLabel} structures for ${propertyType}? This will only remove ${modeLabel} rows — other modes on the table stay intact.`
         )
       ) {
-        group.items.forEach((item) => onDelete(item.id));
+        deleteMany(group.items.map((item) => item.id));
       }
     } else if (group.mode === "PARTNER_FINANCE") {
       const allIds = [];
@@ -428,17 +441,17 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete }) => {
       const uniqueIds = [...new Set(allIds)];
       if (
         window.confirm(
-          `Delete all Partner Finance structures and related EPC structures (${uniqueIds.length} total)?`
+          `Delete all Partner Finance structures and their ${uniqueIds.length - group.items.length} related EPC Assisted children (${uniqueIds.length} total)? This only affects the Partner Finance row — other modes stay intact.`
         )
       ) {
-        uniqueIds.forEach((id) => onDelete(id));
+        deleteMany(uniqueIds);
       }
     } else if (
       window.confirm(
-        `Delete all ${group.items.length} commission structures for ${group.mode}?`
+        `Delete all ${group.items.length} ${modeLabel} structures? This only affects the ${modeLabel} row — other modes on the table stay intact.`
       )
     ) {
-      group.items.forEach((item) => onDelete(item.id));
+      deleteMany(group.items.map((item) => item.id));
     }
   };
 

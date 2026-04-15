@@ -154,6 +154,35 @@ const CommissionStructure = () => {
     }
   };
 
+  /**
+   * Bulk delete for Delete All / Partner-Finance cascade deletes.
+   *
+   * QA flagged on 2026-04-15 that clicking Delete All on a single mode row
+   * appeared to wipe the entire table. Root cause: the single-item handler
+   * above triggers `fetchCommissionData()` on every success — which flips
+   * `loading` to true and unmounts the table. When Delete All fires N parallel
+   * deletes, the table blanks N times mid-operation, producing the "everything
+   * got deleted" perception. Fix: run all deletes in parallel and refetch
+   * exactly once after they all settle.
+   */
+  const handleDeleteCommissions = async (ids) => {
+    if (!Array.isArray(ids) || ids.length === 0) return;
+    try {
+      const authToken = localStorage.getItem("authToken");
+      await Promise.all(
+        ids.map((id) =>
+          fetch(`${CONFIG.API_BASE_URL}/api/commission-structure/${id}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${authToken}` },
+          })
+        )
+      );
+      fetchCommissionData();
+    } catch (error) {
+      console.error("Failed to delete commissions:", error);
+    }
+  };
+
   const handleSuccess = () => {
     setShowSetupModal(false);
     fetchCommissionData();
@@ -304,6 +333,7 @@ const CommissionStructure = () => {
                     propertyType={activePropertyTab}
                     onEdit={handleEditCommission}
                     onDelete={handleDeleteCommission}
+                    onDeleteMany={handleDeleteCommissions}
                   />
                 )}
               </>
