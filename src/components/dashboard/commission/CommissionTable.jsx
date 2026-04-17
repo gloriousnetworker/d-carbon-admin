@@ -16,17 +16,27 @@ import React from "react";
 import { Pencil, Trash2 } from "lucide-react";
 
 /**
- * Format a tier's min/max range for display under the Tier column header.
- * Units follow `isForSystemCapacity`: MW for capacity tiers (direct customers),
- * $ for sales-volume tiers (partner-referred customers). Open-ended top tiers
- * (no maxAmount) render as `Min X – Max ∞`.
+ * Format USD and MW range lines for a tier column header.
+ *
+ * Current schema (pre-Francis refactor): each tier is tagged as either
+ * USD *or* MW via `isForSystemCapacity`. The "other" unit renders as "—"
+ * until the backend adds both value sets to a single tier record.
+ *
+ * After Francis's refactor both lines will have real values; the rendering
+ * logic here won't need to change — just the data shape coming in.
  */
-const formatTierRange = (tier) => {
-  const forCapacity = !!tier.isForSystemCapacity;
-  const fmt = (v) =>
-    forCapacity ? `${v} MW` : `$${Number(v).toLocaleString()}`;
-  const min = tier.minAmount != null ? fmt(tier.minAmount) : "0";
+const formatUsdRange = (tier) => {
+  if (tier.isForSystemCapacity) return "—";
+  const fmt = (v) => `$${Number(v).toLocaleString()}`;
+  const min = tier.minAmount != null ? fmt(tier.minAmount) : "$0";
   const max = tier.maxAmount != null ? fmt(tier.maxAmount) : "∞";
+  return `Min ${min} – Max ${max}`;
+};
+
+const formatMwRange = (tier) => {
+  if (!tier.isForSystemCapacity) return "—";
+  const min = tier.minAmount != null ? `${tier.minAmount} MW` : "0 MW";
+  const max = tier.maxAmount != null ? `${tier.maxAmount} MW` : "∞";
   return `Min ${min} – Max ${max}`;
 };
 
@@ -519,44 +529,34 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete, onDelete
             <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">
               Mode
             </th>
-            {sortedTiers.map((tier) => {
-              const forCapacity = !!tier.isForSystemCapacity;
-              return (
-                <th
-                  key={tier.id}
-                  /*
-                    QA 2026-04-15: tier columns that have no structures set
-                    yet were collapsing to badge width, causing the header
-                    text ("Tier 4: Direct T1") to wrap word-by-word onto
-                    multiple lines. `whitespace-nowrap` keeps the header on
-                    one line; `min-w-[160px]` sets a floor so newly-added
-                    tiers with no data still reserve readable column width;
-                    the surrounding <div overflow-x-auto> handles horizontal
-                    scroll when columns overflow the viewport.
-                  */
-                  className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E] whitespace-nowrap min-w-[160px]"
-                >
-                  <div className="flex items-center gap-2">
-                    <span>
-                      Tier {tier.order}: {tier.label}
-                    </span>
-                    <span
-                      className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
-                        forCapacity
-                          ? "bg-amber-50 text-amber-700 border border-amber-200"
-                          : "bg-[#03999415] text-[#039994] border border-[#03999430]"
-                      }`}
-                    >
-                      {forCapacity ? "MW" : "USD"}
-                    </span>
+            {sortedTiers.map((tier) => (
+              /*
+                2026-04-15 meeting (Phillip / Chimdinma): each column is
+                "Tier N" only — no label suffix. Both USD and MW ranges are
+                shown as sub-rows. Until Francis's backend refactor lands,
+                one row will show "—" (the tier is currently either USD or
+                MW, not both). After the refactor, both rows will have data
+                with no rendering changes needed here.
+              */
+              <th
+                key={tier.id}
+                className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E] whitespace-nowrap min-w-[180px]"
+              >
+                <div className="text-sm font-semibold text-[#1E1E1E]">
+                  Tier {tier.order}
+                </div>
+                <div className="mt-1 space-y-0.5">
+                  <div className="flex items-center gap-1.5 text-[11px] font-normal">
+                    <span className="font-semibold text-[#039994]">USD</span>
+                    <span className="text-gray-500">{formatUsdRange(tier)}</span>
                   </div>
-                  {/* Phillip 2026-04-13: explicit min/max row under mode label */}
-                  <div className="text-[11px] font-normal text-gray-500 mt-0.5">
-                    {formatTierRange(tier)}
+                  <div className="flex items-center gap-1.5 text-[11px] font-normal">
+                    <span className="font-semibold text-amber-600">MW</span>
+                    <span className="text-gray-500">{formatMwRange(tier)}</span>
                   </div>
-                </th>
-              );
-            })}
+                </div>
+              </th>
+            ))}
             <th className="py-3 px-4 text-left font-medium font-sfpro text-[#1E1E1E]">
               Actions
             </th>
