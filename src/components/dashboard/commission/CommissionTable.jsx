@@ -18,25 +18,20 @@ import { Pencil, Trash2 } from "lucide-react";
 /**
  * Format USD and MW range lines for a tier column header.
  *
- * Current schema (pre-Francis refactor): each tier is tagged as either
- * USD *or* MW via `isForSystemCapacity`. The "other" unit renders as "—"
- * until the backend adds both value sets to a single tier record.
- *
- * After Francis's refactor both lines will have real values; the rendering
- * logic here won't need to change — just the data shape coming in.
+ * New schema (post-Francis refactor): each tier has separate USD and MW
+ * value sets — minAmountUSD / maxAmountUSD and minAmountMW / maxAmountMW.
+ * Both lines will always have real values.
  */
 const formatUsdRange = (tier) => {
-  if (tier.isForSystemCapacity) return "—";
   const fmt = (v) => `$${Number(v).toLocaleString()}`;
-  const min = tier.minAmount != null ? fmt(tier.minAmount) : "$0";
-  const max = tier.maxAmount != null ? fmt(tier.maxAmount) : "∞";
+  const min = tier.minAmountUSD != null ? fmt(tier.minAmountUSD) : "$0";
+  const max = tier.maxAmountUSD != null ? fmt(tier.maxAmountUSD) : "∞";
   return `Min ${min} – Max ${max}`;
 };
 
 const formatMwRange = (tier) => {
-  if (!tier.isForSystemCapacity) return "—";
-  const min = tier.minAmount != null ? `${tier.minAmount} MW` : "0 MW";
-  const max = tier.maxAmount != null ? `${tier.maxAmount} MW` : "∞";
+  const min = tier.minAmountMW != null ? `${tier.minAmountMW} MW` : "0 MW";
+  const max = tier.maxAmountMW != null ? `${tier.maxAmountMW} MW` : "∞";
   return `Min ${min} – Max ${max}`;
 };
 
@@ -578,6 +573,23 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete, onDelete
                       ? "Account Level"
                       : propertyType}
                   </span>
+                  {/*
+                    tierUnit badge — shows which range type (USD/MW) is used
+                    when this mode is matched to a tier at payout time.
+                    Populated once Francis's refactor lands (CommissionStructure
+                    gets a `tierUnit` field).
+                  */}
+                  {group.items[0]?.tierUnit && (
+                    <span
+                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full inline-block w-fit border ${
+                        group.items[0].tierUnit === "SYSTEM_CAPACITY"
+                          ? "bg-amber-50 text-amber-700 border-amber-200"
+                          : "bg-[#03999415] text-[#039994] border-[#03999430]"
+                      }`}
+                    >
+                      {group.items[0].tierUnit === "SYSTEM_CAPACITY" ? "MW" : "USD"}
+                    </span>
+                  )}
                 </div>
               </td>
               {sortedTiers.map((tier) => {

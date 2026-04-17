@@ -12,10 +12,19 @@ const CommissionSetupModal = ({
   mode,
   editingCommission,
 }) => {
+  /**
+   * Derive the default tier unit for a given mode.
+   * Direct Customer is always capacity-based (MW); everything else is
+   * sales-volume-based (USD). Admin can override if needed.
+   */
+  const defaultTierUnit = (m) =>
+    m === "DIRECT_CUSTOMER" ? "SYSTEM_CAPACITY" : "SALES_VOLUME";
+
   const [formData, setFormData] = useState({
     propertyType: propertyType,
     mode: mode,
     tierId: "",
+    tierUnit: defaultTierUnit(mode),
     customerShare: "",
     installerShare: "",
     salesAgentShare: "",
@@ -41,6 +50,8 @@ const CommissionSetupModal = ({
         propertyType: editingCommission.propertyType,
         mode: editingCommission.mode,
         tierId: editingCommission.tierId,
+        tierUnit:
+          editingCommission.tierUnit || defaultTierUnit(editingCommission.mode),
         customerShare: editingCommission.customerShare || "",
         installerShare: editingCommission.installerShare || "",
         salesAgentShare: editingCommission.salesAgentShare || "",
@@ -202,8 +213,11 @@ const CommissionSetupModal = ({
     const updatedFormData = {
       ...formData,
       [name]: value,
+      // Auto-suggest the correct tier unit when the mode changes so
+      // admins don't have to set it manually in the common case.
+      ...(name === "mode" && { tierUnit: defaultTierUnit(value) }),
     };
-    
+
     setFormData(updatedFormData);
     setValidationError("");
     
@@ -266,6 +280,7 @@ const CommissionSetupModal = ({
       const basePayload = {
         propertyType: "RESIDENTIAL",
         tierId: formData.tierId,
+        tierUnit: formData.tierUnit,
         notes: formData.notes || "",
       };
 
@@ -380,6 +395,7 @@ const CommissionSetupModal = ({
     const basePayload = {
       propertyType: formData.propertyType,
       tierId: formData.tierId,
+      tierUnit: formData.tierUnit,
       notes: formData.notes || "",
     };
 
@@ -516,6 +532,7 @@ const CommissionSetupModal = ({
       let basePayload = {
         propertyType: formData.propertyType,
         tierId: formData.tierId,
+        tierUnit: formData.tierUnit,
         notes: formData.notes || "",
       };
 
@@ -908,6 +925,60 @@ const CommissionSetupModal = ({
                 </select>
               </div>
 
+              {/*
+                2026-04-15 meeting: each commission mode specifies whether
+                it uses Sales Volume (USD) or System Capacity (MW) to match
+                the tier at payout time. Direct Customer defaults to MW;
+                all other modes default to USD. Admin can override.
+              */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tier Unit
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <label
+                    className={`flex items-center gap-2 px-3 py-2 border rounded-md cursor-pointer text-sm ${
+                      formData.tierUnit === "SALES_VOLUME"
+                        ? "border-[#039994] bg-[#03999410] text-[#039994]"
+                        : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="tierUnit"
+                      value="SALES_VOLUME"
+                      checked={formData.tierUnit === "SALES_VOLUME"}
+                      onChange={handleChange}
+                      disabled={!!editingCommission}
+                      className="accent-[#039994]"
+                    />
+                    Sales Volume (USD)
+                  </label>
+                  <label
+                    className={`flex items-center gap-2 px-3 py-2 border rounded-md cursor-pointer text-sm ${
+                      formData.tierUnit === "SYSTEM_CAPACITY"
+                        ? "border-amber-500 bg-amber-50 text-amber-700"
+                        : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="tierUnit"
+                      value="SYSTEM_CAPACITY"
+                      checked={formData.tierUnit === "SYSTEM_CAPACITY"}
+                      onChange={handleChange}
+                      disabled={!!editingCommission}
+                      className="accent-amber-500"
+                    />
+                    System Capacity (MW)
+                  </label>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Determines which range is used to match this mode to a tier at payout time.
+                  Direct Customer → MW; referred / partner modes → USD.
+                </p>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Commission Tier
@@ -922,28 +993,25 @@ const CommissionSetupModal = ({
                 >
                   <option value="">Select a tier</option>
                   {tiers.map((tier) => {
-                    const forCapacity = !!tier.isForSystemCapacity;
-                    const fmt = (v) =>
-                      forCapacity
-                        ? `${v} MW`
-                        : `$${Number(v).toLocaleString()}`;
-                    const min = tier.minAmount != null ? fmt(tier.minAmount) : "0";
-                    const max = tier.maxAmount != null ? fmt(tier.maxAmount) : "∞";
+                    const usdMin =
+                      tier.minAmountUSD != null
+                        ? `$${Number(tier.minAmountUSD).toLocaleString()}`
+                        : "$0";
+                    const usdMax =
+                      tier.maxAmountUSD != null
+                        ? `$${Number(tier.maxAmountUSD).toLocaleString()}`
+                        : "∞";
+                    const mwMin =
+                      tier.minAmountMW != null ? `${tier.minAmountMW} MW` : "0 MW";
+                    const mwMax =
+                      tier.maxAmountMW != null ? `${tier.maxAmountMW} MW` : "∞";
                     return (
                       <option key={tier.id} value={tier.id}>
-                        [{forCapacity ? "MW" : "USD"}] {tier.label} — {min} – {max} (Order: {tier.order})
+                        Tier {tier.order}: {tier.label} — USD {usdMin}–{usdMax} | MW {mwMin}–{mwMax}
                       </option>
                     );
                   })}
                 </select>
-                {/*
-                  Direct customers are tiered by system capacity (MW) per the
-                  2026-04-13 meeting. Partner-referred customers stay on
-                  sales-volume (USD) tiers. Admin must pick the right tier.
-                */}
-                <p className="text-xs text-gray-500 mt-1">
-                  Direct Customer modes use MW tiers; partner-referred modes use USD tiers.
-                </p>
               </div>
 
               {/*
