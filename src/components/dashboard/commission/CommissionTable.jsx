@@ -35,7 +35,26 @@ const formatMwRange = (tier) => {
   return `Min ${min} – Max ${max}`;
 };
 
-const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete, onDeleteMany }) => {
+const CommissionTable = ({
+  data,
+  tiers,
+  propertyType,
+  onEdit,
+  onDelete,
+  onDeleteMany,
+  commissionModes = [],
+}) => {
+  // Build a quick (mode, propertyType) → tierUnit lookup from the
+  // CommissionModes records passed in from the parent. This is the
+  // single source of truth for tier-unit routing (backend commit 25bc75a).
+  // A mode without a matching record will render no badge — a hint to the
+  // admin that commission calculation will skip that mode.
+  const tierUnitFor = (mode) => {
+    const match = commissionModes.find(
+      (m) => m.mode === mode && m.propertyType === propertyType
+    );
+    return match?.tierUnit || null;
+  };
   // Delete many items in one server round-trip + single refetch. Falls back to
   // looping onDelete if the parent hasn't wired onDeleteMany — keeps the
   // component usable standalone, but the fallback path has the per-item
@@ -574,22 +593,37 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete, onDelete
                       : propertyType}
                   </span>
                   {/*
-                    tierUnit badge — shows which range type (USD/MW) is used
-                    when this mode is matched to a tier at payout time.
-                    Populated once Francis's refactor lands (CommissionStructure
-                    gets a `tierUnit` field).
+                    Tier-unit badge. Sourced from CommissionModes (the single
+                    source of truth, backend commit 25bc75a). If no record
+                    exists for (mode, propertyType), render a red "UNCONFIGURED"
+                    badge — this mode will be silently skipped at commission
+                    calculation time until an admin adds it via Manage
+                    Commission Modes.
                   */}
-                  {group.items[0]?.tierUnit && (
-                    <span
-                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full inline-block w-fit border ${
-                        group.items[0].tierUnit === "SYSTEM_CAPACITY"
-                          ? "bg-amber-50 text-amber-700 border-amber-200"
-                          : "bg-[#03999415] text-[#039994] border-[#03999430]"
-                      }`}
-                    >
-                      {group.items[0].tierUnit === "SYSTEM_CAPACITY" ? "MW" : "USD"}
-                    </span>
-                  )}
+                  {(() => {
+                    const tu = tierUnitFor(group.mode);
+                    if (!tu) {
+                      return (
+                        <span
+                          className="text-[10px] font-semibold px-2 py-0.5 rounded-full inline-block w-fit border bg-red-50 text-red-700 border-red-200"
+                          title="No CommissionModes record for this mode + property type — commission calculation will skip this mode"
+                        >
+                          UNCONFIGURED
+                        </span>
+                      );
+                    }
+                    return (
+                      <span
+                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full inline-block w-fit border ${
+                          tu === "SYSTEM_CAPACITY"
+                            ? "bg-amber-50 text-amber-700 border-amber-200"
+                            : "bg-[#03999415] text-[#039994] border-[#03999430]"
+                        }`}
+                      >
+                        {tu === "SYSTEM_CAPACITY" ? "MW" : "USD"}
+                      </span>
+                    );
+                  })()}
                 </div>
               </td>
               {sortedTiers.map((tier) => {
