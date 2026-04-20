@@ -11,18 +11,26 @@ const CommissionSetupModal = ({
   propertyType,
   mode,
   editingCommission,
+  commissionModes = [],
 }) => {
   /*
-   * Per backend commit 25bc75a, `tierUnit` is no longer a field on
-   * CommissionStructure — it lives only on CommissionModes, which is the
-   * single source of truth consulted by the commission calculation job.
-   * This modal no longer sends a tierUnit. Use ManageCommissionModesModal
-   * to set the tier unit for a (mode, propertyType) pair.
+   * Per 2026-04-20 meeting (Chimdinma / Francis): the tier-unit selection
+   * was moved back into this modal to avoid the "two modals for one setup"
+   * confusion Awam flagged. `CommissionModes` is still the backend source
+   * of truth, but this modal now upserts the matching record on save so
+   * admins never have to open a separate configuration dialog.
+   *
+   * Rule: units are consistent across all tiers within a (mode, propertyType)
+   * pair (Francis, 2026-04-20). Once a mode's unit is set by the first
+   * structure saved for that pair, subsequent structure edits pre-fill it
+   * and any change cascades to the CommissionModes record — which affects
+   * every other structure sharing that pair.
    */
   const [formData, setFormData] = useState({
     propertyType: propertyType,
     mode: mode,
     tierId: "",
+    tierUnit: "SALES_VOLUME",
     customerShare: "",
     installerShare: "",
     salesAgentShare: "",
@@ -44,10 +52,16 @@ const CommissionSetupModal = ({
 
   useEffect(() => {
     if (editingCommission) {
+      const existingModeRecord = commissionModes.find(
+        (m) =>
+          m.mode === editingCommission.mode &&
+          m.propertyType === editingCommission.propertyType
+      );
       setFormData({
         propertyType: editingCommission.propertyType,
         mode: editingCommission.mode,
         tierId: editingCommission.tierId,
+        tierUnit: existingModeRecord?.tierUnit || "SALES_VOLUME",
         customerShare: editingCommission.customerShare || "",
         installerShare: editingCommission.installerShare || "",
         salesAgentShare: editingCommission.salesAgentShare || "",
@@ -60,7 +74,22 @@ const CommissionSetupModal = ({
         setExistingPartnerFinance(editingCommission);
       }
     }
-  }, [editingCommission]);
+  }, [editingCommission, commissionModes]);
+
+  // Keep tierUnit in sync with the existing CommissionModes record when
+  // the admin changes mode or property type on a NEW structure. For a
+  // pair that's already configured, this enforces Francis's "consistent
+  // unit across tiers" rule by pre-filling the right unit instead of
+  // letting the admin accidentally pick a conflicting one.
+  useEffect(() => {
+    if (editingCommission) return;
+    const existing = commissionModes.find(
+      (m) => m.mode === formData.mode && m.propertyType === formData.propertyType
+    );
+    if (existing && formData.tierUnit !== existing.tierUnit) {
+      setFormData((prev) => ({ ...prev, tierUnit: existing.tierUnit }));
+    }
+  }, [formData.mode, formData.propertyType, commissionModes, editingCommission]);
 
   useEffect(() => {
     fetchAllCommissionData();
@@ -232,7 +261,7 @@ const CommissionSetupModal = ({
 
   const createCommissionStructure = async (payload) => {
     const authToken = localStorage.getItem("authToken");
-    
+
     const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-structure`, {
       method: "POST",
       headers: {
@@ -241,8 +270,61 @@ const CommissionSetupModal = ({
       },
       body: JSON.stringify(payload),
     });
-    
+
     return response;
+  };
+
+  /**
+   * Upsert a CommissionModes record for (mode, propertyType, tierUnit).
+   * Called before saving a CommissionStructure so the backend's commission
+   * calculation has the tier-unit routing declared before it tries to
+   * match a tier. Required to prevent the silent-skip bug Francis and I
+   * flagged on 2026-04-17.
+   *
+   * - If no record exists for the pair → POST a new one
+   * - If a record exists with a different tierUnit → PUT to update it
+   *   (this cascades: all other structures for the pair now resolve via
+   *   the new unit, which is what admins expect per Francis's rule)
+   * - If a record exists with the same tierUnit → no-op
+   */
+  const upsertCommissionMode = async (modeName, propType, tierUnit) => {
+    const authToken = localStorage.getItem("authToken");
+    const existing = commissionModes.find(
+      (m) => m.mode === modeName && m.propertyType === propType
+    );
+
+    if (existing && existing.tierUnit === tierUnit) return;
+
+    if (existing) {
+      return fetch(
+        `${CONFIG.API_BASE_URL}/api/commission-mode/${existing.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({
+            mode: modeName,
+            propertyType: propType,
+            tierUnit,
+          }),
+        }
+      );
+    }
+
+    return fetch(`${CONFIG.API_BASE_URL}/api/commission-mode`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({
+        mode: modeName,
+        propertyType: propType,
+        tierUnit,
+      }),
+    });
   };
 
   const updateCommissionStructure = async (id, payload) => {
@@ -497,13 +579,29 @@ const CommissionSetupModal = ({
       toast.error("Please select a tier");
       return;
     }
-    
+
     if (!validateForm()) {
       return;
     }
 
     setLoading(true);
     try {
+      // Upsert the CommissionModes record FIRST so the backend's commission
+      // calculation has the tier-unit routing ready when the structure lands.
+      // For PARTNER_FINANCE we also cascade the upsert to the EPC children
+      // (they share the same family and need matching mode records to avoid
+      // the silent-skip bug flagged on 2026-04-17).
+      const modeUpserts = [
+        upsertCommissionMode(formData.mode, formData.propertyType, formData.tierUnit),
+      ];
+      if (isPartnerFinanceMode) {
+        modeUpserts.push(
+          upsertCommissionMode("EPC_ASSISTED_FINANCE", formData.propertyType, formData.tierUnit),
+          upsertCommissionMode("EPC_ASSISTED_INSTALLER", formData.propertyType, formData.tierUnit)
+        );
+      }
+      await Promise.all(modeUpserts);
+
       if (isPartnerFinanceMode) {
         const response = await updatePartnerFinanceWithEpcShares();
         if (response.ok) {
@@ -914,6 +1012,92 @@ const CommissionSetupModal = ({
                   ))}
                 </select>
               </div>
+
+              {/*
+                Tier Unit — 2026-04-20 meeting: moved back into this modal
+                from the separate ManageCommissionModesModal so admins set
+                the unit in one place during structure creation. The form
+                upserts the underlying CommissionModes record on save.
+                If a record already exists for this (mode, propertyType),
+                we pre-fill the unit and show a notice — changing it cascades
+                to every other structure sharing the pair (Francis's rule:
+                units are consistent across tiers within a mode).
+              */}
+              {(() => {
+                const existingModeRecord = commissionModes.find(
+                  (m) =>
+                    m.mode === formData.mode &&
+                    m.propertyType === formData.propertyType
+                );
+                const unitChanging =
+                  existingModeRecord &&
+                  existingModeRecord.tierUnit !== formData.tierUnit;
+                return (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Tier Unit
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <label
+                        className={`flex items-center gap-2 px-3 py-2 border rounded-md cursor-pointer text-sm ${
+                          formData.tierUnit === "SALES_VOLUME"
+                            ? "border-[#039994] bg-[#03999410] text-[#039994]"
+                            : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="tierUnit"
+                          value="SALES_VOLUME"
+                          checked={formData.tierUnit === "SALES_VOLUME"}
+                          onChange={handleChange}
+                          className="accent-[#039994]"
+                        />
+                        Sales Volume (USD)
+                      </label>
+                      <label
+                        className={`flex items-center gap-2 px-3 py-2 border rounded-md cursor-pointer text-sm ${
+                          formData.tierUnit === "SYSTEM_CAPACITY"
+                            ? "border-amber-500 bg-amber-50 text-amber-700"
+                            : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="tierUnit"
+                          value="SYSTEM_CAPACITY"
+                          checked={formData.tierUnit === "SYSTEM_CAPACITY"}
+                          onChange={handleChange}
+                          className="accent-amber-500"
+                        />
+                        System Capacity (MW)
+                      </label>
+                    </div>
+                    {existingModeRecord && !unitChanging && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Using the existing configuration for this mode —
+                        all tiers under {formData.mode.replace(/_/g, " ")} +{" "}
+                        {formData.propertyType.replace(/_/g, " ")} use{" "}
+                        {formData.tierUnit === "SYSTEM_CAPACITY" ? "MW" : "USD"}.
+                      </p>
+                    )}
+                    {unitChanging && (
+                      <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-1">
+                        ⚠ Changing the tier unit here will also update every
+                        other structure for {formData.mode.replace(/_/g, " ")} +{" "}
+                        {formData.propertyType.replace(/_/g, " ")}. Units must
+                        stay consistent across tiers within a mode.
+                      </p>
+                    )}
+                    {!existingModeRecord && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        First structure for this (mode, property type) — the
+                        unit you pick here sets it for all future tiers.
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
