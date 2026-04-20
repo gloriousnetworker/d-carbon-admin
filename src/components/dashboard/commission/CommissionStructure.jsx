@@ -213,6 +213,10 @@ const CommissionStructure = () => {
   const handleSuccess = () => {
     setShowSetupModal(false);
     fetchCommissionData();
+    // The setup modal now upserts CommissionModes inline, so refresh the
+    // mode records too — the CommissionTable badge and the setup modal's
+    // pre-fill both read from this.
+    fetchCommissionModes();
   };
 
   const handleTiersUpdated = () => {
@@ -240,6 +244,7 @@ const CommissionStructure = () => {
           propertyType={getPropertyTypeForModal()}
           mode={editingCommission?.mode || getDefaultModeForProperty()}
           editingCommission={editingCommission}
+          commissionModes={commissionModes}
         />
       )}
 
@@ -340,7 +345,7 @@ const CommissionStructure = () => {
                 */}
 
                 <div className="flex justify-between items-center mb-6">
-                  <div className="flex flex-wrap gap-3">
+                  <div className="flex flex-wrap gap-3 items-center">
                     <button
                       onClick={handleCreateCommission}
                       className="px-4 py-2 bg-[#039994] text-white rounded-md hover:bg-[#028884]"
@@ -354,17 +359,17 @@ const CommissionStructure = () => {
                       Manage Tiers
                     </button>
                     {/*
-                      Manage Commission Modes — single source of truth for
-                      which tier unit (USD / MW) each (mode, propertyType)
-                      uses at commission-calculation time. Must be set for
-                      a mode to produce commissions (otherwise the job
-                      silently skips it and no wallet credit happens).
+                      2026-04-20 meeting: tier-unit selection is now inline
+                      inside CommissionSetupModal, so the prominent "Manage
+                      Commission Modes" button was removed. A small advanced
+                      link is kept for admins who need to view or edit the
+                      raw CommissionModes records (e.g., to delete an orphan).
                     */}
                     <button
                       onClick={() => setShowCommissionModesModal(true)}
-                      className="px-4 py-2 border border-amber-500 text-amber-700 rounded-md hover:bg-amber-500 hover:text-white transition-colors"
+                      className="text-xs text-gray-500 underline hover:text-gray-700"
                     >
-                      Manage Commission Modes
+                      Advanced: view mode configurations
                     </button>
                   </div>
                 </div>
