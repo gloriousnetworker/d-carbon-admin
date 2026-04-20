@@ -1,53 +1,72 @@
 "use client";
-import CONFIG from '@/lib/config';
+/**
+ * Manage Commission Tiers — new model (feature/tier-unit-refactor branch).
+ *
+ * Per 2026-04-15 meeting (Phillip / Chimdinma / Francis):
+ * - Each tier stores BOTH a Sales Volume (USD) range AND a System Capacity
+ *   (MW) range. The old `isForSystemCapacity` radio button is gone.
+ * - The "unit" used at payout time is determined by the Commission Structure
+ *   (mode setup), not by the tier. See CommissionSetupModal for that change.
+ *
+ * API shape expected from Francis's refactor:
+ *   POST/PUT /api/commission-tier  →  { label, order, minAmountUSD,
+ *     maxAmountUSD, minAmountMW, maxAmountMW }
+ *
+ * ⚠️  This file targets the NEW backend schema. Do NOT merge to
+ *     phillip-fix2-commission-single-view until Francis confirms the
+ *     backend migration is deployed.
+ */
+import CONFIG from "@/lib/config";
 import React, { useState } from "react";
 import { toast } from "react-hot-toast";
 
+const EMPTY_FORM = {
+  label: "",
+  order: "",
+  minAmountUSD: "",
+  maxAmountUSD: "",
+  minAmountMW: "",
+  maxAmountMW: "",
+};
+
 const ManageTiersModal = ({ onClose, onSuccess, tiers: initialTiers }) => {
   const [tiers, setTiers] = useState(initialTiers);
-  const [formData, setFormData] = useState({
-    minAmount: "",
-    maxAmount: "",
-    label: "",
-    order: "",
-    isForSystemCapacity: false,
-  });
+  const [formData, setFormData] = useState(EMPTY_FORM);
   const [editingTier, setEditingTier] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData({
-      ...formData,
-      [name]: type === "checkbox" ? checked : value,
-    });
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleEditTier = (tier) => {
     setEditingTier(tier);
     setFormData({
-      minAmount: tier.minAmount,
-      maxAmount: tier.maxAmount || "",
-      label: tier.label,
-      order: tier.order,
-      isForSystemCapacity: !!tier.isForSystemCapacity,
+      label: tier.label ?? "",
+      order: tier.order ?? "",
+      minAmountUSD: tier.minAmountUSD ?? "",
+      maxAmountUSD: tier.maxAmountUSD ?? "",
+      minAmountMW: tier.minAmountMW ?? "",
+      maxAmountMW: tier.maxAmountMW ?? "",
     });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingTier(null);
+    setFormData(EMPTY_FORM);
   };
 
   const handleDeleteTier = async (id) => {
     if (!window.confirm("Are you sure you want to delete this tier?")) return;
-    
     const authToken = localStorage.getItem("authToken");
     try {
-      const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-tier/${id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${authToken}`,
-        },
-      });
+      const response = await fetch(
+        `${CONFIG.API_BASE_URL}/api/commission-tier/${id}`,
+        { method: "DELETE", headers: { Authorization: `Bearer ${authToken}` } }
+      );
       if (response.ok) {
-        const updatedTiers = tiers.filter(tier => tier.id !== id);
-        setTiers(updatedTiers);
+        setTiers((prev) => prev.filter((t) => t.id !== id));
         toast.success("Tier deleted successfully");
         onSuccess();
       }
@@ -61,59 +80,45 @@ const ManageTiersModal = ({ onClose, onSuccess, tiers: initialTiers }) => {
     e.preventDefault();
     setIsLoading(true);
     const authToken = localStorage.getItem("authToken");
-    
+
     const payload = {
-      minAmount: parseFloat(formData.minAmount),
-      maxAmount: formData.maxAmount ? parseFloat(formData.maxAmount) : null,
       label: formData.label,
       order: parseInt(formData.order),
-      isForSystemCapacity: !!formData.isForSystemCapacity,
+      minAmountUSD: parseFloat(formData.minAmountUSD),
+      maxAmountUSD: formData.maxAmountUSD ? parseFloat(formData.maxAmountUSD) : null,
+      minAmountMW: parseFloat(formData.minAmountMW),
+      maxAmountMW: formData.maxAmountMW ? parseFloat(formData.maxAmountMW) : null,
     };
 
     try {
-      let response;
-      if (editingTier) {
-        response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-tier/${editingTier.id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${authToken}`,
-          },
-          body: JSON.stringify(payload),
-        });
-      } else {
-        response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-tier`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${authToken}`,
-          },
-          body: JSON.stringify(payload),
-        });
-      }
+      const url = editingTier
+        ? `${CONFIG.API_BASE_URL}/api/commission-tier/${editingTier.id}`
+        : `${CONFIG.API_BASE_URL}/api/commission-tier`;
+      const method = editingTier ? "PUT" : "POST";
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
 
       if (response.ok) {
         const result = await response.json();
         if (editingTier) {
-          const updatedTiers = tiers.map(tier => 
-            tier.id === editingTier.id ? result : tier
-          );
-          setTiers(updatedTiers);
+          setTiers((prev) => prev.map((t) => (t.id === editingTier.id ? result : t)));
           toast.success("Tier updated successfully");
         } else {
-          setTiers([...tiers, result]);
+          setTiers((prev) => [...prev, result]);
           toast.success("Tier created successfully");
         }
-        
-        setFormData({
-          minAmount: "",
-          maxAmount: "",
-          label: "",
-          order: "",
-          isForSystemCapacity: false,
-        });
+        setFormData(EMPTY_FORM);
         setEditingTier(null);
         onSuccess();
+      } else {
+        const err = await response.json().catch(() => ({}));
+        toast.error(err.message || "Failed to save tier");
       }
     } catch (error) {
       console.error("Failed to save tier:", error);
@@ -123,29 +128,9 @@ const ManageTiersModal = ({ onClose, onSuccess, tiers: initialTiers }) => {
     }
   };
 
-  const handleCancelEdit = () => {
-    setEditingTier(null);
-    setFormData({
-      minAmount: "",
-      maxAmount: "",
-      label: "",
-      order: "",
-      isForSystemCapacity: false,
-    });
-  };
-
-  // Unit helpers — keep in sync with CommissionTable.formatTierRange.
-  const unitLabel = formData.isForSystemCapacity ? "MW" : "USD";
-  const amountPlaceholder = formData.isForSystemCapacity ? "e.g. 2" : "e.g. 500000";
-  const labelPlaceholder = formData.isForSystemCapacity
-    ? 'e.g. "2 – 3 MW"'
-    : 'e.g. "<500k"';
-  const formatTierAmount = (value, forCapacity) => {
-    if (value == null || value === "") return "∞";
-    return forCapacity
-      ? `${value} MW`
-      : `$${Number(value).toLocaleString()}`;
-  };
+  const fmtUSD = (v) =>
+    v == null || v === "" ? "∞" : `$${Number(v).toLocaleString()}`;
+  const fmtMW = (v) => (v == null || v === "" ? "∞" : `${v} MW`);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -159,122 +144,133 @@ const ManageTiersModal = ({ onClose, onSuccess, tiers: initialTiers }) => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* ── Form ─────────────────────────────────────────────── */}
             <div>
               <h3 className="text-sm font-medium text-gray-700 mb-4">
                 {editingTier ? "Edit Tier" : "Create New Tier"}
               </h3>
+
               <form onSubmit={handleSubmitTier} className="space-y-4">
-                {/*
-                  Tier Unit selector — new in 2026-04-15 (backend commit 9a3dc66).
-                  Capacity (MW) tiers drive commission for direct customers (no
-                  partner/installer/finance referral); Sales Volume (USD) tiers
-                  drive commission for partner-referred customers. See
-                  CAPACITY-TIER-INTEGRATION-PLAN.md at the d-carbon root.
-                */}
+                {/* Label */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tier Unit
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <label
-                      className={`flex items-center gap-2 px-3 py-2 border rounded-md cursor-pointer text-sm ${
-                        !formData.isForSystemCapacity
-                          ? "border-[#039994] bg-[#03999410] text-[#039994]"
-                          : "border-gray-300 text-gray-700 hover:bg-gray-50"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="isForSystemCapacity"
-                        checked={!formData.isForSystemCapacity}
-                        onChange={() =>
-                          setFormData({ ...formData, isForSystemCapacity: false })
-                        }
-                        className="accent-[#039994]"
-                      />
-                      Sales Volume (USD)
-                    </label>
-                    <label
-                      className={`flex items-center gap-2 px-3 py-2 border rounded-md cursor-pointer text-sm ${
-                        formData.isForSystemCapacity
-                          ? "border-[#039994] bg-[#03999410] text-[#039994]"
-                          : "border-gray-300 text-gray-700 hover:bg-gray-50"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="isForSystemCapacity"
-                        checked={formData.isForSystemCapacity}
-                        onChange={() =>
-                          setFormData({ ...formData, isForSystemCapacity: true })
-                        }
-                        className="accent-[#039994]"
-                      />
-                      System Capacity (MW)
-                    </label>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    MW tiers are applied to direct customers; USD tiers are applied
-                    to partner-referred customers.
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Label ({labelPlaceholder})
+                    Label
                   </label>
                   <input
                     type="text"
                     name="label"
                     value={formData.label}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                     required
-                    placeholder="Enter range label"
+                    placeholder='e.g. "Tier 1"'
                   />
                 </div>
+
+                {/* Order */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Order (1, 2, 3...)
+                    Order (1, 2, 3…)
                   </label>
                   <input
                     type="number"
                     name="order"
                     value={formData.order}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                     required
                     min="1"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Min Amount ({unitLabel})
-                  </label>
-                  <input
-                    type="number"
-                    name="minAmount"
-                    value={formData.minAmount}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    required
-                    step="0.01"
-                    placeholder={amountPlaceholder}
-                  />
+
+                {/* USD range */}
+                <div className="rounded-lg border border-[#03999430] bg-[#03999408] p-4 space-y-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#039994]">
+                      Sales Volume (USD)
+                    </span>
+                    <span className="text-xs text-gray-500">— for referred / partner modes</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Min USD
+                      </label>
+                      <input
+                        type="number"
+                        name="minAmountUSD"
+                        value={formData.minAmountUSD}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                        required
+                        step="0.01"
+                        min="0"
+                        placeholder="e.g. 0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Max USD{" "}
+                        <span className="font-normal text-gray-400">(empty = unbounded)</span>
+                      </label>
+                      <input
+                        type="number"
+                        name="maxAmountUSD"
+                        value={formData.maxAmountUSD}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                        step="0.01"
+                        min="0"
+                        placeholder="e.g. 499999"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Max Amount ({unitLabel}, optional — leave empty for unbounded top tier)
-                  </label>
-                  <input
-                    type="number"
-                    name="maxAmount"
-                    value={formData.maxAmount}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    step="0.01"
-                    placeholder={amountPlaceholder}
-                  />
+
+                {/* MW range */}
+                <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-4 space-y-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-bold uppercase tracking-wider text-amber-700">
+                      System Capacity (MW)
+                    </span>
+                    <span className="text-xs text-gray-500">— for direct customer mode</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Min MW
+                      </label>
+                      <input
+                        type="number"
+                        name="minAmountMW"
+                        value={formData.minAmountMW}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                        required
+                        step="0.01"
+                        min="0"
+                        placeholder="e.g. 0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Max MW{" "}
+                        <span className="font-normal text-gray-400">(empty = unbounded)</span>
+                      </label>
+                      <input
+                        type="number"
+                        name="maxAmountMW"
+                        value={formData.maxAmountMW}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                        step="0.01"
+                        min="0"
+                        placeholder="e.g. 5"
+                      />
+                    </div>
+                  </div>
                 </div>
+
                 <div className="flex space-x-3 pt-2">
                   {editingTier && (
                     <button
@@ -290,51 +286,58 @@ const ManageTiersModal = ({ onClose, onSuccess, tiers: initialTiers }) => {
                     disabled={isLoading}
                     className="px-4 py-2 text-sm font-medium text-white bg-[#039994] rounded-md hover:bg-[#028884] disabled:opacity-50"
                   >
-                    {isLoading ? "Saving..." : editingTier ? "Update Tier" : "Create Tier"}
+                    {isLoading
+                      ? "Saving…"
+                      : editingTier
+                      ? "Update Tier"
+                      : "Create Tier"}
                   </button>
                 </div>
               </form>
             </div>
 
+            {/* ── Existing tiers list ───────────────────────────────── */}
             <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-4">Existing Tiers</h3>
+              <h3 className="text-sm font-medium text-gray-700 mb-4">
+                Existing Tiers
+              </h3>
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
+                <table className="min-w-full divide-y divide-gray-200 text-sm">
                   <thead>
-                    <tr>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Order</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Unit</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Label</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Min</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Max</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Actions</th>
+                    <tr className="text-xs font-medium text-gray-500">
+                      <th className="px-3 py-2 text-left">Order</th>
+                      <th className="px-3 py-2 text-left">Label</th>
+                      <th className="px-3 py-2 text-left">USD Range</th>
+                      <th className="px-3 py-2 text-left">MW Range</th>
+                      <th className="px-3 py-2 text-left">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {tiers.sort((a, b) => a.order - b.order).map((tier) => {
-                      const forCapacity = !!tier.isForSystemCapacity;
-                      return (
+                    {[...tiers]
+                      .sort((a, b) => a.order - b.order)
+                      .map((tier) => (
                         <tr key={tier.id}>
-                          <td className="px-3 py-2 text-sm text-gray-900">{tier.order}</td>
-                          <td className="px-3 py-2 text-sm">
-                            <span
-                              className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                forCapacity
-                                  ? "bg-amber-50 text-amber-700 border border-amber-200"
-                                  : "bg-[#03999415] text-[#039994] border border-[#03999430]"
-                              }`}
-                            >
-                              {forCapacity ? "MW" : "USD"}
+                          <td className="px-3 py-2 text-gray-900">{tier.order}</td>
+                          <td className="px-3 py-2 text-gray-900">{tier.label}</td>
+                          <td className="px-3 py-2">
+                            <span className="text-[#039994] font-medium">
+                              {fmtUSD(tier.minAmountUSD)}
+                            </span>
+                            <span className="text-gray-400 mx-1">–</span>
+                            <span className="text-[#039994] font-medium">
+                              {fmtUSD(tier.maxAmountUSD)}
                             </span>
                           </td>
-                          <td className="px-3 py-2 text-sm text-gray-900">{tier.label}</td>
-                          <td className="px-3 py-2 text-sm text-gray-900">
-                            {formatTierAmount(tier.minAmount, forCapacity)}
+                          <td className="px-3 py-2">
+                            <span className="text-amber-700 font-medium">
+                              {fmtMW(tier.minAmountMW)}
+                            </span>
+                            <span className="text-gray-400 mx-1">–</span>
+                            <span className="text-amber-700 font-medium">
+                              {fmtMW(tier.maxAmountMW)}
+                            </span>
                           </td>
-                          <td className="px-3 py-2 text-sm text-gray-900">
-                            {formatTierAmount(tier.maxAmount, forCapacity)}
-                          </td>
-                          <td className="px-3 py-2 text-sm">
+                          <td className="px-3 py-2 whitespace-nowrap">
                             <button
                               onClick={() => handleEditTier(tier)}
                               className="text-[#039994] hover:text-[#028884] mr-3"
@@ -349,8 +352,7 @@ const ManageTiersModal = ({ onClose, onSuccess, tiers: initialTiers }) => {
                             </button>
                           </td>
                         </tr>
-                      );
-                    })}
+                      ))}
                   </tbody>
                 </table>
               </div>

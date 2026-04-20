@@ -17,6 +17,7 @@ import { Loader2 } from "lucide-react";
 import CommissionTable from "./CommissionTable";
 import CommissionSetupModal from "./CommissionSetupModal";
 import ManageTiersModal from "./ManageTiersModal";
+import ManageCommissionModesModal from "./ManageCommissionModesModal";
 import BonusCommissionStructure from "./commission/BonusCommissionStructure";
 import BonusCommissionSetup from "./setupModals/BonusCommissionSetup";
 import ContractTermsTab from "./ContractTermsTab";
@@ -26,11 +27,14 @@ const CommissionStructure = () => {
   const [activePropertyTab, setActivePropertyTab] = useState("COMMERCIAL");
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [showTiersModal, setShowTiersModal] = useState(false);
+  const [showCommissionModesModal, setShowCommissionModesModal] = useState(false);
   const [showBonusSetup, setShowBonusSetup] = useState(false);
   const [tiers, setTiers] = useState([]);
   const [modes, setModes] = useState([]);
   const [accountModes, setAccountModes] = useState([]);
   const [allCommissionData, setAllCommissionData] = useState([]);
+  // CommissionModes records (single source of truth for tier-unit routing)
+  const [commissionModes, setCommissionModes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editingCommission, setEditingCommission] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -38,6 +42,7 @@ const CommissionStructure = () => {
   useEffect(() => {
     fetchTiers();
     fetchModes();
+    fetchCommissionModes();
   }, []);
 
   useEffect(() => {
@@ -84,6 +89,28 @@ const CommissionStructure = () => {
       }
     } catch (error) {
       console.error("Failed to fetch modes:", error);
+    }
+  };
+
+  /**
+   * Fetch CommissionModes records — the mode × propertyType → tierUnit
+   * lookup that drives tier matching at commission-calculation time.
+   * Passed to CommissionTable so mode rows can render the correct badge
+   * and flag unconfigured modes.
+   */
+  const fetchCommissionModes = async () => {
+    try {
+      const authToken = localStorage.getItem("authToken");
+      const response = await fetch(
+        `${CONFIG.API_BASE_URL}/api/commission-mode`,
+        { headers: { Authorization: `Bearer ${authToken}` } }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setCommissionModes(Array.isArray(data) ? data : []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch commission modes:", error);
     }
   };
 
@@ -224,6 +251,16 @@ const CommissionStructure = () => {
         />
       )}
 
+      {showCommissionModesModal && (
+        <ManageCommissionModesModal
+          onClose={() => setShowCommissionModesModal(false)}
+          onSuccess={() => {
+            fetchCommissionModes();
+            setRefreshTrigger((prev) => prev + 1);
+          }}
+        />
+      )}
+
       {showBonusSetup && (
         <BonusCommissionSetup
           onClose={() => setShowBonusSetup(false)}
@@ -303,7 +340,7 @@ const CommissionStructure = () => {
                 */}
 
                 <div className="flex justify-between items-center mb-6">
-                  <div className="flex space-x-3">
+                  <div className="flex flex-wrap gap-3">
                     <button
                       onClick={handleCreateCommission}
                       className="px-4 py-2 bg-[#039994] text-white rounded-md hover:bg-[#028884]"
@@ -315,6 +352,19 @@ const CommissionStructure = () => {
                       className="px-4 py-2 border border-[#039994] text-[#039994] rounded-md hover:bg-[#039994] hover:text-white transition-colors"
                     >
                       Manage Tiers
+                    </button>
+                    {/*
+                      Manage Commission Modes — single source of truth for
+                      which tier unit (USD / MW) each (mode, propertyType)
+                      uses at commission-calculation time. Must be set for
+                      a mode to produce commissions (otherwise the job
+                      silently skips it and no wallet credit happens).
+                    */}
+                    <button
+                      onClick={() => setShowCommissionModesModal(true)}
+                      className="px-4 py-2 border border-amber-500 text-amber-700 rounded-md hover:bg-amber-500 hover:text-white transition-colors"
+                    >
+                      Manage Commission Modes
                     </button>
                   </div>
                 </div>
@@ -331,6 +381,7 @@ const CommissionStructure = () => {
                     data={filteredData}
                     tiers={tiers}
                     propertyType={activePropertyTab}
+                    commissionModes={commissionModes}
                     onEdit={handleEditCommission}
                     onDelete={handleDeleteCommission}
                     onDeleteMany={handleDeleteCommissions}

@@ -18,29 +18,43 @@ import { Pencil, Trash2 } from "lucide-react";
 /**
  * Format USD and MW range lines for a tier column header.
  *
- * Current schema (pre-Francis refactor): each tier is tagged as either
- * USD *or* MW via `isForSystemCapacity`. The "other" unit renders as "—"
- * until the backend adds both value sets to a single tier record.
- *
- * After Francis's refactor both lines will have real values; the rendering
- * logic here won't need to change — just the data shape coming in.
+ * New schema (post-Francis refactor): each tier has separate USD and MW
+ * value sets — minAmountUSD / maxAmountUSD and minAmountMW / maxAmountMW.
+ * Both lines will always have real values.
  */
 const formatUsdRange = (tier) => {
-  if (tier.isForSystemCapacity) return "—";
   const fmt = (v) => `$${Number(v).toLocaleString()}`;
-  const min = tier.minAmount != null ? fmt(tier.minAmount) : "$0";
-  const max = tier.maxAmount != null ? fmt(tier.maxAmount) : "∞";
+  const min = tier.minAmountUSD != null ? fmt(tier.minAmountUSD) : "$0";
+  const max = tier.maxAmountUSD != null ? fmt(tier.maxAmountUSD) : "∞";
   return `Min ${min} – Max ${max}`;
 };
 
 const formatMwRange = (tier) => {
-  if (!tier.isForSystemCapacity) return "—";
-  const min = tier.minAmount != null ? `${tier.minAmount} MW` : "0 MW";
-  const max = tier.maxAmount != null ? `${tier.maxAmount} MW` : "∞";
+  const min = tier.minAmountMW != null ? `${tier.minAmountMW} MW` : "0 MW";
+  const max = tier.maxAmountMW != null ? `${tier.maxAmountMW} MW` : "∞";
   return `Min ${min} – Max ${max}`;
 };
 
-const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete, onDeleteMany }) => {
+const CommissionTable = ({
+  data,
+  tiers,
+  propertyType,
+  onEdit,
+  onDelete,
+  onDeleteMany,
+  commissionModes = [],
+}) => {
+  // Build a quick (mode, propertyType) → tierUnit lookup from the
+  // CommissionModes records passed in from the parent. This is the
+  // single source of truth for tier-unit routing (backend commit 25bc75a).
+  // A mode without a matching record will render no badge — a hint to the
+  // admin that commission calculation will skip that mode.
+  const tierUnitFor = (mode) => {
+    const match = commissionModes.find(
+      (m) => m.mode === mode && m.propertyType === propertyType
+    );
+    return match?.tierUnit || null;
+  };
   // Delete many items in one server round-trip + single refetch. Falls back to
   // looping onDelete if the parent hasn't wired onDeleteMany — keeps the
   // component usable standalone, but the fallback path has the per-item
@@ -578,6 +592,38 @@ const CommissionTable = ({ data, tiers, propertyType, onEdit, onDelete, onDelete
                       ? "Account Level"
                       : propertyType}
                   </span>
+                  {/*
+                    Tier-unit badge. Sourced from CommissionModes (the single
+                    source of truth, backend commit 25bc75a). If no record
+                    exists for (mode, propertyType), render a red "UNCONFIGURED"
+                    badge — this mode will be silently skipped at commission
+                    calculation time until an admin adds it via Manage
+                    Commission Modes.
+                  */}
+                  {(() => {
+                    const tu = tierUnitFor(group.mode);
+                    if (!tu) {
+                      return (
+                        <span
+                          className="text-[10px] font-semibold px-2 py-0.5 rounded-full inline-block w-fit border bg-red-50 text-red-700 border-red-200"
+                          title="No CommissionModes record for this mode + property type — commission calculation will skip this mode"
+                        >
+                          UNCONFIGURED
+                        </span>
+                      );
+                    }
+                    return (
+                      <span
+                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full inline-block w-fit border ${
+                          tu === "SYSTEM_CAPACITY"
+                            ? "bg-amber-50 text-amber-700 border-amber-200"
+                            : "bg-[#03999415] text-[#039994] border-[#03999430]"
+                        }`}
+                      >
+                        {tu === "SYSTEM_CAPACITY" ? "MW" : "USD"}
+                      </span>
+                    );
+                  })()}
                 </div>
               </td>
               {sortedTiers.map((tier) => {

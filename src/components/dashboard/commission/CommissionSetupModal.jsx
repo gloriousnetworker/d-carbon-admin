@@ -12,6 +12,13 @@ const CommissionSetupModal = ({
   mode,
   editingCommission,
 }) => {
+  /*
+   * Per backend commit 25bc75a, `tierUnit` is no longer a field on
+   * CommissionStructure — it lives only on CommissionModes, which is the
+   * single source of truth consulted by the commission calculation job.
+   * This modal no longer sends a tierUnit. Use ManageCommissionModesModal
+   * to set the tier unit for a (mode, propertyType) pair.
+   */
   const [formData, setFormData] = useState({
     propertyType: propertyType,
     mode: mode,
@@ -203,7 +210,7 @@ const CommissionSetupModal = ({
       ...formData,
       [name]: value,
     };
-    
+
     setFormData(updatedFormData);
     setValidationError("");
     
@@ -922,28 +929,25 @@ const CommissionSetupModal = ({
                 >
                   <option value="">Select a tier</option>
                   {tiers.map((tier) => {
-                    const forCapacity = !!tier.isForSystemCapacity;
-                    const fmt = (v) =>
-                      forCapacity
-                        ? `${v} MW`
-                        : `$${Number(v).toLocaleString()}`;
-                    const min = tier.minAmount != null ? fmt(tier.minAmount) : "0";
-                    const max = tier.maxAmount != null ? fmt(tier.maxAmount) : "∞";
+                    const usdMin =
+                      tier.minAmountUSD != null
+                        ? `$${Number(tier.minAmountUSD).toLocaleString()}`
+                        : "$0";
+                    const usdMax =
+                      tier.maxAmountUSD != null
+                        ? `$${Number(tier.maxAmountUSD).toLocaleString()}`
+                        : "∞";
+                    const mwMin =
+                      tier.minAmountMW != null ? `${tier.minAmountMW} MW` : "0 MW";
+                    const mwMax =
+                      tier.maxAmountMW != null ? `${tier.maxAmountMW} MW` : "∞";
                     return (
                       <option key={tier.id} value={tier.id}>
-                        [{forCapacity ? "MW" : "USD"}] {tier.label} — {min} – {max} (Order: {tier.order})
+                        Tier {tier.order}: {tier.label} — USD {usdMin}–{usdMax} | MW {mwMin}–{mwMax}
                       </option>
                     );
                   })}
                 </select>
-                {/*
-                  Direct customers are tiered by system capacity (MW) per the
-                  2026-04-13 meeting. Partner-referred customers stay on
-                  sales-volume (USD) tiers. Admin must pick the right tier.
-                */}
-                <p className="text-xs text-gray-500 mt-1">
-                  Direct Customer modes use MW tiers; partner-referred modes use USD tiers.
-                </p>
               </div>
 
               {/*
