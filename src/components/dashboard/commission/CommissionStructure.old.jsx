@@ -1,0 +1,337 @@
+"use client";
+/**
+ * DEPRECATED — preserved for rollback only.
+ *
+ * Replaced on branch phillip-fix2-commission-single-view (2026-04-13) by
+ * ./CommissionStructure.jsx, which eliminates the Commission Mode dropdown
+ * and renders all modes as rows in a single table per property type.
+ *
+ * Nothing imports this file. Keep it here until the single-view refactor
+ * is signed off and merged, then it can be deleted. See
+ * COMMISSION_REFACTOR_PLAN.md at the admin repo root for context.
+ */
+import CONFIG from '@/lib/config';
+import React, { useState, useEffect } from "react";
+import { Loader2 } from "lucide-react";
+import CommissionTable from "./CommissionTable";
+import CommissionSetupModal from "./CommissionSetupModal";
+import ManageTiersModal from "./ManageTiersModal";
+import BonusCommissionStructure from "./commission/BonusCommissionStructure";
+import BonusCommissionSetup from "./setupModals/BonusCommissionSetup";
+import ContractTermsTab from "./ContractTermsTab";
+
+
+const CommissionStructure = () => {
+  const [activeTab, setActiveTab] = useState("COMMISSION");
+  const [activePropertyTab, setActivePropertyTab] = useState("COMMERCIAL");
+  const [activeMode, setActiveMode] = useState("DIRECT_CUSTOMER");
+  const [showSetupModal, setShowSetupModal] = useState(false);
+  const [showTiersModal, setShowTiersModal] = useState(false);
+  const [showBonusSetup, setShowBonusSetup] = useState(false);
+  const [tiers, setTiers] = useState([]);
+  const [modes, setModes] = useState([]);
+  const [accountModes, setAccountModes] = useState([]);
+  const [commissionData, setCommissionData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [editingCommission, setEditingCommission] = useState(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  useEffect(() => {
+    fetchTiers();
+    fetchModes();
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === "COMMISSION") {
+      fetchCommissionData();
+    }
+  }, [activeTab, activePropertyTab, activeMode, refreshTrigger]);
+
+  const fetchTiers = async () => {
+    try {
+      const authToken = localStorage.getItem("authToken");
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-tier`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setTiers(data.sort((a, b) => a.order - b.order));
+      }
+    } catch (error) {
+      console.error("Failed to fetch tiers:", error);
+    }
+  };
+
+  const fetchModes = async () => {
+    try {
+      const authToken = localStorage.getItem("authToken");
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-structure/modes`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const allModes = data;
+        const filteredModes = allModes.filter(mode => 
+          !mode.includes("SALES_AGENT") && 
+          mode !== "ACCOUNT_LEVEL" &&
+          mode !== "EPC_ASSISTED_FINANCE" && 
+          mode !== "EPC_ASSISTED_INSTALLER"
+        );
+        setModes(filteredModes);
+        setAccountModes(allModes.filter(mode => 
+          mode.includes("SALES_AGENT") || mode === "ACCOUNT_LEVEL"
+        ));
+      }
+    } catch (error) {
+      console.error("Failed to fetch modes:", error);
+    }
+  };
+
+  const fetchCommissionData = async () => {
+    try {
+      setLoading(true);
+      const authToken = localStorage.getItem("authToken");
+      
+      let url;
+      if (activePropertyTab === "ACCOUNT_LEVEL") {
+        url = `${CONFIG.API_BASE_URL}/api/commission-structure/`;
+      } else {
+        const property = activePropertyTab;
+        const mode = activeMode;
+        url = `${CONFIG.API_BASE_URL}/api/commission-structure/filter/mode-property?mode=${mode}&property=${property}`;
+      }
+      
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setCommissionData(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch commission data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getAvailableModes = () => {
+    if (activePropertyTab === "ACCOUNT_LEVEL") {
+      return accountModes;
+    }
+    return modes;
+  };
+
+  const handleCreateCommission = () => {
+    setEditingCommission(null);
+    setShowSetupModal(true);
+  };
+
+  const handleEditCommission = (commission) => {
+    setEditingCommission(commission);
+    setShowSetupModal(true);
+  };
+
+  const handleDeleteCommission = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this commission structure?")) return;
+    
+    try {
+      const authToken = localStorage.getItem("authToken");
+      const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-structure/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (response.ok) {
+        fetchCommissionData();
+      }
+    } catch (error) {
+      console.error("Failed to delete commission:", error);
+    }
+  };
+
+  const handleSuccess = () => {
+    setShowSetupModal(false);
+    fetchCommissionData();
+  };
+
+  const handleTiersUpdated = () => {
+    setShowTiersModal(false);
+    fetchTiers();
+    setRefreshTrigger(prev => prev + 1);
+  };
+
+  const handleBonusSuccess = () => {
+    setShowBonusSetup(false);
+    setRefreshTrigger(prev => prev + 1);
+  };
+
+  const getPropertyTypeForModal = () => {
+    return activePropertyTab === "ACCOUNT_LEVEL" ? "ACCOUNT_LEVEL" : activePropertyTab;
+  };
+
+  return (
+    <div className="min-h-screen w-full flex flex-col py-6 px-0 bg-white">
+      {showSetupModal && (
+        <CommissionSetupModal
+          onClose={() => setShowSetupModal(false)}
+          onSuccess={handleSuccess}
+          tiers={tiers}
+          modes={getAvailableModes()}
+          propertyType={getPropertyTypeForModal()}
+          mode={activeMode}
+          editingCommission={editingCommission}
+        />
+      )}
+
+      {showTiersModal && (
+        <ManageTiersModal
+          onClose={() => setShowTiersModal(false)}
+          onSuccess={handleTiersUpdated}
+          tiers={tiers}
+        />
+      )}
+
+      {showBonusSetup && (
+        <BonusCommissionSetup
+          onClose={() => setShowBonusSetup(false)}
+          onSuccess={handleBonusSuccess}
+        />
+      )}
+
+      <div>
+        <div className="bg-white border border-gray-200 rounded-xl">
+          <div className="border-b border-gray-200">
+            <div className="flex">
+              <button
+                className={`px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
+                  activeTab === "COMMISSION"
+                    ? "text-[#039994] border-[#039994]"
+                    : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
+                }`}
+                onClick={() => setActiveTab("COMMISSION")}
+              >
+                Commission Structure
+              </button>
+              <button
+                className={`px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
+                  activeTab === "CONTRACT_TERMS"
+                    ? "text-[#039994] border-[#039994]"
+                    : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
+                }`}
+                onClick={() => setActiveTab("CONTRACT_TERMS")}
+              >
+                Commission Contract Terms
+              </button>
+              <button
+                className={`px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
+                  activeTab === "BONUS"
+                    ? "text-[#039994] border-[#039994]"
+                    : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
+                }`}
+                onClick={() => setActiveTab("BONUS")}
+              >
+                Bonus Structure
+              </button>
+            </div>
+          </div>
+
+          <div className="p-6">
+            {activeTab === "COMMISSION" && (
+              <>
+                <div className="mb-6">
+                  <h3 className="text-sm font-medium text-gray-700 mb-2">Property Type</h3>
+                  <div className="flex space-x-2">
+                    {["COMMERCIAL", "RESIDENTIAL", "ACCOUNT_LEVEL"].map((property) => (
+                      <button
+                        key={property}
+                        onClick={() => {
+                          setActivePropertyTab(property);
+                          if (property === "ACCOUNT_LEVEL") {
+                            setActiveMode("SALES_AGENT_REFERRED_RESIDENTIAL");
+                          } else {
+                            setActiveMode("DIRECT_CUSTOMER");
+                          }
+                        }}
+                        className={`px-4 py-2 rounded-md text-sm font-medium ${
+                          activePropertyTab === property
+                            ? "bg-[#039994] text-white"
+                            : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                        }`}
+                      >
+                        {property === "ACCOUNT_LEVEL" ? "Account Level" : property}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {activePropertyTab !== "ACCOUNT_LEVEL" && (
+                  <div className="mb-6">
+                    <h3 className="text-sm font-medium text-gray-700 mb-2">Commission Mode</h3>
+                    <select
+                      value={activeMode}
+                      onChange={(e) => setActiveMode(e.target.value)}
+                      className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-md bg-white"
+                    >
+                      {getAvailableModes().map((mode) => (
+                        <option key={mode} value={mode}>
+                          {mode.replace(/_/g, " ")}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center mb-6">
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={handleCreateCommission}
+                      className="px-4 py-2 bg-[#039994] text-white rounded-md hover:bg-[#028884]"
+                    >
+                      Create Commission Structure
+                    </button>
+                    <button
+                      onClick={() => setShowTiersModal(true)}
+                      className="px-4 py-2 border border-[#039994] text-[#039994] rounded-md hover:bg-[#039994] hover:text-white transition-colors"
+                    >
+                      Manage Tiers
+                    </button>
+                  </div>
+                  {/* Commission/bonus triggers moved to System Jobs */}
+                </div>
+
+                {loading ? (
+                  <div className="flex flex-col items-center justify-center py-16 border border-gray-200 rounded-xl">
+                    <Loader2 className="h-8 w-8 animate-spin text-[#039994]" />
+                    <span className="text-sm text-gray-500 font-sfpro mt-3">Loading commission data...</span>
+                  </div>
+                ) : (
+                  <CommissionTable
+                    data={commissionData}
+                    tiers={tiers}
+                    propertyType={activePropertyTab}
+                    onEdit={handleEditCommission}
+                    onDelete={handleDeleteCommission}
+                  />
+                )}
+              </>
+            )}
+
+            {activeTab === "CONTRACT_TERMS" && (
+              <ContractTermsTab />
+            )}
+
+            {activeTab === "BONUS" && (
+              <BonusCommissionStructure
+                onSetupStructure={() => setShowBonusSetup(true)}
+                refreshTrigger={refreshTrigger}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default CommissionStructure;

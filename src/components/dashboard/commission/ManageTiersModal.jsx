@@ -1,50 +1,72 @@
 "use client";
-import CONFIG from '@/lib/config';
+/**
+ * Manage Commission Tiers — new model (feature/tier-unit-refactor branch).
+ *
+ * Per 2026-04-15 meeting (Phillip / Chimdinma / Francis):
+ * - Each tier stores BOTH a Sales Volume (USD) range AND a System Capacity
+ *   (MW) range. The old `isForSystemCapacity` radio button is gone.
+ * - The "unit" used at payout time is determined by the Commission Structure
+ *   (mode setup), not by the tier. See CommissionSetupModal for that change.
+ *
+ * API shape expected from Francis's refactor:
+ *   POST/PUT /api/commission-tier  →  { label, order, minAmountUSD,
+ *     maxAmountUSD, minAmountMW, maxAmountMW }
+ *
+ * ⚠️  This file targets the NEW backend schema. Do NOT merge to
+ *     phillip-fix2-commission-single-view until Francis confirms the
+ *     backend migration is deployed.
+ */
+import CONFIG from "@/lib/config";
 import React, { useState } from "react";
 import { toast } from "react-hot-toast";
 
+const EMPTY_FORM = {
+  label: "",
+  order: "",
+  minAmountUSD: "",
+  maxAmountUSD: "",
+  minAmountMW: "",
+  maxAmountMW: "",
+};
+
 const ManageTiersModal = ({ onClose, onSuccess, tiers: initialTiers }) => {
   const [tiers, setTiers] = useState(initialTiers);
-  const [formData, setFormData] = useState({
-    minAmount: "",
-    maxAmount: "",
-    label: "",
-    order: ""
-  });
+  const [formData, setFormData] = useState(EMPTY_FORM);
   const [editingTier, setEditingTier] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleInputChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleEditTier = (tier) => {
     setEditingTier(tier);
     setFormData({
-      minAmount: tier.minAmount,
-      maxAmount: tier.maxAmount || "",
-      label: tier.label,
-      order: tier.order
+      label: tier.label ?? "",
+      order: tier.order ?? "",
+      minAmountUSD: tier.minAmountUSD ?? "",
+      maxAmountUSD: tier.maxAmountUSD ?? "",
+      minAmountMW: tier.minAmountMW ?? "",
+      maxAmountMW: tier.maxAmountMW ?? "",
     });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingTier(null);
+    setFormData(EMPTY_FORM);
   };
 
   const handleDeleteTier = async (id) => {
     if (!window.confirm("Are you sure you want to delete this tier?")) return;
-    
     const authToken = localStorage.getItem("authToken");
     try {
-      const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-tier/${id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${authToken}`,
-        },
-      });
+      const response = await fetch(
+        `${CONFIG.API_BASE_URL}/api/commission-tier/${id}`,
+        { method: "DELETE", headers: { Authorization: `Bearer ${authToken}` } }
+      );
       if (response.ok) {
-        const updatedTiers = tiers.filter(tier => tier.id !== id);
-        setTiers(updatedTiers);
+        setTiers((prev) => prev.filter((t) => t.id !== id));
         toast.success("Tier deleted successfully");
         onSuccess();
       }
@@ -58,57 +80,45 @@ const ManageTiersModal = ({ onClose, onSuccess, tiers: initialTiers }) => {
     e.preventDefault();
     setIsLoading(true);
     const authToken = localStorage.getItem("authToken");
-    
+
     const payload = {
-      minAmount: parseFloat(formData.minAmount),
-      maxAmount: formData.maxAmount ? parseFloat(formData.maxAmount) : null,
       label: formData.label,
-      order: parseInt(formData.order)
+      order: parseInt(formData.order),
+      minAmountUSD: parseFloat(formData.minAmountUSD),
+      maxAmountUSD: formData.maxAmountUSD ? parseFloat(formData.maxAmountUSD) : null,
+      minAmountMW: parseFloat(formData.minAmountMW),
+      maxAmountMW: formData.maxAmountMW ? parseFloat(formData.maxAmountMW) : null,
     };
 
     try {
-      let response;
-      if (editingTier) {
-        response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-tier/${editingTier.id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${authToken}`,
-          },
-          body: JSON.stringify(payload),
-        });
-      } else {
-        response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-tier`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${authToken}`,
-          },
-          body: JSON.stringify(payload),
-        });
-      }
+      const url = editingTier
+        ? `${CONFIG.API_BASE_URL}/api/commission-tier/${editingTier.id}`
+        : `${CONFIG.API_BASE_URL}/api/commission-tier`;
+      const method = editingTier ? "PUT" : "POST";
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
 
       if (response.ok) {
         const result = await response.json();
         if (editingTier) {
-          const updatedTiers = tiers.map(tier => 
-            tier.id === editingTier.id ? result : tier
-          );
-          setTiers(updatedTiers);
+          setTiers((prev) => prev.map((t) => (t.id === editingTier.id ? result : t)));
           toast.success("Tier updated successfully");
         } else {
-          setTiers([...tiers, result]);
+          setTiers((prev) => [...prev, result]);
           toast.success("Tier created successfully");
         }
-        
-        setFormData({
-          minAmount: "",
-          maxAmount: "",
-          label: "",
-          order: ""
-        });
+        setFormData(EMPTY_FORM);
         setEditingTier(null);
         onSuccess();
+      } else {
+        const err = await response.json().catch(() => ({}));
+        toast.error(err.message || "Failed to save tier");
       }
     } catch (error) {
       console.error("Failed to save tier:", error);
@@ -118,15 +128,9 @@ const ManageTiersModal = ({ onClose, onSuccess, tiers: initialTiers }) => {
     }
   };
 
-  const handleCancelEdit = () => {
-    setEditingTier(null);
-    setFormData({
-      minAmount: "",
-      maxAmount: "",
-      label: "",
-      order: ""
-    });
-  };
+  const fmtUSD = (v) =>
+    v == null || v === "" ? "∞" : `$${Number(v).toLocaleString()}`;
+  const fmtMW = (v) => (v == null || v === "" ? "∞" : `${v} MW`);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -140,66 +144,133 @@ const ManageTiersModal = ({ onClose, onSuccess, tiers: initialTiers }) => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* ── Form ─────────────────────────────────────────────── */}
             <div>
               <h3 className="text-sm font-medium text-gray-700 mb-4">
                 {editingTier ? "Edit Tier" : "Create New Tier"}
               </h3>
+
               <form onSubmit={handleSubmitTier} className="space-y-4">
+                {/* Label */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Label (e.g., "2 - 3 megawatt", "5.1+ MW")
+                    Label
                   </label>
                   <input
                     type="text"
                     name="label"
                     value={formData.label}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                     required
-                    placeholder="Enter range label"
+                    placeholder='e.g. "Tier 1"'
                   />
                 </div>
+
+                {/* Order */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Order (1, 2, 3...)
+                    Order (1, 2, 3…)
                   </label>
                   <input
                     type="number"
                     name="order"
                     value={formData.order}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                     required
                     min="1"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Min Amount
-                  </label>
-                  <input
-                    type="number"
-                    name="minAmount"
-                    value={formData.minAmount}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    required
-                    step="0.01"
-                  />
+
+                {/* USD range */}
+                <div className="rounded-lg border border-[#03999430] bg-[#03999408] p-4 space-y-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#039994]">
+                      Sales Volume (USD)
+                    </span>
+                    <span className="text-xs text-gray-500">— for referred / partner modes</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Min USD
+                      </label>
+                      <input
+                        type="number"
+                        name="minAmountUSD"
+                        value={formData.minAmountUSD}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                        required
+                        step="0.01"
+                        min="0"
+                        placeholder="e.g. 0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Max USD{" "}
+                        <span className="font-normal text-gray-400">(empty = unbounded)</span>
+                      </label>
+                      <input
+                        type="number"
+                        name="maxAmountUSD"
+                        value={formData.maxAmountUSD}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                        step="0.01"
+                        min="0"
+                        placeholder="e.g. 499999"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Max Amount (optional, leave empty for last range like "5.1+ MW")
-                  </label>
-                  <input
-                    type="number"
-                    name="maxAmount"
-                    value={formData.maxAmount}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    step="0.01"
-                  />
+
+                {/* MW range */}
+                <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-4 space-y-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-bold uppercase tracking-wider text-amber-700">
+                      System Capacity (MW)
+                    </span>
+                    <span className="text-xs text-gray-500">— for direct customer mode</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Min MW
+                      </label>
+                      <input
+                        type="number"
+                        name="minAmountMW"
+                        value={formData.minAmountMW}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                        required
+                        step="0.01"
+                        min="0"
+                        placeholder="e.g. 0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Max MW{" "}
+                        <span className="font-normal text-gray-400">(empty = unbounded)</span>
+                      </label>
+                      <input
+                        type="number"
+                        name="maxAmountMW"
+                        value={formData.maxAmountMW}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                        step="0.01"
+                        min="0"
+                        placeholder="e.g. 5"
+                      />
+                    </div>
+                  </div>
                 </div>
+
                 <div className="flex space-x-3 pt-2">
                   {editingTier && (
                     <button
@@ -215,52 +286,73 @@ const ManageTiersModal = ({ onClose, onSuccess, tiers: initialTiers }) => {
                     disabled={isLoading}
                     className="px-4 py-2 text-sm font-medium text-white bg-[#039994] rounded-md hover:bg-[#028884] disabled:opacity-50"
                   >
-                    {isLoading ? "Saving..." : editingTier ? "Update Tier" : "Create Tier"}
+                    {isLoading
+                      ? "Saving…"
+                      : editingTier
+                      ? "Update Tier"
+                      : "Create Tier"}
                   </button>
                 </div>
               </form>
             </div>
 
+            {/* ── Existing tiers list ───────────────────────────────── */}
             <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-4">Existing Tiers</h3>
+              <h3 className="text-sm font-medium text-gray-700 mb-4">
+                Existing Tiers
+              </h3>
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
+                <table className="min-w-full divide-y divide-gray-200 text-sm">
                   <thead>
-                    <tr>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Order</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Label</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Min Amount</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Max Amount</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Actions</th>
+                    <tr className="text-xs font-medium text-gray-500">
+                      <th className="px-3 py-2 text-left">Order</th>
+                      <th className="px-3 py-2 text-left">Label</th>
+                      <th className="px-3 py-2 text-left">USD Range</th>
+                      <th className="px-3 py-2 text-left">MW Range</th>
+                      <th className="px-3 py-2 text-left">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {tiers.sort((a, b) => a.order - b.order).map((tier) => (
-                      <tr key={tier.id}>
-                        <td className="px-3 py-2 text-sm text-gray-900">{tier.order}</td>
-                        <td className="px-3 py-2 text-sm text-gray-900">{tier.label}</td>
-                        <td className="px-3 py-2 text-sm text-gray-900">
-                          ${tier.minAmount.toLocaleString()}
-                        </td>
-                        <td className="px-3 py-2 text-sm text-gray-900">
-                          {tier.maxAmount ? `$${tier.maxAmount.toLocaleString()}` : "∞"}
-                        </td>
-                        <td className="px-3 py-2 text-sm">
-                          <button
-                            onClick={() => handleEditTier(tier)}
-                            className="text-[#039994] hover:text-[#028884] mr-3"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteTier(tier.id)}
-                            className="text-red-600 hover:text-red-800"
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {[...tiers]
+                      .sort((a, b) => a.order - b.order)
+                      .map((tier) => (
+                        <tr key={tier.id}>
+                          <td className="px-3 py-2 text-gray-900">{tier.order}</td>
+                          <td className="px-3 py-2 text-gray-900">{tier.label}</td>
+                          <td className="px-3 py-2">
+                            <span className="text-[#039994] font-medium">
+                              {fmtUSD(tier.minAmountUSD)}
+                            </span>
+                            <span className="text-gray-400 mx-1">–</span>
+                            <span className="text-[#039994] font-medium">
+                              {fmtUSD(tier.maxAmountUSD)}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2">
+                            <span className="text-amber-700 font-medium">
+                              {fmtMW(tier.minAmountMW)}
+                            </span>
+                            <span className="text-gray-400 mx-1">–</span>
+                            <span className="text-amber-700 font-medium">
+                              {fmtMW(tier.maxAmountMW)}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            <button
+                              onClick={() => handleEditTier(tier)}
+                              className="text-[#039994] hover:text-[#028884] mr-3"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteTier(tier.id)}
+                              className="text-red-600 hover:text-red-800"
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </div>
