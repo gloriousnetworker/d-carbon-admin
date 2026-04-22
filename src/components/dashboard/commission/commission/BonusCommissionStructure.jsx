@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { IoSettingsSharp } from "react-icons/io5";
-import { FiEdit, FiSave, FiX } from "react-icons/fi";
+import { FiEdit, FiSave, FiX, FiTrash2 } from "react-icons/fi";
 import { toast } from "react-hot-toast";
 import CONFIG from "@/lib/config";
 
@@ -115,6 +115,23 @@ const BonusCommissionStructure = ({ onSetupStructure, refreshTrigger }) => {
   };
 
   const setField = (key, val) => setEditForm((p) => ({ ...p, [key]: val }));
+
+  const handleDelete = async (id, label) => {
+    if (!confirm(`Delete this ${label} row? This is permanent — prefer toggling Inactive instead.`)) return;
+    try {
+      const authToken = localStorage.getItem("authToken");
+      const res = await fetch(`${CONFIG.API_BASE_URL}/api/bonus-structure/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      const result = await res.json();
+      if (!result.success) throw new Error(result.message || "Delete failed");
+      toast.success("Deleted successfully", { position: "top-center", duration: 3000 });
+      fetchBonusStructure();
+    } catch (err) {
+      toast.error(`Delete failed: ${err.message}`, { position: "top-center", duration: 5000 });
+    }
+  };
 
   const handleUpdate = async (id, bonusType) => {
     const meta = BONUS_META[bonusType] || {};
@@ -243,9 +260,18 @@ const BonusCommissionStructure = ({ onSetupStructure, refreshTrigger }) => {
           </span>
         </td>
         <td className="py-3 px-4 text-sm border-b">
-          <button onClick={() => handleEdit(item)} className="text-blue-600 hover:text-blue-800" title="Edit">
-            <FiEdit size={15} />
-          </button>
+          <div className="flex gap-3">
+            <button onClick={() => handleEdit(item)} className="text-blue-600 hover:text-blue-800" title="Edit">
+              <FiEdit size={15} />
+            </button>
+            <button
+              onClick={() => handleDelete(item.id, meta.label || item.bonusType)}
+              className="text-red-600 hover:text-red-800"
+              title="Delete (permanent — prefer Inactive toggle)"
+            >
+              <FiTrash2 size={15} />
+            </button>
+          </div>
         </td>
       </tr>
     );
