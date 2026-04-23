@@ -48,6 +48,7 @@ const ManageCommissionModesModal = ({ onClose, onSuccess }) => {
   const [editing, setEditing] = useState(null);
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(false);
+  const [seeding, setSeeding] = useState(false);
 
   useEffect(() => {
     fetchModes();
@@ -87,6 +88,35 @@ const ManageCommissionModesModal = ({ onClose, onSuccess }) => {
   const handleCancelEdit = () => {
     setEditing(null);
     setFormData(EMPTY_FORM);
+  };
+
+  const handleSeedDefaults = async () => {
+    if (
+      !window.confirm(
+        "Seed a CommissionModes row (tierUnit = Sales Volume USD) for every mode × property type pair that doesn't already have one? Safe to run repeatedly — existing rows are untouched."
+      )
+    )
+      return;
+    setSeeding(true);
+    try {
+      const res = await fetch(
+        `${CONFIG.API_BASE_URL}/api/commission-mode/seed-defaults`,
+        { method: "POST", headers: authHeaders() }
+      );
+      const result = await res.json().catch(() => ({}));
+      if (res.ok && result.success) {
+        toast.success(result.message || "Defaults seeded");
+        await fetchModes();
+        onSuccess?.();
+      } else {
+        toast.error(result.message || "Seed failed");
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error("Seed failed");
+    } finally {
+      setSeeding(false);
+    }
   };
 
   const handleDelete = async (id) => {
@@ -300,9 +330,19 @@ const ManageCommissionModesModal = ({ onClose, onSuccess }) => {
 
             {/* ── Existing records list ──────────────────────────── */}
             <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-4">
-                Existing Configurations
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-medium text-gray-700">
+                  Existing Configurations
+                </h3>
+                <button
+                  onClick={handleSeedDefaults}
+                  disabled={seeding}
+                  title="Create a CommissionModes row for every mode × property type pair that's missing one. Prevents the commission job from silently skipping facilities."
+                  className="px-3 py-1.5 text-xs font-medium text-[#039994] bg-[#03999410] border border-[#03999440] rounded-md hover:bg-[#03999420] disabled:opacity-50 whitespace-nowrap"
+                >
+                  {seeding ? "Seeding…" : "Seed Defaults"}
+                </button>
+              </div>
 
               {fetchLoading ? (
                 <div className="text-sm text-gray-500">Loading…</div>
