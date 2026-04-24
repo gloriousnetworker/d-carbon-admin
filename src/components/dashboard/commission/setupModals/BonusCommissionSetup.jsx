@@ -5,453 +5,151 @@ import { IoMdClose } from "react-icons/io";
 import { toast } from "react-hot-toast";
 import CONFIG from "@/lib/config";
 
+const BONUS_META = {
+  PARTNER_RESIDENTIAL_MW_QUARTER: {
+    unit: "PERCENT", period: "QUARTERLY",
+    label: "Partner Residential Quarterly (1a)",
+    description: "Non-EPC residential MW in quarter > threshold → +% on partner commission",
+    showMin: true, showMax: false, showPercent: true, showFlat: false,
+  },
+  PARTNER_COMMERCIAL_MW_QUARTER: {
+    unit: "PERCENT", period: "QUARTERLY",
+    label: "Partner Commercial Quarterly (1b)",
+    description: "Non-EPC commercial MW in quarter > threshold → +% on partner commission",
+    showMin: true, showMax: false, showPercent: true, showFlat: false,
+  },
+  PARTNER_UNIVERSAL_MW_ANNUAL: {
+    unit: "PERCENT", period: "ANNUAL",
+    label: "Partner Universal Annual (1c)",
+    description: "Combined residential + commercial MW in year > threshold → +% on annual commission",
+    showMin: true, showMax: false, showPercent: true, showFlat: false,
+  },
+  EPC_ASSISTED_RESIDENTIAL_MW_QUARTER: {
+    unit: "PERCENT", period: "QUARTERLY",
+    label: "EPC Residential Quarterly (1d)",
+    description: "EPC residential MW in quarter > threshold → % split 50/50 between finance & installer",
+    showMin: true, showMax: false, showPercent: true, showFlat: false, showSplitConfig: true,
+  },
+  EPC_ASSISTED_COMMERCIAL_MW_QUARTER: {
+    unit: "PERCENT", period: "QUARTERLY",
+    label: "EPC Commercial Quarterly (1e)",
+    description: "EPC commercial MW in quarter > threshold → % split 50/50 between finance & installer",
+    showMin: true, showMax: false, showPercent: true, showFlat: false, showSplitConfig: true,
+  },
+  EPC_ASSISTED_FINANCE_ANNUAL: {
+    unit: "PERCENT", period: "ANNUAL",
+    label: "EPC Finance Annual (1f)",
+    description: "EPC finance partner MW in year > threshold → +% on annual finance commission (installer excluded)",
+    showMin: true, showMax: false, showPercent: true, showFlat: false,
+  },
+  SALES_AGENT_ACCOUNT_LEVEL: {
+    unit: "USD_PER_MW", period: "CUMULATIVE",
+    label: "Sales Agent Direct (2a)",
+    description: "Each WREGIS-approved MW referred directly by agent → flat $/MW (default $1000). Pays once per facility.",
+    showMin: false, showMax: false, showPercent: false, showFlat: true, flatLabel: "$/MW",
+  },
+  SALES_AGENT_REFERRED: {
+    unit: "USD_PER_MW", period: "CUMULATIVE",
+    label: "Sales Agent Via Partner (2b)",
+    description: "Each WREGIS-approved MW from a partner the agent referred → flat $/MW (confirmed $500). Pays once per facility.",
+    showMin: false, showMax: false, showPercent: false, showFlat: true, flatLabel: "$/MW",
+  },
+  RESIDENTIAL_REFERRAL_QUARTERLY: {
+    unit: "POINTS", period: "CUMULATIVE",
+    label: "Residential Referral Tiers (3a)",
+    description: "Referrer earns points when their referral reaches WREGIS approval. Points are tiered by cumulative ordinal (1st referral, 2nd, 3rd–5th, 6th+). Add one row per tier band.",
+    showMin: true, showMax: true, showPercent: false, showFlat: true, flatLabel: "Points",
+  },
+};
+
+const ALL_TYPES = Object.keys(BONUS_META);
+const EMPTY_ENTRY = { minValue: "", maxValue: "", percent: "", flatValue: "", financeShare: "0.5", installerShare: "0.5" };
+
 const BonusCommissionSetup = ({ onClose, onSuccess }) => {
-  const [target, setTarget] = useState("SALES_AGENT_ACCOUNT_LEVEL"); // Updated default
+  const [target, setTarget] = useState("SALES_AGENT_ACCOUNT_LEVEL");
   const [bonusEntries, setBonusEntries] = useState([]);
-  const [newEntry, setNewEntry] = useState({
-    minValue: "",
-    maxValue: "",
-    percent: 0,
-    flatValue: ""
-  });
-  const [notes, setNotes] = useState("");
+  const [newEntry, setNewEntry] = useState({ ...EMPTY_ENTRY });
   const [updating, setUpdating] = useState(false);
 
-  const getFieldsForTarget = (targetType) => {
-    switch (targetType) {
-      // case "COMMERCIAL_MW_QUARTERLY": // Commented out as requested
-      //   return { showMin: true, showMax: true, showPercent: true, showFlat: false, unit: "MW" };
-      case "RESIDENTIAL_REFERRAL_QUARTERLY":
-        return { showMin: true, showMax: true, showPercent: true, showFlat: false, unit: "Referrals" };
-      case "SALES_AGENT_ACCOUNT_LEVEL": // Updated from SALES_AGENT_DIRECT
-        return { showMin: true, showMax: true, showPercent: false, showFlat: true, unit: "Units" };
-      case "SALES_AGENT_REFERRED": // Updated from SALES_AGENT_INDIRECT
-        return { showMin: true, showMax: true, showPercent: false, showFlat: true, unit: "Units" };
-      case "PARTNER_RESIDENTIAL_MW_ANNUAL":
-        return { showMin: true, showMax: false, showPercent: true, showFlat: false, unit: "MW" };
-      case "PARTNER_COMMERCIAL_MW_ANNUAL":
-        return { showMin: true, showMax: false, showPercent: true, showFlat: false, unit: "MW" };
-      case "PARTNER_RESIDENTIAL_MW_QUARTER":
-        return { showMin: true, showMax: true, showPercent: true, showFlat: false, unit: "MW" };
-      case "PARTNER_COMMERCIAL_MW_QUARTER":
-        return { showMin: true, showMax: true, showPercent: true, showFlat: false, unit: "MW" };
-      default:
-        return { showMin: true, showMax: true, showPercent: true, showFlat: false, unit: "" };
-    }
-  };
+  const meta = BONUS_META[target] || {};
+  const setField = (key, val) => setNewEntry((p) => ({ ...p, [key]: val }));
 
-  const handleTargetChange = (selectedTarget) => {
-    setTarget(selectedTarget);
-    setNewEntry({
-      minValue: "",
-      maxValue: "",
-      percent: 0,
-      flatValue: ""
-    });
-  };
-
-  const handleNewEntryChange = (field, value) => {
-    setNewEntry(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const validateNewEntry = () => {
-    const fields = getFieldsForTarget(target);
-    let errors = [];
-
-    if (fields.showMin && (!newEntry.minValue || newEntry.minValue === "")) {
-      errors.push("Minimum value is required");
-    }
-
-    if (fields.showMax && fields.showMax !== false && (!newEntry.maxValue || newEntry.maxValue === "")) {
-      errors.push("Maximum value is required");
-    }
-
-    if (fields.showPercent && (!newEntry.percent || newEntry.percent === "")) {
-      errors.push("Percent value is required");
-    }
-
-    if (fields.showFlat && (!newEntry.flatValue || newEntry.flatValue === "")) {
-      errors.push("Flat value is required");
-    }
-
-    if (fields.showMin && fields.showMax && fields.showMax !== false) {
-      const min = parseFloat(newEntry.minValue);
-      const max = parseFloat(newEntry.maxValue);
-      if (min >= max) {
-        errors.push("Minimum value must be less than maximum value");
-      }
-    }
-
-    if (fields.showPercent && target === "RESIDENTIAL_REFERRAL_QUARTERLY") {
-      // Bonus Points cannot be floating number for residential referral
-      if (!Number.isInteger(parseFloat(newEntry.percent))) {
-        errors.push("Bonus Points must be a whole number");
-      }
-      if (newEntry.percent < 0) {
-        errors.push("Bonus Points cannot be negative");
-      }
-    } else if (fields.showPercent && (newEntry.percent < 0 || newEntry.percent > 100)) {
-      errors.push("Percent must be between 0 and 100");
-    }
-
-    if (fields.showFlat && newEntry.flatValue < 0) {
-      errors.push("Flat value cannot be negative");
-    }
-
-    if (errors.length > 0) {
-      errors.forEach(error => {
-        toast.error(error, { position: 'top-center', duration: 3000 });
-      });
-      return false;
-    }
-
-    return true;
+  const handleTargetChange = (t) => {
+    setTarget(t);
+    setNewEntry({ ...EMPTY_ENTRY });
   };
 
   const handleAddEntry = () => {
-    if (!validateNewEntry()) {
-      return;
+    if (meta.showMin && newEntry.minValue === "") {
+      toast.error("Min value is required", { position: "top-center" }); return;
     }
+    if (meta.showMax && newEntry.maxValue === "") {
+      toast.error("Max value is required", { position: "top-center" }); return;
+    }
+    if (meta.showPercent && newEntry.percent === "") {
+      toast.error("Bonus % is required", { position: "top-center" }); return;
+    }
+    if (meta.showFlat && newEntry.flatValue === "") {
+      toast.error(`${meta.flatLabel || "Flat value"} is required`, { position: "top-center" }); return;
+    }
+
+    const existing3aCount = bonusEntries.filter((e) => e.bonusType === "RESIDENTIAL_REFERRAL_QUARTERLY").length;
 
     const entry = {
       bonusType: target,
-      minValue: newEntry.minValue ? parseFloat(newEntry.minValue) : null,
-      maxValue: newEntry.maxValue ? parseFloat(newEntry.maxValue) : null,
-      percent: newEntry.percent ? (target === "RESIDENTIAL_REFERRAL_QUARTERLY" ? parseInt(newEntry.percent) : parseFloat(newEntry.percent)) : null,
-      flatValue: newEntry.flatValue ? parseFloat(newEntry.flatValue) : null
+      unit: meta.unit,
+      period: meta.period,
+      isActive: true,
+      order: target === "RESIDENTIAL_REFERRAL_QUARTERLY" ? existing3aCount : 0,
+      label: meta.label,
+      minValue: meta.showMin ? parseFloat(newEntry.minValue) : 0,
+      maxValue: meta.showMax && newEntry.maxValue !== "" ? parseFloat(newEntry.maxValue) : null,
+      percent: meta.showPercent && newEntry.percent !== "" ? parseFloat(newEntry.percent) : null,
+      flatValue: meta.showFlat && newEntry.flatValue !== "" ? parseFloat(newEntry.flatValue) : null,
+      splitConfig: meta.showSplitConfig
+        ? { financeShare: parseFloat(newEntry.financeShare) || 0.5, installerShare: parseFloat(newEntry.installerShare) || 0.5 }
+        : null,
     };
-    
-    setBonusEntries(prev => [...prev, entry]);
-    setNewEntry({
-      minValue: "",
-      maxValue: "",
-      percent: 0,
-      flatValue: ""
-    });
+
+    setBonusEntries((prev) => [...prev, entry]);
+    setNewEntry({ ...EMPTY_ENTRY });
+    toast.success("Entry staged", { position: "top-center", duration: 1500 });
   };
 
-  const handleRemoveEntry = (index) => {
-    setBonusEntries(prev => prev.filter((_, i) => i !== index));
+  const handleRemoveEntry = (idx) => {
+    setBonusEntries((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const handleUpdate = async () => {
+  const handleSubmit = async () => {
     if (bonusEntries.length === 0) {
-      toast.error("Please add at least one bonus entry", { position: 'top-center', duration: 3000 });
-      return;
+      toast.error("Add at least one entry first", { position: "top-center" }); return;
     }
-
     setUpdating(true);
-    
     try {
       const authToken = localStorage.getItem("authToken");
-      if (!authToken) {
-        throw new Error("Authentication token not found");
-      }
-
-      const requests = bonusEntries.map(entry => 
-        fetch(`${CONFIG.API_BASE_URL}/api/bonus-structure`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${authToken}`
-          },
-          body: JSON.stringify(entry)
-        })
-      );
-
-      const responses = await Promise.all(requests);
-      const results = await Promise.all(responses.map(res => res.json()));
-
-      const hasError = results.some(result => !result.success);
-      if (hasError) {
-        throw new Error("Some entries failed to update");
-      }
-
-      toast.success("Bonus commission structure updated successfully", {
-        position: 'top-center',
-        duration: 3000,
+      const res = await fetch(`${CONFIG.API_BASE_URL}/api/bonus-structure/bulk-upsert`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify({ rows: bonusEntries }),
       });
-      
-      if (onSuccess) {
-        onSuccess();
-      }
-      
+      const result = await res.json();
+      if (!result.success) throw new Error("Bulk save failed");
+      toast.success("Bonus structure saved", { position: "top-center", duration: 3000 });
+      if (onSuccess) onSuccess();
       onClose();
     } catch (err) {
-      toast.error(`Update failed: ${err.message}`, {
-        position: 'top-center',
-        duration: 5000,
-      });
+      toast.error(`Save failed: ${err.message}`, { position: "top-center", duration: 5000 });
     } finally {
       setUpdating(false);
     }
   };
 
-  const renderTargetSelector = () => (
-    <div className="mb-6">
-      <label className="block text-sm font-medium text-gray-700 mb-3">Select Bonus Type</label>
-      <div className="grid grid-cols-2 gap-3">
-        {/* <button // Commented out as requested
-          className={`px-4 py-3 rounded-md text-sm font-medium transition-colors ${
-            target === "COMMERCIAL_MW_QUARTERLY"
-              ? "bg-[#039994] text-white"
-              : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-          }`}
-          onClick={() => handleTargetChange("COMMERCIAL_MW_QUARTERLY")}
-        >
-          Commercial MW Quarterly
-        </button> */}
-        <button
-          className={`px-4 py-3 rounded-md text-sm font-medium transition-colors ${
-            target === "RESIDENTIAL_REFERRAL_QUARTERLY"
-              ? "bg-[#039994] text-white"
-              : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-          }`}
-          onClick={() => handleTargetChange("RESIDENTIAL_REFERRAL_QUARTERLY")}
-        >
-          Residential Referral Quarterly
-        </button>
-        <button
-          className={`px-4 py-3 rounded-md text-sm font-medium transition-colors ${
-            target === "SALES_AGENT_ACCOUNT_LEVEL"
-              ? "bg-[#039994] text-white"
-              : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-          }`}
-          onClick={() => handleTargetChange("SALES_AGENT_ACCOUNT_LEVEL")}
-        >
-          Sales Agent Account Level
-        </button>
-        <button
-          className={`px-4 py-3 rounded-md text-sm font-medium transition-colors ${
-            target === "SALES_AGENT_REFERRED"
-              ? "bg-[#039994] text-white"
-              : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-          }`}
-          onClick={() => handleTargetChange("SALES_AGENT_REFERRED")}
-        >
-          Sales Agent Referred
-        </button>
-        <button
-          className={`px-4 py-3 rounded-md text-sm font-medium transition-colors ${
-            target === "PARTNER_RESIDENTIAL_MW_ANNUAL"
-              ? "bg-[#039994] text-white"
-              : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-          }`}
-          onClick={() => handleTargetChange("PARTNER_RESIDENTIAL_MW_ANNUAL")}
-        >
-          Partner Residential MW Annual
-        </button>
-        <button
-          className={`px-4 py-3 rounded-md text-sm font-medium transition-colors ${
-            target === "PARTNER_COMMERCIAL_MW_ANNUAL"
-              ? "bg-[#039994] text-white"
-              : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-          }`}
-          onClick={() => handleTargetChange("PARTNER_COMMERCIAL_MW_ANNUAL")}
-        >
-          Partner Commercial MW Annual
-        </button>
-        <button
-          className={`px-4 py-3 rounded-md text-sm font-medium transition-colors ${
-            target === "PARTNER_RESIDENTIAL_MW_QUARTER"
-              ? "bg-[#039994] text-white"
-              : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-          }`}
-          onClick={() => handleTargetChange("PARTNER_RESIDENTIAL_MW_QUARTER")}
-        >
-          Partner Residential MW Quarter
-        </button>
-        <button
-          className={`px-4 py-3 rounded-md text-sm font-medium transition-colors ${
-            target === "PARTNER_COMMERCIAL_MW_QUARTER"
-              ? "bg-[#039994] text-white"
-              : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-          }`}
-          onClick={() => handleTargetChange("PARTNER_COMMERCIAL_MW_QUARTER")}
-        >
-          Partner Commercial MW Quarter
-        </button>
-      </div>
-    </div>
-  );
-
-  const renderAddEntryForm = () => {
-    const fields = getFieldsForTarget(target);
-    const getLabel = (fieldName) => {
-      // if (fieldName === "minValue" && target === "COMMERCIAL_MW_QUARTERLY") return "Min MW Value"; // Commented out
-      // if (fieldName === "maxValue" && target === "COMMERCIAL_MW_QUARTERLY") return "Top MW Value"; // Commented out
-      if (fieldName === "percent" && target === "RESIDENTIAL_REFERRAL_QUARTERLY") return "Bonus Points";
-      if (fieldName === "percent") return "Bonus (%)";
-      if (fieldName === "minValue") return "Min Value";
-      if (fieldName === "maxValue") return "Max Value";
-      if (fieldName === "flatValue") return "Flat Value ($)";
-      return fieldName;
-    };
-
-    return (
-      <div className="mb-6 p-4 border border-gray-200 rounded-lg">
-        <h3 className="font-medium text-[#1E1E1E] text-sm mb-4">Add New Bonus Entry</h3>
-        <div className={`grid gap-4 text-xs items-end ${fields.showFlat ? 'grid-cols-5' : 'grid-cols-4'}`}>
-          {fields.showMin && (
-            <div className="flex flex-col">
-              <label className="mb-1 text-gray-600 text-xs">{getLabel("minValue")}</label>
-              <input
-                type="number"
-                value={newEntry.minValue}
-                onChange={(e) => handleNewEntryChange("minValue", e.target.value)}
-                className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
-                placeholder="Min"
-                step="0.1"
-              />
-            </div>
-          )}
-          
-          {fields.showMax && fields.showMax !== false && (
-            <div className="flex flex-col">
-              <label className="mb-1 text-gray-600 text-xs">{getLabel("maxValue")}</label>
-              <input
-                type="number"
-                value={newEntry.maxValue}
-                onChange={(e) => handleNewEntryChange("maxValue", e.target.value)}
-                className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
-                placeholder="Max"
-                step="0.1"
-              />
-            </div>
-          )}
-          
-          {fields.showPercent && (
-            <div className="flex flex-col">
-              <label className="mb-1 text-gray-600 text-xs">{getLabel("percent")}</label>
-              <input
-                type="number"
-                step={target === "RESIDENTIAL_REFERRAL_QUARTERLY" ? "1" : "0.1"}
-                value={newEntry.percent}
-                onChange={(e) => handleNewEntryChange("percent", e.target.value)}
-                className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
-                min="0"
-                max={target === "RESIDENTIAL_REFERRAL_QUARTERLY" ? "" : "100"}
-              />
-            </div>
-          )}
-          
-          {fields.showFlat && (
-            <div className="flex flex-col">
-              <label className="mb-1 text-gray-600 text-xs">{getLabel("flatValue")}</label>
-              <input
-                type="number"
-                value={newEntry.flatValue}
-                onChange={(e) => handleNewEntryChange("flatValue", e.target.value)}
-                className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs"
-                min="0"
-                step="0.01"
-              />
-            </div>
-          )}
-          
-          <div className="flex flex-col">
-            <label className="mb-1 text-gray-600 text-xs invisible">Action</label>
-            <button
-              onClick={handleAddEntry}
-              className="bg-[#039994] text-white px-4 py-2 rounded text-xs hover:bg-[#028B86] transition-colors"
-            >
-              Add Entry
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderBonusTable = () => {
-    const fields = getFieldsForTarget(target);
-    const filteredEntries = bonusEntries.filter(entry => entry.bonusType === target);
-    
-    const getHeaderLabel = (fieldName) => {
-      // if (fieldName === "minValue" && target === "COMMERCIAL_MW_QUARTERLY") return "Min MW Value"; // Commented out
-      // if (fieldName === "maxValue" && target === "COMMERCIAL_MW_QUARTERLY") return "Top MW Value"; // Commented out
-      if (fieldName === "percent" && target === "RESIDENTIAL_REFERRAL_QUARTERLY") return "Bonus Points";
-      if (fieldName === "percent") return "Bonus (%)";
-      if (fieldName === "minValue") return "Min Value";
-      if (fieldName === "maxValue") return "Max Value";
-      if (fieldName === "flatValue") return "Flat Value ($)";
-      return fieldName;
-    };
-
-    return (
-      <div className="mb-6">
-        <h3 className="font-medium text-[#1E1E1E] text-sm mb-4">
-          {target.replace(/_/g, " ")} Structure
-        </h3>
-        <div className="w-full overflow-auto rounded-lg border border-gray-200">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="text-left py-3 px-4 font-medium text-sm text-black border-b border-gray-200">
-                  {getHeaderLabel("minValue")}
-                </th>
-                {fields.showMax && fields.showMax !== false && (
-                  <th className="text-left py-3 px-4 font-medium text-sm text-black border-b border-gray-200">
-                    {getHeaderLabel("maxValue")}
-                  </th>
-                )}
-                {fields.showPercent && (
-                  <th className="text-left py-3 px-4 font-medium text-sm text-black border-b border-gray-200">
-                    {getHeaderLabel("percent")}
-                  </th>
-                )}
-                {fields.showFlat && (
-                  <th className="text-left py-3 px-4 font-medium text-sm text-black border-b border-gray-200">
-                    {getHeaderLabel("flatValue")}
-                  </th>
-                )}
-                <th className="text-left py-3 px-4 font-medium text-sm text-black border-b border-gray-200">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredEntries.map((entry, index) => (
-                <tr key={index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                  <td className="py-3 px-4 text-sm border-b border-gray-200">
-                    {entry.minValue}
-                  </td>
-                  {fields.showMax && fields.showMax !== false && (
-                    <td className="py-3 px-4 text-sm border-b border-gray-200">
-                      {entry.maxValue || "N/A"}
-                    </td>
-                  )}
-                  {fields.showPercent && (
-                    <td className="py-3 px-4 text-sm border-b border-gray-200">
-                      {entry.percent || "N/A"}
-                    </td>
-                  )}
-                  {fields.showFlat && (
-                    <td className="py-3 px-4 text-sm border-b border-gray-200">
-                      {entry.flatValue || "N/A"}
-                    </td>
-                  )}
-                  <td className="py-3 px-4 text-sm border-b border-gray-200">
-                    <button
-                      onClick={() => handleRemoveEntry(bonusEntries.findIndex(e => e === entry))}
-                      className="text-red-500 text-xs hover:text-red-700"
-                    >
-                      Remove
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-  };
+  const filteredEntries = bonusEntries.filter((e) => e.bonusType === target);
+  const stagedTypes = new Set(bonusEntries.map((e) => e.bonusType)).size;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-6xl p-6 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg w-full max-w-5xl p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center">
             <IoSettingsSharp className="text-[#039994] mr-2" size={18} />
@@ -462,37 +160,202 @@ const BonusCommissionSetup = ({ onClose, onSuccess }) => {
           </button>
         </div>
 
-        {renderTargetSelector()}
-        {renderAddEntryForm()}
-        {renderBonusTable()}
-
+        {/* Bonus type selector */}
         <div className="mb-6">
-          <h3 className="font-medium text-[#1E1E1E] text-sm mb-3">Notes</h3>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            className="w-full rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3 text-xs h-20"
-            placeholder="Additional notes..."
-          />
+          <label className="block text-sm font-medium text-gray-700 mb-3">Select Bonus Type</label>
+          <div className="grid grid-cols-3 gap-2">
+            {ALL_TYPES.map((t) => (
+              <button
+                key={t}
+                className={`px-3 py-2 rounded-md text-xs font-medium transition-colors text-left leading-tight ${
+                  target === t ? "bg-[#039994] text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+                onClick={() => handleTargetChange(t)}
+              >
+                {BONUS_META[t].label}
+                {bonusEntries.filter((e) => e.bonusType === t).length > 0 && (
+                  <span className={`ml-1 text-[10px] font-bold ${target === t ? "text-white/80" : "text-[#039994]"}`}>
+                    ({bonusEntries.filter((e) => e.bonusType === t).length})
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+          {meta.description && (
+            <p className="text-xs text-gray-500 mt-2 italic">{meta.description}</p>
+          )}
         </div>
 
+        {/* Add entry form */}
+        <div className="mb-6 p-4 border border-gray-200 rounded-lg">
+          <h3 className="font-medium text-sm mb-4">Add Entry — {meta.label}</h3>
+          <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 text-xs items-end">
+            {meta.showMin && (
+              <div className="flex flex-col">
+                <label className="mb-1 text-gray-600">
+                  {target === "RESIDENTIAL_REFERRAL_QUARTERLY" ? "Min ordinal (#)" : "Min MW threshold"}
+                </label>
+                <input
+                  type="number"
+                  value={newEntry.minValue}
+                  onChange={(e) => setField("minValue", e.target.value)}
+                  className="rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3"
+                  placeholder={target === "RESIDENTIAL_REFERRAL_QUARTERLY" ? "e.g. 1" : "e.g. 1"}
+                  step={target === "RESIDENTIAL_REFERRAL_QUARTERLY" ? "1" : "0.1"}
+                />
+              </div>
+            )}
+            {meta.showMax && (
+              <div className="flex flex-col">
+                <label className="mb-1 text-gray-600">Max ordinal (#)</label>
+                <input
+                  type="number"
+                  value={newEntry.maxValue}
+                  onChange={(e) => setField("maxValue", e.target.value)}
+                  className="rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3"
+                  placeholder="null = no cap"
+                  step="1"
+                />
+              </div>
+            )}
+            {meta.showPercent && (
+              <div className="flex flex-col">
+                <label className="mb-1 text-gray-600">Bonus %</label>
+                <input
+                  type="number"
+                  value={newEntry.percent}
+                  onChange={(e) => setField("percent", e.target.value)}
+                  className="rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3"
+                  placeholder="e.g. 10"
+                  step="0.1" min="0" max="100"
+                />
+              </div>
+            )}
+            {meta.showFlat && (
+              <div className="flex flex-col">
+                <label className="mb-1 text-gray-600">{meta.flatLabel || "Amount"}</label>
+                <input
+                  type="number"
+                  value={newEntry.flatValue}
+                  onChange={(e) => setField("flatValue", e.target.value)}
+                  className="rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3"
+                  placeholder={meta.flatLabel === "$/MW" ? "e.g. 500" : "e.g. 5"}
+                  step={meta.flatLabel === "Points" ? "1" : "0.01"} min="0"
+                />
+              </div>
+            )}
+            {meta.showSplitConfig && (
+              <>
+                <div className="flex flex-col">
+                  <label className="mb-1 text-gray-600">Finance share (0–1)</label>
+                  <input
+                    type="number"
+                    value={newEntry.financeShare}
+                    onChange={(e) => setField("financeShare", e.target.value)}
+                    className="rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3"
+                    step="0.01" min="0" max="1"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="mb-1 text-gray-600">Installer share (0–1)</label>
+                  <input
+                    type="number"
+                    value={newEntry.installerShare}
+                    onChange={(e) => setField("installerShare", e.target.value)}
+                    className="rounded bg-[#F1F1F1] border border-gray-300 py-2 px-3"
+                    step="0.01" min="0" max="1"
+                  />
+                </div>
+              </>
+            )}
+            <div className="flex flex-col">
+              <label className="mb-1 text-gray-600 invisible">Action</label>
+              <button
+                onClick={handleAddEntry}
+                className="bg-[#039994] text-white px-4 py-2 rounded text-xs hover:bg-[#028B86] transition-colors"
+              >
+                + Add Entry
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Staged entries for current target */}
+        {filteredEntries.length > 0 && (
+          <div className="mb-6">
+            <h3 className="font-medium text-sm mb-3">Staged: {meta.label}</h3>
+            <div className="overflow-auto rounded-lg border border-gray-200">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-gray-100">
+                    {target === "RESIDENTIAL_REFERRAL_QUARTERLY" && (
+                      <th className="text-left py-2 px-4 border-b font-medium">#</th>
+                    )}
+                    {meta.showMin && <th className="text-left py-2 px-4 border-b font-medium">Min</th>}
+                    {meta.showMax && <th className="text-left py-2 px-4 border-b font-medium">Max</th>}
+                    {meta.showPercent && <th className="text-left py-2 px-4 border-b font-medium">Bonus %</th>}
+                    {meta.showFlat && <th className="text-left py-2 px-4 border-b font-medium">{meta.flatLabel}</th>}
+                    {meta.showSplitConfig && (
+                      <th className="text-left py-2 px-4 border-b font-medium">Finance / Installer</th>
+                    )}
+                    <th className="text-left py-2 px-4 border-b font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredEntries.map((entry, idx) => {
+                    const globalIdx = bonusEntries.indexOf(entry);
+                    return (
+                      <tr key={idx} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                        {target === "RESIDENTIAL_REFERRAL_QUARTERLY" && (
+                          <td className="py-2 px-4 border-b text-gray-500">{idx + 1}</td>
+                        )}
+                        {meta.showMin && <td className="py-2 px-4 border-b">{entry.minValue}</td>}
+                        {meta.showMax && <td className="py-2 px-4 border-b">{entry.maxValue ?? "no cap"}</td>}
+                        {meta.showPercent && <td className="py-2 px-4 border-b">{entry.percent}%</td>}
+                        {meta.showFlat && <td className="py-2 px-4 border-b">{entry.flatValue}</td>}
+                        {meta.showSplitConfig && (
+                          <td className="py-2 px-4 border-b">
+                            {entry.splitConfig?.financeShare} / {entry.splitConfig?.installerShare}
+                          </td>
+                        )}
+                        <td className="py-2 px-4 border-b">
+                          <button
+                            onClick={() => handleRemoveEntry(globalIdx)}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Summary banner */}
+        {bonusEntries.length > 0 && (
+          <div className="mb-4 p-3 bg-[#039994]/5 rounded-lg border border-[#039994]/20">
+            <p className="text-xs text-[#039994] font-medium">
+              {bonusEntries.length} total {bonusEntries.length === 1 ? "entry" : "entries"} staged across {stagedTypes} bonus type{stagedTypes !== 1 ? "s" : ""}
+            </p>
+          </div>
+        )}
+
         <div className="flex justify-end gap-3 mt-6">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 text-sm"
-          >
+          <button onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 text-sm">
             Cancel
           </button>
           <button
-            onClick={handleUpdate}
+            onClick={handleSubmit}
             disabled={updating || bonusEntries.length === 0}
             className={`px-4 py-2 rounded-md text-sm ${
-              updating || bonusEntries.length === 0
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-[#039994] hover:bg-[#028B86]'
+              updating || bonusEntries.length === 0 ? "bg-gray-400 cursor-not-allowed" : "bg-[#039994] hover:bg-[#028B86]"
             } text-white transition-colors`}
           >
-            {updating ? 'Updating...' : 'Update Structure'}
+            {updating ? "Saving..." : `Save ${bonusEntries.length} ${bonusEntries.length === 1 ? "Entry" : "Entries"}`}
           </button>
         </div>
       </div>
