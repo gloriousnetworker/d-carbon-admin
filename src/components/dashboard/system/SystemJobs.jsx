@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import CONFIG from "@/lib/config"
 import toast from "react-hot-toast"
+import CalculationTriggers from "@/components/dashboard/commission/CalculationTriggers"
 
 export default function SystemJobs() {
   const [jobLogs, setJobLogs] = useState([])
@@ -177,6 +178,21 @@ export default function SystemJobs() {
           Refresh
         </Button>
       </div>
+
+      {/* Commission & Bonus Triggers — wired to /api/commission-cron and
+          /api/bonus runner endpoints. Includes the Bonus Health Check
+          diagnostic for finding what's blocking bonus row creation. */}
+      <Card className="border border-gray-200 rounded-xl">
+        <CardContent className="p-4">
+          <h3 className="font-sfpro text-sm font-semibold text-[#1E1E1E] mb-1">
+            Commission &amp; Bonus Triggers
+          </h3>
+          <p className="font-sfpro text-xs text-[#626060] mb-3">
+            Manual triggers for commission and bonus calculations. Click <strong>Bonus Health Check</strong> first if bonuses aren&apos;t firing — it tells you exactly what&apos;s blocking them.
+          </p>
+          <CalculationTriggers />
+        </CardContent>
+      </Card>
 
       {/* Job Trigger Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
