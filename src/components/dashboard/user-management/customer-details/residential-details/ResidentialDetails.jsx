@@ -1019,7 +1019,7 @@ export default function ResidentialDetails({ customer, onBack }) {
             {recHistoryFacility?.id === facility.id && (
               <FacilityRECHistory
                 facilityId={facility.id}
-                facilityType="residential"
+                facilityType="RESIDENTIAL"
                 facilityName={facility.facilityName}
               />
             )}

@@ -951,7 +951,7 @@ export default function CommercialDetails({ customer, onBack }) {
             {recHistoryFacility?.id === facility.id && (
               <FacilityRECHistory
                 facilityId={facility.id}
-                facilityType="commercial"
+                facilityType="COMMERCIAL"
                 facilityName={facility.facilityName}
               />
             )}
