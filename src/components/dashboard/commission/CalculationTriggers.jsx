@@ -385,6 +385,41 @@ const CalculationTriggers = () => {
                       </span>
                     )}
                   </div>
+
+                  {/* Pending records list — shows admin where to go to approve */}
+                  {healthData.wregisRecords?.pendingRecsByFacility?.length > 0 && (
+                    <div className="mt-3 bg-amber-50 border border-amber-200 rounded-md p-2">
+                      <div className="text-xs font-medium text-amber-900 mb-1">
+                        Pending REC records ({healthData.wregisRecords.pendingRecsByFacility.length}) — approve via User Management → customer → facility → REC History:
+                      </div>
+                      <div className="max-h-40 overflow-y-auto">
+                        <table className="w-full text-[11px]">
+                          <thead className="text-amber-900">
+                            <tr className="border-b border-amber-200">
+                              <th className="text-left py-1 pr-2">Facility</th>
+                              <th className="text-left py-1 pr-2">Type</th>
+                              <th className="text-left py-1 pr-2">Owner</th>
+                              <th className="text-left py-1">Period</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {healthData.wregisRecords.pendingRecsByFacility.map((r) => (
+                              <tr key={r.recId} className="border-b border-amber-100 last:border-0">
+                                <td className="py-1 pr-2 truncate max-w-[140px]" title={r.facilityName ?? ""}>
+                                  {r.facilityName ?? "—"}
+                                </td>
+                                <td className="py-1 pr-2">{r.facilityType}</td>
+                                <td className="py-1 pr-2 truncate max-w-[140px]" title={r.ownerEmail ?? ""}>
+                                  {r.ownerEmail ?? "—"}
+                                </td>
+                                <td className="py-1">{r.year}-{String(r.month).padStart(2, "0")}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Referral chains */}
