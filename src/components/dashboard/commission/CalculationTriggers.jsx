@@ -353,16 +353,44 @@ const CalculationTriggers = () => {
                       </span>
                     )}
                   </div>
-                  <div className="grid grid-cols-2 gap-1 text-xs">
-                    {Object.entries(healthData.bonusStructure?.byType || {}).map(([type, c]) => (
-                      <div key={type} className="flex justify-between border-b border-gray-100 py-0.5">
-                        <span className="text-gray-700 truncate" title={type}>{type}</span>
-                        <span className={c.active > 0 ? "text-green-600" : "text-rose-500"}>
-                          {c.active} active
-                          {c.inactive > 0 && <span className="text-gray-400"> / {c.inactive} off</span>}
-                        </span>
-                      </div>
-                    ))}
+
+                  {/* Configured values per bonusType — read-only audit so admin can
+                      verify threshold + percent/flatValue without leaving modal. */}
+                  <div className="space-y-2">
+                    {Object.entries(healthData.bonusStructure?.byType || {}).map(([type, c]) => {
+                      const rows = healthData.bonusStructure?.valuesByType?.[type] ?? [];
+                      return (
+                        <div key={type} className="border border-gray-100 rounded p-2">
+                          <div className="flex justify-between items-center text-xs mb-1">
+                            <span className="font-medium text-gray-700 truncate" title={type}>{type}</span>
+                            <span className={c.active > 0 ? "text-green-600" : "text-rose-500"}>
+                              {c.active} active
+                              {c.inactive > 0 && <span className="text-gray-400"> / {c.inactive} off</span>}
+                            </span>
+                          </div>
+                          {rows.length > 0 && (
+                            <div className="text-[10px] text-gray-500 grid grid-cols-[auto_1fr_auto_auto_auto] gap-x-2 gap-y-0.5 leading-tight">
+                              <span className="text-gray-400">tier</span>
+                              <span className="text-gray-400">range (min–max)</span>
+                              <span className="text-gray-400">%</span>
+                              <span className="text-gray-400">$/pts</span>
+                              <span className="text-gray-400">on</span>
+                              {rows.map((r, i) => (
+                                <React.Fragment key={r.id}>
+                                  <span>{r.order ?? i + 1}</span>
+                                  <span>{r.minValue ?? "—"}{r.maxValue != null ? `–${r.maxValue}` : "+"}</span>
+                                  <span>{r.percent != null ? `${r.percent}%` : "—"}</span>
+                                  <span>{r.flatValue != null ? r.flatValue : "—"}</span>
+                                  <span className={r.isActive ? "text-green-600" : "text-gray-400"}>
+                                    {r.isActive ? "✓" : "off"}
+                                  </span>
+                                </React.Fragment>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
