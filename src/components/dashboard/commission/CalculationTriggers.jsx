@@ -13,23 +13,28 @@ const CalculationTriggers = () => {
     quarter: Math.floor((new Date().getMonth() + 3) / 3)
   });
   const [showSalesAgentModal, setShowSalesAgentModal] = useState(false);
+  // Audit fix #31 — main commission trigger now opens a modal so the admin can
+  // pick which quarter to run for. Pre-fix it was hardcoded to the current
+  // quarter only, with no way to retro-run a missed period.
+  const [showCommissionModal, setShowCommissionModal] = useState(false);
+  const [commissionParams, setCommissionParams] = useState({
+    year: new Date().getFullYear(),
+    quarter: Math.floor((new Date().getMonth() + 3) / 3)
+  });
 
   const handleCommissionTrigger = async () => {
     try {
       setIsLoading(true);
       const authToken = localStorage.getItem("authToken");
-      
+
       if (!authToken) {
         toast.error("Authentication token not found", { position: 'top-center' });
         return;
       }
 
-      const currentYear = new Date().getFullYear();
-      const currentQuarter = Math.floor((new Date().getMonth() + 3) / 3);
-      
       const payload = {
-        year: currentYear,
-        quarter: currentQuarter
+        year: commissionParams.year,
+        quarter: commissionParams.quarter
       };
 
       const response = await fetch(`${CONFIG.API_BASE_URL}/api/commission-cron/trigger`, {
@@ -44,16 +49,17 @@ const CalculationTriggers = () => {
       const result = await response.json();
 
       if (response.ok) {
-        toast.success("Commission calculation triggered successfully", {
-          position: 'top-center',
-          duration: 4000
-        });
-        
+        toast.success(
+          `Commission calculation triggered for Q${commissionParams.quarter} ${commissionParams.year}`,
+          { position: 'top-center', duration: 4000 }
+        );
+
         toast.success("Sales agent bonus will trigger automatically in 15 minutes", {
           position: 'top-center',
           duration: 6000
         });
-        
+
+        setShowCommissionModal(false);
       } else {
         toast.error(result.message || "Failed to trigger calculation", {
           position: 'top-center'
@@ -149,6 +155,61 @@ const CalculationTriggers = () => {
     }
   };
 
+  const CommissionModal = () => (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-lg p-6 max-w-md w-full">
+        <h3 className="text-lg font-semibold mb-2 text-gray-900">Trigger Commission Calculation</h3>
+        <p className="text-xs text-gray-500 mb-4">
+          Runs the quarterly commission split for every facility with sales in the selected period. Idempotent — re-running the same quarter is safe.
+        </p>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
+            <input
+              type="number"
+              value={commissionParams.year}
+              onChange={(e) => setCommissionParams(prev => ({ ...prev, year: parseInt(e.target.value) }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#039994]"
+              min="2020"
+              max="2030"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Quarter</label>
+            <select
+              value={commissionParams.quarter}
+              onChange={(e) => setCommissionParams(prev => ({ ...prev, quarter: parseInt(e.target.value) }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#039994]"
+            >
+              <option value={1}>Q1 (Jan - Mar)</option>
+              <option value={2}>Q2 (Apr - Jun)</option>
+              <option value={3}>Q3 (Jul - Sep)</option>
+              <option value={4}>Q4 (Oct - Dec)</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex justify-end space-x-3 mt-6">
+          <button
+            onClick={() => setShowCommissionModal(false)}
+            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleCommissionTrigger}
+            disabled={isLoading}
+            className="px-4 py-2 bg-[#039994] text-white rounded-md hover:bg-[#028884] disabled:opacity-50 flex items-center"
+          >
+            {isLoading ? "Triggering..." : `Trigger Q${commissionParams.quarter} ${commissionParams.year}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   const SalesAgentModal = () => (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-lg p-6 max-w-md w-full">
@@ -234,10 +295,10 @@ const CalculationTriggers = () => {
     <>
       <div className="flex space-x-3">
         <button
-          onClick={handleCommissionTrigger}
+          onClick={() => setShowCommissionModal(true)}
           disabled={isLoading}
           className="px-4 py-2 bg-[#039994] text-white rounded-md hover:bg-[#028884] disabled:opacity-50 flex items-center space-x-2"
-          title="Trigger main commission calculation"
+          title="Pick a quarter and trigger commission calculation"
         >
           <FaPlay size={12} />
           <span>Trigger Commission</span>
@@ -264,6 +325,7 @@ const CalculationTriggers = () => {
         </button>
       </div>
 
+      {showCommissionModal && <CommissionModal />}
       {showSalesAgentModal && <SalesAgentModal />}
       {showBonusModal && <BonusModal />}
     </>
