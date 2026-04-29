@@ -14,6 +14,7 @@ import {
   FiLogOut,
   FiMessageSquare,
   FiGitBranch,
+  FiActivity,
 } from 'react-icons/fi';
 import Image from 'next/image';
 import { useProfile } from '@/components/contexts/ProfileContext';
@@ -134,6 +135,13 @@ const DashboardSidebar = ({
         >
           <FiPieChart className={iconBase} color={isActive('recSalesManagement') ? '#FFFFFF' : '#039994'} />
           <span>REC Sales Management</span>
+        </button>
+        <button
+          onClick={() => onSectionChange('recLifecycle')}
+          className={`${menuItemBase} ${isActive('recLifecycle') ? menuItemActive : menuItemInactive}`}
+        >
+          <FiActivity className={iconBase} color={isActive('recLifecycle') ? '#FFFFFF' : '#039994'} />
+          <span>REC Lifecycle</span>
         </button>
         <button
           onClick={() => onSectionChange('resiGroupManagement')}

@@ -23,9 +23,10 @@ import Faq from '@/components/dashboard/faq/Faq';
 import FeedbackPage from '@/components/dashboard/FeedbackPage';
 import RegistrationPipeline from '@/components/dashboard/registration-pipeline/RegistrationPipeline';
 import SystemJobs from '@/components/dashboard/system/SystemJobs';
+import RecLifecycle from '@/components/dashboard/rec-lifecycle/RecLifecycle';
 
 const VALID_SECTIONS = [
-  'overview', 'userManagement', 'recSalesManagement', 'resiGroupManagement',
+  'overview', 'userManagement', 'recSalesManagement', 'recLifecycle', 'resiGroupManagement',
   'commissionStructure', 'payoutProcessing', 'reporting', 'myAccount',
   'agreementManagement', 'documentConfiguration', 'userSupport', 'notifications', 'helpCenter',
   'contactSupport', 'faq', 'feedback', 'registrationPipeline', 'systemJobs',
@@ -35,6 +36,7 @@ const SECTION_COMPONENTS = {
   overview: DashboardOverview,
   userManagement: UserManagement,
   recSalesManagement: RECManagement,
+  recLifecycle: RecLifecycle,
   resiGroupManagement: ResiGroupManagement,
   commissionStructure: CommissionStructure,
   payoutProcessing: PayoutProcessing,
@@ -56,6 +58,7 @@ const sectionDisplayMap = {
   overview: 'Overview',
   userManagement: 'User Management',
   recSalesManagement: 'REC Sales Management',
+  recLifecycle: 'REC Lifecycle',
   resiGroupManagement: 'Resi. Group Management',
   commissionStructure: 'Commission Structure',
   payoutProcessing: 'Payout Processing',
