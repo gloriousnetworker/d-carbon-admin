@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ChevronLeft, Upload, Loader2, CheckCircle, Package, FileSpreadsheet, History, Copy, Check } from "lucide-react";
+import { ChevronLeft, Upload, Loader2, CheckCircle, Package, FileSpreadsheet, History, Copy, Check, X, AlertCircle } from "lucide-react";
 import { exportDocumentPackage, downloadDocumentsIndividually } from "@/lib/documentExport";
 import { exportWregisCoverSheet, exportPreApprovalWorksheet } from "@/lib/exportUtils";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import DocumentsModal from "./DocumentsModal";
 import FacilityRECHistory from "../FacilityRECHistory";
 import CONFIG from "@/lib/config";
+import { checkFacilityVerificationGates, allGatesPass } from "@/lib/verificationGates";
 
 export default function ResidentialDetails({ customer, onBack }) {
   const [customerDetails, setCustomerDetails] = useState(customer);
@@ -599,17 +600,66 @@ export default function ResidentialDetails({ customer, onBack }) {
           <DialogHeader>
             <DialogTitle>Verify Facility</DialogTitle>
             <DialogDescription>
-              Are you sure you want to verify this facility?
+              The server enforces these checks before flipping the facility to <span className="font-semibold">VERIFIED</span>.
+              Fix any failing items below before clicking verify.
             </DialogDescription>
           </DialogHeader>
-          
+
+          {/* Audit fix #32 — preflight checklist mirroring the 5 server-side
+              integrity gates from facilityVerificationGates.ts (audit fix #5). */}
+          {currentFacility && (() => {
+            const gates = checkFacilityVerificationGates(currentFacility);
+            const ready = allGatesPass(gates);
+            return (
+              <div className="space-y-2 py-2">
+                {gates.map((g) => (
+                  <div
+                    key={g.gate}
+                    className={`flex items-start gap-2 rounded-md p-2 border ${
+                      g.ok
+                        ? "bg-green-50 border-green-100"
+                        : "bg-rose-50 border-rose-100"
+                    }`}
+                  >
+                    <div className="pt-0.5">
+                      {g.ok ? (
+                        <Check className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <X className="h-4 w-4 text-rose-600" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className={`text-sm font-medium ${g.ok ? "text-green-900" : "text-rose-900"}`}>
+                        {g.label}
+                      </div>
+                      {!g.ok && g.reason && (
+                        <div className="text-xs text-rose-700 mt-0.5">{g.reason}</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {!ready && (
+                  <div className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md p-2 mt-2">
+                    <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                    <span>
+                      Fix the failing items first, then return here. The server will reject the verify call otherwise.
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           <DialogFooter>
             <Button variant="outline" onClick={closeVerifyModal}>
               Cancel
             </Button>
-            <Button 
+            <Button
               onClick={handleVerifyFacility}
-              disabled={verifyingFacility === currentFacility?.id}
+              disabled={
+                verifyingFacility === currentFacility?.id ||
+                !allGatesPass(checkFacilityVerificationGates(currentFacility))
+              }
               className="bg-[#039994] hover:bg-[#02857f]"
             >
               {verifyingFacility === currentFacility?.id ? (

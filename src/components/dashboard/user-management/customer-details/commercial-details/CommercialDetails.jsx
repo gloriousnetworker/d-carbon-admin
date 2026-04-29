@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ChevronLeft, Upload, Loader2, CheckCircle, Download, Package, FileSpreadsheet, History, Copy, Check } from "lucide-react";
+import { ChevronLeft, Upload, Loader2, CheckCircle, Download, Package, FileSpreadsheet, History, Copy, Check, X, AlertCircle } from "lucide-react";
 import { exportDocumentPackage, downloadDocumentsIndividually } from "@/lib/documentExport";
 import { exportWregisCoverSheet } from "@/lib/exportUtils";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import DocumentsModal from "./DocumentsModal";
 import FacilityRECHistory from "../FacilityRECHistory";
 import CONFIG from "@/lib/config";
+import { checkFacilityVerificationGates, allGatesPass } from "@/lib/verificationGates";
 
 export const mainContainer = 'min-h-screen w-full flex flex-col items-center justify-center py-8 px-4 bg-white';
 export const labelClass = 'block mb-2 font-sfpro text-[14px] leading-[100%] tracking-[-0.05em] font-[400] text-[#1E1E1E]';
@@ -20,6 +21,10 @@ export default function CommercialDetails({ customer, onBack }) {
   const [facilitiesLoading, setFacilitiesLoading] = useState(false);
   const [facilitiesError, setFacilitiesError] = useState(null);
   const [verifyingFacility, setVerifyingFacility] = useState(null);
+  // Audit fix #32 — pre-flight verify modal that mirrors residential's UX
+  // and renders the checklist of integrity gates the server enforces.
+  const [verifyModalOpen, setVerifyModalOpen] = useState(false);
+  const [verifyTarget, setVerifyTarget] = useState(null);
   const [facilityModalOpen, setFacilityModalOpen] = useState(false);
   const [wregisModalOpen, setWregisModalOpen] = useState(false);
   const [wregisForm, setWregisForm] = useState({
@@ -584,13 +589,97 @@ export default function CommercialDetails({ customer, onBack }) {
             </DialogTitle>
           </DialogHeader>
           {currentFacility && (
-            <DocumentsModal 
-              facility={currentFacility} 
-              onVerifyFacility={handleVerifyFacility}
+            <DocumentsModal
+              facility={currentFacility}
+              // Audit fix #32 — open the preflight checklist instead of
+              // firing verify directly. The actual handler runs from the
+              // modal's confirm button below.
+              onVerifyFacility={(facilityId) => {
+                setVerifyTarget(currentFacility);
+                setVerifyModalOpen(true);
+              }}
               verifyingFacility={verifyingFacility}
               updateFacilityFromResponse={updateFacilityFromResponse}
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={verifyModalOpen} onOpenChange={setVerifyModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Verify Facility</DialogTitle>
+            <DialogDescription>
+              The server enforces these checks before flipping the facility to <span className="font-semibold">VERIFIED</span>.
+              Fix any failing items below before clicking verify.
+            </DialogDescription>
+          </DialogHeader>
+
+          {verifyTarget && (() => {
+            const gates = checkFacilityVerificationGates(verifyTarget);
+            const ready = allGatesPass(gates);
+            return (
+              <div className="space-y-2 py-2">
+                {gates.map((g) => (
+                  <div
+                    key={g.gate}
+                    className={`flex items-start gap-2 rounded-md p-2 border ${
+                      g.ok
+                        ? "bg-green-50 border-green-100"
+                        : "bg-rose-50 border-rose-100"
+                    }`}
+                  >
+                    <div className="pt-0.5">
+                      {g.ok ? (
+                        <Check className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <X className="h-4 w-4 text-rose-600" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className={`text-sm font-medium ${g.ok ? "text-green-900" : "text-rose-900"}`}>
+                        {g.label}
+                      </div>
+                      {!g.ok && g.reason && (
+                        <div className="text-xs text-rose-700 mt-0.5">{g.reason}</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {!ready && (
+                  <div className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md p-2 mt-2">
+                    <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                    <span>
+                      Fix the failing items first, then return here. The server will reject the verify call otherwise.
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setVerifyModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!verifyTarget) return;
+                await handleVerifyFacility(verifyTarget.id);
+                setVerifyModalOpen(false);
+              }}
+              disabled={
+                verifyingFacility === verifyTarget?.id ||
+                !allGatesPass(checkFacilityVerificationGates(verifyTarget))
+              }
+              className="bg-[#039994] hover:bg-[#02857f]"
+            >
+              {verifyingFacility === verifyTarget?.id ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Verify Facility
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
