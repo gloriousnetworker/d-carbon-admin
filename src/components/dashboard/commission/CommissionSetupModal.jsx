@@ -1132,6 +1132,32 @@ const CommissionSetupModal = ({
                     );
                   })}
                 </select>
+
+                {/* Audit fix #36 — once a tier is picked, keep its ranges
+                    visible inline so the admin doesn't have to flip back to
+                    ManageTiersModal to confirm "is tier-2 0–5MW or 5–25MW?".
+                    The option labels already carry the data; this just
+                    surfaces it after the select collapses. */}
+                {formData.tierId && (() => {
+                  const t = tiers.find((tier) => tier.id === formData.tierId);
+                  if (!t) return null;
+                  const usdMin = t.minAmountUSD != null ? `$${Number(t.minAmountUSD).toLocaleString()}` : "$0";
+                  const usdMax = t.maxAmountUSD != null ? `$${Number(t.maxAmountUSD).toLocaleString()}` : "∞";
+                  const mwMin = t.minAmountMW != null ? `${t.minAmountMW} MW` : "0 MW";
+                  const mwMax = t.maxAmountMW != null ? `${t.maxAmountMW} MW` : "∞";
+                  return (
+                    <div className="mt-2 grid grid-cols-2 gap-2 rounded-md border border-[#03999420] bg-[#03999408] p-2 text-xs">
+                      <div>
+                        <div className="text-[10px] uppercase tracking-wide text-gray-500">USD range</div>
+                        <div className="font-medium text-gray-800">{usdMin} – {usdMax}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] uppercase tracking-wide text-gray-500">MW range</div>
+                        <div className="font-medium text-gray-800">{mwMin} – {mwMax}</div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/*
